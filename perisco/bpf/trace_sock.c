@@ -10,8 +10,8 @@ int handle_tp(void *ctx)
 {
 	int pid = bpf_get_current_pid_tgid() >> 32;
 
-	if (pid != my_pid)
-		return 0;
+	// if (pid != my_pid)
+	// 	return 0;
 
 	bpf_printk("BPF triggered from PID %d.\n", pid);
 

@@ -548,7 +548,8 @@ static int xsk_get_max_queues(struct xsk_socket *xsk)
 		return -errno;
 
 	ifr.ifr_data = (void *)&channels;
-	libbpf_strlcpy(ifr.ifr_name, ctx->ifname, IFNAMSIZ);
+	memcpy(ifr.ifr_name, ctx->ifname, IFNAMSIZ - 1);
+	ifr.ifr_name[IFNAMSIZ - 1] = '\0';
 	err = ioctl(fd, SIOCETHTOOL, &ifr);
 	if (err && errno != EOPNOTSUPP) {
 		ret = -errno;
@@ -767,7 +768,8 @@ static int xsk_create_xsk_struct(int ifindex, struct xsk_socket *xsk)
 	}
 
 	ctx->ifindex = ifindex;
-	libbpf_strlcpy(ctx->ifname, ifname, IFNAMSIZ);
+	memcpy(ctx->ifname, ifname, IFNAMSIZ -1);
+	ctx->ifname[IFNAMSIZ - 1] = 0;
 
 	xsk->ctx = ctx;
 	xsk->ctx->has_bpf_link = xsk_probe_bpf_link();
@@ -949,7 +951,8 @@ static struct xsk_ctx *xsk_create_ctx(struct xsk_socket *xsk,
 	ctx->refcount = 1;
 	ctx->umem = umem;
 	ctx->queue_id = queue_id;
-	libbpf_strlcpy(ctx->ifname, ifname, IFNAMSIZ);
+	memcpy(ctx->ifname, ifname, IFNAMSIZ - 1);
+	ctx->ifname[IFNAMSIZ - 1] = '\0';
 
 	ctx->fill = fill;
 	ctx->comp = comp;

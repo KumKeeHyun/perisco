@@ -13,6 +13,22 @@ import (
 	"github.com/cilium/ebpf"
 )
 
+type bpfConnInfo struct {
+	ConnId struct {
+		PidTgid uint64
+		Tsid    uint64
+		Fd      int32
+		_       [4]byte
+	}
+	Addr struct {
+		SrcAddr uint32
+		DstAddr uint32
+		SrcPort uint16
+		DstPort uint16
+	}
+	EndpointRole int32
+}
+
 // loadBpf returns the embedded CollectionSpec for bpf.
 func loadBpf() (*ebpf.CollectionSpec, error) {
 	reader := bytes.NewReader(_BpfBytes)
@@ -54,13 +70,15 @@ type bpfSpecs struct {
 //
 // It can be passed ebpf.CollectionSpec.Assign.
 type bpfProgramSpecs struct {
-	HandleTp *ebpf.ProgramSpec `ebpf:"handle_tp"`
+	InetAccept *ebpf.ProgramSpec `ebpf:"inet_accept"`
+	TcpConnect *ebpf.ProgramSpec `ebpf:"tcp_connect"`
 }
 
 // bpfMapSpecs contains maps before they are loaded into the kernel.
 //
 // It can be passed ebpf.CollectionSpec.Assign.
 type bpfMapSpecs struct {
+	ConnEvents *ebpf.MapSpec `ebpf:"conn_events"`
 }
 
 // bpfObjects contains all objects after they have been loaded into the kernel.
@@ -82,22 +100,27 @@ func (o *bpfObjects) Close() error {
 //
 // It can be passed to loadBpfObjects or ebpf.CollectionSpec.LoadAndAssign.
 type bpfMaps struct {
+	ConnEvents *ebpf.Map `ebpf:"conn_events"`
 }
 
 func (m *bpfMaps) Close() error {
-	return _BpfClose()
+	return _BpfClose(
+		m.ConnEvents,
+	)
 }
 
 // bpfPrograms contains all programs after they have been loaded into the kernel.
 //
 // It can be passed to loadBpfObjects or ebpf.CollectionSpec.LoadAndAssign.
 type bpfPrograms struct {
-	HandleTp *ebpf.Program `ebpf:"handle_tp"`
+	InetAccept *ebpf.Program `ebpf:"inet_accept"`
+	TcpConnect *ebpf.Program `ebpf:"tcp_connect"`
 }
 
 func (p *bpfPrograms) Close() error {
 	return _BpfClose(
-		p.HandleTp,
+		p.InetAccept,
+		p.TcpConnect,
 	)
 }
 

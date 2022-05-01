@@ -44,7 +44,7 @@ all: generate
 generate: export BPF_CLANG := $(CLANG)
 generate: export BPF_CFLAGS := $(CFLAGS)
 generate: export BPF_FILES := bpf/trace_sock.c
-generate: export BPF_HEADERS := bpf/headers
+generate: export BPF_HEADERS := bpf
 generate:
 	go generate .
 

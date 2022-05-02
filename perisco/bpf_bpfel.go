@@ -14,17 +14,28 @@ import (
 )
 
 type bpfConnInfo struct {
-	ConnId struct {
-		PidTgid uint64
-		Tsid    uint64
-		Fd      int32
-		_       [4]byte
-	}
-	Addr struct {
-		SrcAddr uint32
-		DstAddr uint32
-		SrcPort uint16
-		DstPort uint16
+	SockKey struct {
+		Sip struct {
+			Addr struct {
+				Pad1 uint32
+				Pad2 uint32
+				Pad3 uint32
+				Pad4 uint32
+			}
+		}
+		Dip struct {
+			Addr struct {
+				Pad1 uint32
+				Pad2 uint32
+				Pad3 uint32
+				Pad4 uint32
+			}
+		}
+		Sport  uint32
+		Dport  uint32
+		Family uint8
+		Pad1   uint8
+		Pad2   uint16
 	}
 	EndpointRole int32
 }

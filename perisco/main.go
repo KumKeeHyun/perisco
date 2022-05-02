@@ -74,19 +74,27 @@ func main() {
 				continue
 			}
 
-			log.Printf("%-15s %-6d -> %-15s %-6d %-10s %-6d",
-				intToIP(connInfo.Addr.SrcAddr),
-				connInfo.Addr.SrcPort,
-				intToIP(connInfo.Addr.DstAddr),
-				connInfo.Addr.DstPort,
+			log.Printf("%-15s %-6d    %-15s %-6d  %-10s",
+				intToIP(connInfo.getSrcIpv4()),
+				connInfo.SockKey.Sport,
+				intToIP(connInfo.getDstIpv4()),
+				connInfo.SockKey.Dport,
 				intToEndpointRole(connInfo.EndpointRole),
-				connInfo.ConnId.Fd,
 			)
 		}
 	}()
 
 	<-ctx.Done()
 }
+
+func (ci *bpfConnInfo) getSrcIpv4() uint32 {
+	return ci.SockKey.Sip.Addr.Pad1
+}
+
+func (ci *bpfConnInfo) getDstIpv4() uint32 {
+	return ci.SockKey.Dip.Addr.Pad1
+}
+
 
 // intToIP converts IPv4 number to net.IP
 func intToIP(ipNum uint32) net.IP {

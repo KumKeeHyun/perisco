@@ -14,30 +14,32 @@ import (
 )
 
 type bpfConnInfo struct {
-	SockKey struct {
-		Sip struct {
-			Addr struct {
-				Pad1 uint32
-				Pad2 uint32
-				Pad3 uint32
-				Pad4 uint32
-			}
-		}
-		Dip struct {
-			Addr struct {
-				Pad1 uint32
-				Pad2 uint32
-				Pad3 uint32
-				Pad4 uint32
-			}
-		}
-		Sport  uint32
-		Dport  uint32
-		Family uint8
-		Pad1   uint8
-		Pad2   uint16
-	}
+	SockKey      bpfSockKey
 	EndpointRole int32
+}
+
+type bpfSockKey struct {
+	Sip struct {
+		Addr struct {
+			Pad1 uint32
+			Pad2 uint32
+			Pad3 uint32
+			Pad4 uint32
+		}
+	}
+	Dip struct {
+		Addr struct {
+			Pad1 uint32
+			Pad2 uint32
+			Pad3 uint32
+			Pad4 uint32
+		}
+	}
+	Sport  uint32
+	Dport  uint32
+	Family uint8
+	Pad1   uint8
+	Pad2   uint16
 }
 
 // loadBpf returns the embedded CollectionSpec for bpf.
@@ -82,6 +84,7 @@ type bpfSpecs struct {
 // It can be passed ebpf.CollectionSpec.Assign.
 type bpfProgramSpecs struct {
 	InetAccept *ebpf.ProgramSpec `ebpf:"inet_accept"`
+	TcpClose   *ebpf.ProgramSpec `ebpf:"tcp_close"`
 	TcpConnect *ebpf.ProgramSpec `ebpf:"tcp_connect"`
 }
 
@@ -89,7 +92,9 @@ type bpfProgramSpecs struct {
 //
 // It can be passed ebpf.CollectionSpec.Assign.
 type bpfMapSpecs struct {
-	ConnEvents *ebpf.MapSpec `ebpf:"conn_events"`
+	CloseEvents *ebpf.MapSpec `ebpf:"close_events"`
+	ConnEvents  *ebpf.MapSpec `ebpf:"conn_events"`
+	ConnInfoMap *ebpf.MapSpec `ebpf:"conn_info_map"`
 }
 
 // bpfObjects contains all objects after they have been loaded into the kernel.
@@ -111,12 +116,16 @@ func (o *bpfObjects) Close() error {
 //
 // It can be passed to loadBpfObjects or ebpf.CollectionSpec.LoadAndAssign.
 type bpfMaps struct {
-	ConnEvents *ebpf.Map `ebpf:"conn_events"`
+	CloseEvents *ebpf.Map `ebpf:"close_events"`
+	ConnEvents  *ebpf.Map `ebpf:"conn_events"`
+	ConnInfoMap *ebpf.Map `ebpf:"conn_info_map"`
 }
 
 func (m *bpfMaps) Close() error {
 	return _BpfClose(
+		m.CloseEvents,
 		m.ConnEvents,
+		m.ConnInfoMap,
 	)
 }
 
@@ -125,12 +134,14 @@ func (m *bpfMaps) Close() error {
 // It can be passed to loadBpfObjects or ebpf.CollectionSpec.LoadAndAssign.
 type bpfPrograms struct {
 	InetAccept *ebpf.Program `ebpf:"inet_accept"`
+	TcpClose   *ebpf.Program `ebpf:"tcp_close"`
 	TcpConnect *ebpf.Program `ebpf:"tcp_connect"`
 }
 
 func (p *bpfPrograms) Close() error {
 	return _BpfClose(
 		p.InetAccept,
+		p.TcpClose,
 		p.TcpConnect,
 	)
 }

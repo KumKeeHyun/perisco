@@ -49,6 +49,13 @@ func main() {
 		log.Fatal(err)
 	}
 	defer connectLink.Close()
+	closeLink, err := link.AttachTracing(link.TracingOptions{
+		Program: objs.bpfPrograms.TcpClose,
+	})
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer closeLink.Close()
 
 	rd, err := ringbuf.NewReader(objs.bpfMaps.ConnEvents)
 	if err != nil {
@@ -74,12 +81,48 @@ func main() {
 				continue
 			}
 
-			log.Printf("%-15s %-6d    %-15s %-6d  %-10s",
+			log.Printf("%-15s %-6d    %-15s %-6d  %-10s %-10s",
 				intToIP(connInfo.getSrcIpv4()),
 				connInfo.SockKey.Sport,
 				intToIP(connInfo.getDstIpv4()),
 				connInfo.SockKey.Dport,
 				intToEndpointRole(connInfo.EndpointRole),
+				"CONN",
+			)
+		}
+	}()
+
+	closeRd, err := ringbuf.NewReader(objs.bpfMaps.CloseEvents)
+	if err != nil {
+		log.Fatalf("opening ringbuf reader: %s", err)
+	}
+	defer closeRd.Close()
+
+	go func() {
+		var connInfo bpfConnInfo
+		for {
+			record, err := closeRd.Read()
+			if err != nil {
+				if errors.Is(err, ringbuf.ErrClosed) {
+					log.Println("received signal, exiting..")
+					return
+				}
+				log.Printf("reading from reader: %s", err)
+				continue
+			}
+
+			if err := binary.Read(bytes.NewBuffer(record.RawSample), binary.LittleEndian, &connInfo); err != nil {
+				log.Printf("parsing ringbuf event: %s", err)
+				continue
+			}
+
+			log.Printf("%-15s %-6d    %-15s %-6d  %-10s %-10s",
+				intToIP(connInfo.getSrcIpv4()),
+				connInfo.SockKey.Sport,
+				intToIP(connInfo.getDstIpv4()),
+				connInfo.SockKey.Dport,
+				intToEndpointRole(connInfo.EndpointRole),
+				"CLOSE",
 			)
 		}
 	}()

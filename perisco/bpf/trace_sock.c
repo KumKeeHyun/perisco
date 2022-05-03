@@ -19,7 +19,7 @@ struct __attribute__((__packed__)) v4addr {
 	__u32		pad3;
 };
 
-struct __attribute__((__packed__)) addr_pad {
+struct __attribute__((__packed__)) ipaddr {
 	__u32		pad1;
 	__u32		pad2;
 	__u32		pad3;
@@ -27,7 +27,7 @@ struct __attribute__((__packed__)) addr_pad {
 };
 
 union __attribute__((__packed__)) ip {
-	struct addr_pad addr;
+	struct ipaddr addr;
 	struct v4addr ip4;
 	struct v6addr ip6;
 };
@@ -55,18 +55,31 @@ static __always_inline void sk_extract4_key(const struct sock *sk,
 }
 
 enum endpoint_role {
-  kRoleClient = 1 << 0,
-  kRoleServer = 1 << 1,
-  kRoleUnknown = 1 << 2,
+  	kRoleClient = 1 << 0,
+  	kRoleServer = 1 << 1,
+  	kRoleUnknown = 1 << 2,
 };
 
 struct conn_info {
-  struct sock_key sock_key;
-
-  // The protocol of traffic on the connection (HTTP, MySQL, etc.).
-  enum endpoint_role endpoint_role;
+  	struct sock_key sock_key;
+  	enum endpoint_role endpoint_role;
+	u64 send_bytes;
+	u64 recv_bytes;
 };
-struct conn_info *unused_event __attribute__((unused));
+
+struct conn_event {
+  	struct sock_key sock_key;
+  	enum endpoint_role endpoint_role;
+};
+struct conn_event *unused_conn_event __attribute__((unused));
+
+struct close_event {
+	struct sock_key sock_key;
+  	enum endpoint_role endpoint_role;
+	u64 send_bytes;
+	u64 recv_bytes;
+};
+struct close_event *unused_close_event __attribute__((unused));
 
 struct {
 	__uint(type, BPF_MAP_TYPE_HASH);
@@ -91,50 +104,87 @@ int BPF_PROG(inet_accept, struct socket *sock,
 	if (ret < 0)
 		return 0;
 	
-	struct sock_common *sk_common = &newsock->sk->__sk_common;
-	u16 family = sk_common->skc_family;
-	if (family != AF_INET)
+	if (newsock->sk->__sk_common.skc_family != AF_INET)
 		return 0;
 
-	struct conn_info *conn_info = NULL;
-	conn_info = bpf_ringbuf_reserve(&conn_events, sizeof(struct conn_info), 0);
-	if (!conn_info)
+	struct conn_event *conn_event = NULL;
+	conn_event = bpf_ringbuf_reserve(&conn_events, sizeof(struct conn_event), 0);
+	if (!conn_event)
 		return 0;
 
-	sk_extract4_key(newsock->sk, &conn_info->sock_key);
+	sk_extract4_key(newsock->sk, &conn_event->sock_key);
+	conn_event->endpoint_role = kRoleServer;
 
-	conn_info->endpoint_role = kRoleServer;
-
-	struct conn_info conn_info_c = *conn_info;
-	bpf_map_update_elem(&conn_info_map, &conn_info_c.sock_key, &conn_info_c, BPF_ANY);
+	struct conn_info conn_info = {};
+	conn_info.sock_key = conn_event->sock_key;
+	conn_info.endpoint_role = conn_event->endpoint_role;
+	bpf_map_update_elem(&conn_info_map, &conn_info.sock_key, &conn_info, BPF_ANY);
 	
-	bpf_ringbuf_submit(conn_info, 0);
+	bpf_ringbuf_submit(conn_event, 0);
 
 	return 0;
 }
 
 SEC("fexit/tcp_connect")
-int BPF_PROG(tcp_connect, struct sock *sock) {
-
-	struct sock_common *sk_common = &sock->__sk_common;
-
-	u16 family = sk_common->skc_family;
-	if (family != AF_INET)
+int BPF_PROG(tcp_connect, struct sock *sock, long ret) {
+	if (ret < 0)
 		return 0;
 
-	struct conn_info *conn_info = NULL;
-	conn_info = bpf_ringbuf_reserve(&conn_events, sizeof(struct conn_info), 0);
-	if (!conn_info)
+	if (sock->__sk_common.skc_family != AF_INET)
 		return 0;
 
-	sk_extract4_key(sock, &conn_info->sock_key);
+	struct conn_event *conn_event = NULL;
+	conn_event = bpf_ringbuf_reserve(&conn_events, sizeof(struct conn_event), 0);
+	if (!conn_event)
+		return 0;
 
-	conn_info->endpoint_role = kRoleClient;
+	sk_extract4_key(sock, &conn_event->sock_key);
+	conn_event->endpoint_role = kRoleClient;
 
-	struct conn_info conn_info_c = *conn_info;
-	bpf_map_update_elem(&conn_info_map, &conn_info_c.sock_key, &conn_info_c, BPF_ANY);
-	
-	bpf_ringbuf_submit(conn_info, 0);
+	struct conn_info conn_info = {};
+	conn_info.sock_key = conn_event->sock_key;
+	conn_info.endpoint_role = conn_event->endpoint_role;
+	bpf_map_update_elem(&conn_info_map, &conn_info.sock_key, &conn_info, BPF_ANY);
+
+	bpf_ringbuf_submit(conn_event, 0);
+
+	return 0;
+}
+
+SEC("fexit/tcp_sendmsg")
+int BPF_PROG(tcp_sendmsg, struct sock *sk, struct msghdr *msg, size_t size, long ret) {
+	bpf_printk("BPF triggered from tcp_sendmsg. send size: %d.\n", size);
+
+	struct sock_key sk_key = {};
+	sk_extract4_key(sk, &sk_key);
+
+	struct conn_info *conn_info = bpf_map_lookup_elem(&conn_info_map, &sk_key);
+	if (conn_info == NULL)
+		return 0;
+
+	conn_info->send_bytes += size;
+	bpf_map_update_elem(&conn_info_map, &conn_info->sock_key, conn_info, BPF_ANY);
+
+	return 0;
+}
+
+
+
+SEC("fexit/tcp_recvmsg")
+int BPF_PROG(tcp_recvmsg, struct sock *sk, struct msghdr *msg, 
+				size_t len, int nonblock, int flags, int *addr_len, long ret) {
+
+	bpf_printk("BPF triggered from tcp_recvmsg. recv size: %d.\n", len);
+
+	struct sock_key sk_key = {};
+	sk_extract4_key(sk, &sk_key);
+
+	struct conn_info *conn_info = bpf_map_lookup_elem(&conn_info_map, &sk_key);
+	if (conn_info == NULL)
+		return 0;
+
+	conn_info->recv_bytes += len;
+	bpf_map_update_elem(&conn_info_map, &conn_info->sock_key, conn_info, BPF_ANY);
 
 	return 0;
 }
@@ -147,16 +197,19 @@ int BPF_PROG(tcp_close, struct sock *sk, long ret) {
 	struct sock_key sk_key = {};
 	sk_extract4_key(sk, &sk_key);
 
-	struct conn_info *value = bpf_map_lookup_elem(&conn_info_map, &sk_key);
-	if (value == NULL)
-		return 0;
-	
-	struct conn_info *conn_info = bpf_ringbuf_reserve(&close_events, sizeof(struct conn_info), 0);
+	struct conn_info *conn_info = bpf_map_lookup_elem(&conn_info_map, &sk_key);
 	if (conn_info == NULL)
 		return 0;
 	
-	*conn_info = *value;
-	bpf_ringbuf_submit(conn_info, 0);
+	struct close_event *close_event = bpf_ringbuf_reserve(&close_events, sizeof(struct close_event), 0);
+	if (close_event == NULL)
+		return 0;
+	
+	close_event->sock_key = conn_info->sock_key;
+	close_event->endpoint_role = conn_info->endpoint_role;
+	close_event->send_bytes = conn_info->send_bytes;
+	close_event->recv_bytes = conn_info->recv_bytes;
+	bpf_ringbuf_submit(close_event, 0);
 
 	bpf_map_delete_elem(&conn_info_map, &sk_key);
 

@@ -16,7 +16,7 @@ import (
 	"github.com/cilium/ebpf/rlimit"
 )
 
-//go:generate go run github.com/cilium/ebpf/cmd/bpf2go -cc $BPF_CLANG -cflags $BPF_CFLAGS -target bpfel -type conn_info bpf $BPF_FILES -- -I$BPF_HEADERS
+//go:generate go run github.com/cilium/ebpf/cmd/bpf2go -cc $BPF_CLANG -cflags $BPF_CFLAGS -target bpfel -type conn_event -type close_event bpf $BPF_FILES -- -I$BPF_HEADERS
 
 func main() {
 	if err := rlimit.RemoveMemlock(); err != nil {
@@ -49,6 +49,20 @@ func main() {
 		log.Fatal(err)
 	}
 	defer connectLink.Close()
+	sendLink, err := link.AttachTracing(link.TracingOptions{
+		Program: objs.bpfPrograms.TcpSendmsg,
+	})
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer sendLink.Close()
+	recvLink, err := link.AttachTracing(link.TracingOptions{
+		Program: objs.bpfPrograms.TcpRecvmsg,
+	})
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer recvLink.Close()
 	closeLink, err := link.AttachTracing(link.TracingOptions{
 		Program: objs.bpfPrograms.TcpClose,
 	})
@@ -64,7 +78,7 @@ func main() {
 	defer rd.Close()
 
 	go func() {
-		var connInfo bpfConnInfo
+		var connEvent bpfConnEvent
 		for {
 			record, err := rd.Read()
 			if err != nil {
@@ -76,17 +90,17 @@ func main() {
 				continue
 			}
 
-			if err := binary.Read(bytes.NewBuffer(record.RawSample), binary.LittleEndian, &connInfo); err != nil {
+			if err := binary.Read(bytes.NewBuffer(record.RawSample), binary.LittleEndian, &connEvent); err != nil {
 				log.Printf("parsing ringbuf event: %s", err)
 				continue
 			}
 
-			log.Printf("%-15s %-6d    %-15s %-6d  %-10s %-10s",
-				intToIP(connInfo.getSrcIpv4()),
-				connInfo.SockKey.Sport,
-				intToIP(connInfo.getDstIpv4()),
-				connInfo.SockKey.Dport,
-				intToEndpointRole(connInfo.EndpointRole),
+			log.Printf("%-15s %-6d   %-15s %-6d  %-10s %-10s",
+				intToIP(connEvent.getSrcIpv4()),
+				connEvent.SockKey.Sport,
+				intToIP(connEvent.getDstIpv4()),
+				connEvent.SockKey.Dport,
+				intToEndpointRole(connEvent.EndpointRole),
 				"CONN",
 			)
 		}
@@ -99,7 +113,7 @@ func main() {
 	defer closeRd.Close()
 
 	go func() {
-		var connInfo bpfConnInfo
+		var closeEvent bpfCloseEvent
 		for {
 			record, err := closeRd.Read()
 			if err != nil {
@@ -111,18 +125,20 @@ func main() {
 				continue
 			}
 
-			if err := binary.Read(bytes.NewBuffer(record.RawSample), binary.LittleEndian, &connInfo); err != nil {
+			if err := binary.Read(bytes.NewBuffer(record.RawSample), binary.LittleEndian, &closeEvent); err != nil {
 				log.Printf("parsing ringbuf event: %s", err)
 				continue
 			}
 
-			log.Printf("%-15s %-6d    %-15s %-6d  %-10s %-10s",
-				intToIP(connInfo.getSrcIpv4()),
-				connInfo.SockKey.Sport,
-				intToIP(connInfo.getDstIpv4()),
-				connInfo.SockKey.Dport,
-				intToEndpointRole(connInfo.EndpointRole),
+			log.Printf("%-15s %-6d   %-15s %-6d  %-10s %-10s  %-10d %-10d ",
+				intToIP(closeEvent.getSrcIpv4()),
+				closeEvent.SockKey.Sport,
+				intToIP(closeEvent.getDstIpv4()),
+				closeEvent.SockKey.Dport,
+				intToEndpointRole(closeEvent.EndpointRole),
 				"CLOSE",
+				closeEvent.SendBytes,
+				closeEvent.RecvBytes,
 			)
 		}
 	}()
@@ -130,14 +146,21 @@ func main() {
 	<-ctx.Done()
 }
 
-func (ci *bpfConnInfo) getSrcIpv4() uint32 {
-	return ci.SockKey.Sip.Addr.Pad1
+func (ce *bpfConnEvent) getSrcIpv4() uint32 {
+	return ce.SockKey.Sip.Addr.Pad1
 }
 
-func (ci *bpfConnInfo) getDstIpv4() uint32 {
-	return ci.SockKey.Dip.Addr.Pad1
+func (ce *bpfConnEvent) getDstIpv4() uint32 {
+	return ce.SockKey.Dip.Addr.Pad1
 }
 
+func (ce *bpfCloseEvent) getSrcIpv4() uint32 {
+	return ce.SockKey.Sip.Addr.Pad1
+}
+
+func (ce *bpfCloseEvent) getDstIpv4() uint32 {
+	return ce.SockKey.Dip.Addr.Pad1
+}
 
 // intToIP converts IPv4 number to net.IP
 func intToIP(ipNum uint32) net.IP {

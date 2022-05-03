@@ -13,9 +13,23 @@ import (
 	"github.com/cilium/ebpf"
 )
 
+type bpfCloseEvent struct {
+	SockKey      bpfSockKey
+	EndpointRole int32
+	SendBytes    uint64
+	RecvBytes    uint64
+}
+
+type bpfConnEvent struct {
+	SockKey      bpfSockKey
+	EndpointRole int32
+}
+
 type bpfConnInfo struct {
 	SockKey      bpfSockKey
 	EndpointRole int32
+	SendBytes    uint64
+	RecvBytes    uint64
 }
 
 type bpfSockKey struct {
@@ -86,6 +100,8 @@ type bpfProgramSpecs struct {
 	InetAccept *ebpf.ProgramSpec `ebpf:"inet_accept"`
 	TcpClose   *ebpf.ProgramSpec `ebpf:"tcp_close"`
 	TcpConnect *ebpf.ProgramSpec `ebpf:"tcp_connect"`
+	TcpRecvmsg *ebpf.ProgramSpec `ebpf:"tcp_recvmsg"`
+	TcpSendmsg *ebpf.ProgramSpec `ebpf:"tcp_sendmsg"`
 }
 
 // bpfMapSpecs contains maps before they are loaded into the kernel.
@@ -136,6 +152,8 @@ type bpfPrograms struct {
 	InetAccept *ebpf.Program `ebpf:"inet_accept"`
 	TcpClose   *ebpf.Program `ebpf:"tcp_close"`
 	TcpConnect *ebpf.Program `ebpf:"tcp_connect"`
+	TcpRecvmsg *ebpf.Program `ebpf:"tcp_recvmsg"`
+	TcpSendmsg *ebpf.Program `ebpf:"tcp_sendmsg"`
 }
 
 func (p *bpfPrograms) Close() error {
@@ -143,6 +161,8 @@ func (p *bpfPrograms) Close() error {
 		p.InetAccept,
 		p.TcpClose,
 		p.TcpConnect,
+		p.TcpRecvmsg,
+		p.TcpSendmsg,
 	)
 }
 

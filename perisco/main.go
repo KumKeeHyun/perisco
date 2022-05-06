@@ -16,7 +16,17 @@ import (
 	"github.com/cilium/ebpf/rlimit"
 )
 
-//go:generate go run github.com/cilium/ebpf/cmd/bpf2go -cc $BPF_CLANG -cflags $BPF_CFLAGS -target bpfel -type conn_event -type close_event bpf $BPF_FILES -- -I$BPF_HEADERS
+//go:generate go run github.com/cilium/ebpf/cmd/bpf2go -cc $BPF_CLANG -cflags $BPF_CFLAGS -target bpfel -type conn_event -type close_event -type data_event bpf $BPF_FILES -- -I$BPF_HEADERS
+
+type dataEvent struct {
+	SockKey       bpfSockKey
+	EndpointRole  int32
+	MsgType       int32
+	Msg           [4096]byte
+	_             [4]byte
+	MsgSize       uint64
+	OriginMsgSize uint64
+}
 
 func main() {
 	if err := rlimit.RemoveMemlock(); err != nil {
@@ -42,6 +52,7 @@ func main() {
 		log.Fatal(err)
 	}
 	defer acceptLink.Close()
+
 	connectLink, err := link.AttachTracing(link.TracingOptions{
 		Program: objs.bpfPrograms.TcpConnect,
 	})
@@ -49,6 +60,7 @@ func main() {
 		log.Fatal(err)
 	}
 	defer connectLink.Close()
+
 	sendLink, err := link.AttachTracing(link.TracingOptions{
 		Program: objs.bpfPrograms.TcpSendmsg,
 	})
@@ -56,6 +68,7 @@ func main() {
 		log.Fatal(err)
 	}
 	defer sendLink.Close()
+
 	recvLink, err := link.AttachTracing(link.TracingOptions{
 		Program: objs.bpfPrograms.TcpRecvmsg,
 	})
@@ -63,6 +76,7 @@ func main() {
 		log.Fatal(err)
 	}
 	defer recvLink.Close()
+
 	closeLink, err := link.AttachTracing(link.TracingOptions{
 		Program: objs.bpfPrograms.TcpClose,
 	})
@@ -96,9 +110,9 @@ func main() {
 			}
 
 			log.Printf("%-15s %-6d   %-15s %-6d  %-10s %-10s",
-				intToIP(connEvent.getSrcIpv4()),
+				intToIP(connEvent.SockKey.getSrcIpv4()),
 				connEvent.SockKey.Sport,
-				intToIP(connEvent.getDstIpv4()),
+				intToIP(connEvent.SockKey.getDstIpv4()),
 				connEvent.SockKey.Dport,
 				intToEndpointRole(connEvent.EndpointRole),
 				"CONN",
@@ -131,9 +145,9 @@ func main() {
 			}
 
 			log.Printf("%-15s %-6d   %-15s %-6d  %-10s %-10s  %-10d %-10d ",
-				intToIP(closeEvent.getSrcIpv4()),
+				intToIP(closeEvent.SockKey.getSrcIpv4()),
 				closeEvent.SockKey.Sport,
-				intToIP(closeEvent.getDstIpv4()),
+				intToIP(closeEvent.SockKey.getDstIpv4()),
 				closeEvent.SockKey.Dport,
 				intToEndpointRole(closeEvent.EndpointRole),
 				"CLOSE",
@@ -143,23 +157,55 @@ func main() {
 		}
 	}()
 
+	dataRd, err := ringbuf.NewReader(objs.bpfMaps.DataEvents)
+	if err != nil {
+		log.Fatalf("opening ringbuf reader: %s", err)
+	}
+	defer dataRd.Close()
+
+	go func() {
+		var dataEvent dataEvent
+		for {
+			record, err := dataRd.Read()
+			if err != nil {
+				if errors.Is(err, ringbuf.ErrClosed) {
+					log.Println("received signal, exiting..")
+					return
+				}
+				log.Printf("reading from reader: %s", err)
+				continue
+			}
+
+			if err := binary.Read(bytes.NewBuffer(record.RawSample), binary.LittleEndian, &dataEvent); err != nil {
+				log.Printf("parsing ringbuf event: %s", err)
+				continue
+			}
+
+			log.Printf("%-15s %-6d   %-15s %-6d  %-10s %-10s\n",
+				intToIP(dataEvent.SockKey.getSrcIpv4()),
+				dataEvent.SockKey.Sport,
+				intToIP(dataEvent.SockKey.getDstIpv4()),
+				dataEvent.SockKey.Dport,
+				intToEndpointRole(dataEvent.EndpointRole),
+				intToMsgType(dataEvent.MsgType),
+			)
+			log.Printf("originSize: %d size: %d, msg: %s\n",
+				dataEvent.OriginMsgSize,
+				dataEvent.MsgSize,
+				dataEvent.Msg,
+			)
+		}
+	}()
+
 	<-ctx.Done()
 }
 
-func (ce *bpfConnEvent) getSrcIpv4() uint32 {
-	return ce.SockKey.Sip.Addr.Pad1
+func (sk *bpfSockKey) getSrcIpv4() uint32 {
+	return sk.Sip.Addr.Pad1
 }
 
-func (ce *bpfConnEvent) getDstIpv4() uint32 {
-	return ce.SockKey.Dip.Addr.Pad1
-}
-
-func (ce *bpfCloseEvent) getSrcIpv4() uint32 {
-	return ce.SockKey.Sip.Addr.Pad1
-}
-
-func (ce *bpfCloseEvent) getDstIpv4() uint32 {
-	return ce.SockKey.Dip.Addr.Pad1
+func (sk *bpfSockKey) getDstIpv4() uint32 {
+	return sk.Dip.Addr.Pad1
 }
 
 // intToIP converts IPv4 number to net.IP
@@ -175,6 +221,17 @@ func intToEndpointRole(roleNum int32) string {
 		return "CLIENT"
 	case 1 << 1:
 		return "SERVER"
+	default:
+		return "UNKNOWN"
+	}
+}
+
+func intToMsgType(msgType int32) string {
+	switch msgType {
+	case 0:
+		return "REQUEST"
+	case 1:
+		return "RESPONSE"
 	default:
 		return "UNKNOWN"
 	}

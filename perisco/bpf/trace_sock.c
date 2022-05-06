@@ -3,83 +3,11 @@
 #include "headers/bpf_tracing.h"
 #include "headers/bpf_endian.h"
 
-#define AF_INET 2
-#define AF_INET6 10
+#include "trace_sock.h"
+
 
 char LICENSE[] SEC("license") = "Dual BSD/GPL";
 
-struct __attribute__((__packed__)) v6addr {
-	__u8 addr[16];
-};
-
-struct __attribute__((__packed__)) v4addr {
-	__u32		addr;
-	__u32		pad1;
-	__u32		pad2;
-	__u32		pad3;
-};
-
-struct __attribute__((__packed__)) ipaddr {
-	__u32		pad1;
-	__u32		pad2;
-	__u32		pad3;
-	__u32		pad4;
-};
-
-union __attribute__((__packed__)) ip {
-	struct ipaddr addr;
-	struct v4addr ip4;
-	struct v6addr ip6;
-};
-
-struct __attribute__((__packed__)) sock_key {
-	union ip sip;
-	union ip dip;
-	__u32 sport;
-	__u32 dport;
-	__u8 family;
-	__u8 pad1;
-	__u16 pad2;
-};
-
-static __always_inline void sk_extract4_key(const struct sock *sk,
-					    struct sock_key *key)
-{
-	key->sip.ip4.addr = sk->__sk_common.skc_rcv_saddr;
-	key->dip.ip4.addr = sk->__sk_common.skc_daddr;
-
-	key->sport = sk->__sk_common.skc_num;
-	key->dport = bpf_ntohs(sk->__sk_common.skc_dport);
-
-	key->family = AF_INET;
-}
-
-enum endpoint_role {
-  	kRoleClient = 1 << 0,
-  	kRoleServer = 1 << 1,
-  	kRoleUnknown = 1 << 2,
-};
-
-struct conn_info {
-  	struct sock_key sock_key;
-  	enum endpoint_role endpoint_role;
-	u64 send_bytes;
-	u64 recv_bytes;
-};
-
-struct conn_event {
-  	struct sock_key sock_key;
-  	enum endpoint_role endpoint_role;
-};
-struct conn_event *unused_conn_event __attribute__((unused));
-
-struct close_event {
-	struct sock_key sock_key;
-  	enum endpoint_role endpoint_role;
-	u64 send_bytes;
-	u64 recv_bytes;
-};
-struct close_event *unused_close_event __attribute__((unused));
 
 struct {
 	__uint(type, BPF_MAP_TYPE_HASH);
@@ -97,6 +25,23 @@ struct {
 	__uint(type, BPF_MAP_TYPE_RINGBUF);
 	__uint(max_entries, 256 * 1024);
 } close_events SEC(".maps");
+
+struct {
+	__uint(type, BPF_MAP_TYPE_RINGBUF);
+	__uint(max_entries, 256 * 4096);
+} data_events SEC(".maps");
+
+static __always_inline void sk_extract4_key(const struct sock *sk,
+					    struct sock_key *key)
+{
+	key->sip.ip4.addr = sk->__sk_common.skc_rcv_saddr;
+	key->dip.ip4.addr = sk->__sk_common.skc_daddr;
+
+	key->sport = sk->__sk_common.skc_num;
+	key->dport = bpf_ntohs(sk->__sk_common.skc_dport);
+
+	key->family = AF_INET;
+}
 
 SEC("fexit/inet_accept")
 int BPF_PROG(inet_accept, struct socket *sock,
@@ -151,10 +96,40 @@ int BPF_PROG(tcp_connect, struct sock *sock, long ret) {
 	return 0;
 }
 
-SEC("fexit/tcp_sendmsg")
-int BPF_PROG(tcp_sendmsg, struct sock *sk, struct msghdr *msg, size_t size, long ret) {
-	bpf_printk("BPF triggered from tcp_sendmsg. send size: %d.\n", size);
+static __always_inline void copy_data_from_msghdr(struct msghdr *msg, struct data_event *event) {
+	struct iov_iter *iter = &msg->msg_iter;
 
+	if (iter->iov_offset != 0) {
+		return;
+	}
+
+	const struct kvec *iov = iter->kvec;
+	size_t copyed = 0;
+
+	#pragma unroll
+	for (int i = 0; i < 10; i++) {
+		if (i >= iter->nr_segs)
+			break;
+
+		struct kvec iov_cpy;
+		bpf_probe_read(&iov_cpy, sizeof(iov_cpy), &iov[i]);
+
+		size_t remaining = MAX_MSG_SIZE - copyed;
+		if (remaining <= 0)
+			break;
+
+		size_t to_copy = iov_cpy.iov_len;
+		if (to_copy > remaining)
+			to_copy = remaining;
+		
+		bpf_probe_read(event->msg+copyed, to_copy, iov_cpy.iov_base);
+		event->msg_size += to_copy;
+	}
+}
+
+
+SEC("fentry/tcp_sendmsg")
+int BPF_PROG(tcp_sendmsg, struct sock *sk, struct msghdr *msg, size_t size) {
 	struct sock_key sk_key = {};
 	sk_extract4_key(sk, &sk_key);
 
@@ -162,6 +137,21 @@ int BPF_PROG(tcp_sendmsg, struct sock *sk, struct msghdr *msg, size_t size, long
 	if (conn_info == NULL)
 		return 0;
 
+	if (conn_info->send_summited != true) {
+		struct data_event *event = bpf_ringbuf_reserve(&data_events, sizeof(struct data_event), 0);
+		
+		if (event != NULL) {
+			event->sock_key = conn_info->sock_key;
+			event->endpoint_role = conn_info->endpoint_role;
+			event->origin_msg_size = size;
+			event->msg_type = conn_info->endpoint_role == kRoleServer ? kResponse : kRequest;
+			
+			copy_data_from_msghdr(msg, event);
+			bpf_ringbuf_submit(event, 0);
+			conn_info->send_summited = true;
+		}
+	}
+	
 	conn_info->send_bytes += size;
 	bpf_map_update_elem(&conn_info_map, &conn_info->sock_key, conn_info, BPF_ANY);
 
@@ -170,11 +160,10 @@ int BPF_PROG(tcp_sendmsg, struct sock *sk, struct msghdr *msg, size_t size, long
 
 
 
-SEC("fexit/tcp_recvmsg")
+SEC("fentry/tcp_recvmsg")
 int BPF_PROG(tcp_recvmsg, struct sock *sk, struct msghdr *msg, 
-				size_t len, int nonblock, int flags, int *addr_len, long ret) {
+				size_t len, int nonblock, int flags, int *addr_len) {
 
-	bpf_printk("BPF triggered from tcp_recvmsg. recv size: %d.\n", len);
 
 	struct sock_key sk_key = {};
 	sk_extract4_key(sk, &sk_key);
@@ -182,6 +171,21 @@ int BPF_PROG(tcp_recvmsg, struct sock *sk, struct msghdr *msg,
 	struct conn_info *conn_info = bpf_map_lookup_elem(&conn_info_map, &sk_key);
 	if (conn_info == NULL)
 		return 0;
+
+	if (conn_info->recv_summited != true) {
+		struct data_event *event = bpf_ringbuf_reserve(&data_events, sizeof(struct data_event), 0);
+		
+		if (event != NULL) {
+			event->sock_key = conn_info->sock_key;
+			event->endpoint_role = conn_info->endpoint_role;
+			event->origin_msg_size = len;
+			event->msg_type = conn_info->endpoint_role == kRoleServer ?  kRequest : kResponse;
+			
+			copy_data_from_msghdr(msg, event);
+			bpf_ringbuf_submit(event, 0);
+			conn_info->recv_summited = true;
+		}
+	}
 
 	conn_info->recv_bytes += len;
 	bpf_map_update_elem(&conn_info_map, &conn_info->sock_key, conn_info, BPF_ANY);

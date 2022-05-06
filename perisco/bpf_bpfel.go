@@ -28,8 +28,21 @@ type bpfConnEvent struct {
 type bpfConnInfo struct {
 	SockKey      bpfSockKey
 	EndpointRole int32
+	SendSummited bool
+	RecvSummited bool
+	_            [6]byte
 	SendBytes    uint64
 	RecvBytes    uint64
+}
+
+type bpfDataEvent struct {
+	SockKey       bpfSockKey
+	EndpointRole  int32
+	MsgType       int32
+	Msg           [4096]int8
+	_             [4]byte
+	MsgSize       uint64
+	OriginMsgSize uint64
 }
 
 type bpfSockKey struct {
@@ -111,6 +124,7 @@ type bpfMapSpecs struct {
 	CloseEvents *ebpf.MapSpec `ebpf:"close_events"`
 	ConnEvents  *ebpf.MapSpec `ebpf:"conn_events"`
 	ConnInfoMap *ebpf.MapSpec `ebpf:"conn_info_map"`
+	DataEvents  *ebpf.MapSpec `ebpf:"data_events"`
 }
 
 // bpfObjects contains all objects after they have been loaded into the kernel.
@@ -135,6 +149,7 @@ type bpfMaps struct {
 	CloseEvents *ebpf.Map `ebpf:"close_events"`
 	ConnEvents  *ebpf.Map `ebpf:"conn_events"`
 	ConnInfoMap *ebpf.Map `ebpf:"conn_info_map"`
+	DataEvents  *ebpf.Map `ebpf:"data_events"`
 }
 
 func (m *bpfMaps) Close() error {
@@ -142,6 +157,7 @@ func (m *bpfMaps) Close() error {
 		m.CloseEvents,
 		m.ConnEvents,
 		m.ConnInfoMap,
+		m.DataEvents,
 	)
 }
 

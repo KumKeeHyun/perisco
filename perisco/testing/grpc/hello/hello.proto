@@ -1,0 +1,17 @@
+syntax = "proto3";
+
+option go_package = "github.com/KumKeeHyun/perisco/perisco/testing/grpc/hello";
+
+package hello;
+
+service HelloService {
+    rpc SayHello (HelloRequest) returns (HelloResponse) {}
+}
+
+message HelloRequest {
+    string msg = 1;
+}
+
+message HelloResponse {
+    string msg = 1;
+}

@@ -52,8 +52,6 @@ enum message_type { kRequest, kResponse, kUnknown };
 struct conn_info {
   	struct sock_key sock_key;
   	enum endpoint_role endpoint_role;
-	bool send_summited;
-	bool recv_summited;
 	u64 send_bytes;
 	u64 recv_bytes;
 	
@@ -79,8 +77,10 @@ struct data_event {
 	struct sock_key sock_key;
   	enum endpoint_role endpoint_role;
 	enum message_type msg_type;
-	char msg[MAX_MSG_SIZE];
 	u64 msg_size;
-	u64 origin_msg_size;
+	u64 nr_segs;
+	u32 count;
+	u32 offset;
+	char msg[MAX_MSG_SIZE];
 };
 struct data_event *unused_data_event __attribute__((unused));

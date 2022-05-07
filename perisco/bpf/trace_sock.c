@@ -104,8 +104,12 @@ static __always_inline void copy_data_from_msghdr(struct msghdr *msg, struct dat
 	}
 
 	const struct kvec *iov = iter->kvec;
-	size_t copyed = 0;
+	
+	event->nr_segs = iter->nr_segs;
+	event->count = iter->count;
+	event->offset = iter->iov_offset;
 
+	size_t copyed = 0;
 	#pragma unroll
 	for (int i = 0; i < 10; i++) {
 		if (i >= iter->nr_segs)
@@ -127,9 +131,10 @@ static __always_inline void copy_data_from_msghdr(struct msghdr *msg, struct dat
 	}
 }
 
-
 SEC("fentry/tcp_sendmsg")
+// SEC("fexit/tcp_sendmsg")
 int BPF_PROG(tcp_sendmsg, struct sock *sk, struct msghdr *msg, size_t size) {
+
 	struct sock_key sk_key = {};
 	sk_extract4_key(sk, &sk_key);
 
@@ -137,19 +142,19 @@ int BPF_PROG(tcp_sendmsg, struct sock *sk, struct msghdr *msg, size_t size) {
 	if (conn_info == NULL)
 		return 0;
 
-	if (conn_info->send_summited != true) {
-		struct data_event *event = bpf_ringbuf_reserve(&data_events, sizeof(struct data_event), 0);
+	struct data_event *event = bpf_ringbuf_reserve(&data_events, sizeof(struct data_event), 0);
 		
-		if (event != NULL) {
-			event->sock_key = conn_info->sock_key;
-			event->endpoint_role = conn_info->endpoint_role;
-			event->origin_msg_size = size;
-			event->msg_type = conn_info->endpoint_role == kRoleServer ? kResponse : kRequest;
+	if (event != NULL) {
+		event->sock_key = conn_info->sock_key;
+		event->endpoint_role = conn_info->endpoint_role;
+		event->msg_type = conn_info->endpoint_role == kRoleServer ? kResponse : kRequest;
 			
-			copy_data_from_msghdr(msg, event);
+		copy_data_from_msghdr(msg, event);
+		if (event->msg_size == 0)
+			bpf_ringbuf_discard(event, 0);
+		else
 			bpf_ringbuf_submit(event, 0);
-			conn_info->send_summited = true;
-		}
+		// conn_info->send_summited = true;
 	}
 	
 	conn_info->send_bytes += size;
@@ -158,13 +163,12 @@ int BPF_PROG(tcp_sendmsg, struct sock *sk, struct msghdr *msg, size_t size) {
 	return 0;
 }
 
-
-
-SEC("fentry/tcp_recvmsg")
+SEC("fexit/tcp_recvmsg")
 int BPF_PROG(tcp_recvmsg, struct sock *sk, struct msghdr *msg, 
-				size_t len, int nonblock, int flags, int *addr_len) {
-
-
+				size_t len, int nonblock, int flags, int *addr_len, long ret) {
+	if (ret < 0)
+		return 0;
+	
 	struct sock_key sk_key = {};
 	sk_extract4_key(sk, &sk_key);
 
@@ -172,19 +176,19 @@ int BPF_PROG(tcp_recvmsg, struct sock *sk, struct msghdr *msg,
 	if (conn_info == NULL)
 		return 0;
 
-	if (conn_info->recv_summited != true) {
-		struct data_event *event = bpf_ringbuf_reserve(&data_events, sizeof(struct data_event), 0);
+	struct data_event *event = bpf_ringbuf_reserve(&data_events, sizeof(struct data_event), 0);
 		
-		if (event != NULL) {
-			event->sock_key = conn_info->sock_key;
-			event->endpoint_role = conn_info->endpoint_role;
-			event->origin_msg_size = len;
-			event->msg_type = conn_info->endpoint_role == kRoleServer ?  kRequest : kResponse;
-			
-			copy_data_from_msghdr(msg, event);
+	if (event != NULL) {
+		event->sock_key = conn_info->sock_key;
+		event->endpoint_role = conn_info->endpoint_role;
+		event->msg_type = conn_info->endpoint_role == kRoleServer ?  kRequest : kResponse;
+		
+		copy_data_from_msghdr(msg, event);
+		if (event->msg_size == 0)
+			bpf_ringbuf_discard(event, 0);
+		else
 			bpf_ringbuf_submit(event, 0);
-			conn_info->recv_summited = true;
-		}
+		// conn_info->recv_summited = true;
 	}
 
 	conn_info->recv_bytes += len;

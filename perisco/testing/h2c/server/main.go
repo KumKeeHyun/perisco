@@ -1,10 +1,10 @@
 package main
 
 import (
-	"net"
 	"net/http"
 
 	"golang.org/x/net/http2"
+	"golang.org/x/net/http2/h2c"
 )
 
 func main() {
@@ -14,26 +14,26 @@ func main() {
 
 	h2s := &http2.Server{}
 
-	// server := &http.Server{
-	// 	Addr:    "127.0.0.1:8881",
-	// 	Handler: h2c.NewHandler(handler, h2s),
+	server := &http.Server{
+		Addr:    "127.0.0.1:8881",
+		Handler: h2c.NewHandler(handler, h2s),
+	}
+
+	server.ListenAndServe()
+
+	// l, err := net.Listen("tcp", "127.0.0.1:8881")
+	// if err != nil {
+	// 	panic(err)
 	// }
 
-	// server.ListenAndServe()
+	// for {
+	// 	conn, err := l.Accept()
+	// 	if err != nil {
+	// 		continue
+	// 	}
 
-	l, err := net.Listen("tcp", "127.0.0.1:8881")
-	if err != nil {
-		panic(err)
-	}
-
-	for {
-		conn, err := l.Accept()
-		if err != nil {
-			continue
-		}
-
-		h2s.ServeConn(conn, &http2.ServeConnOpts{
-			Handler: handler,
-		})
-	}
+	// 	h2s.ServeConn(conn, &http2.ServeConnOpts{
+	// 		Handler: handler,
+	// 	})
+	// }
 }

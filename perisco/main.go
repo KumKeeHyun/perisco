@@ -19,13 +19,15 @@ import (
 //go:generate go run github.com/cilium/ebpf/cmd/bpf2go -cc $BPF_CLANG -cflags $BPF_CFLAGS -target bpfel -type conn_event -type close_event -type data_event bpf $BPF_FILES -- -I$BPF_HEADERS
 
 type dataEvent struct {
-	SockKey       bpfSockKey
-	EndpointRole  int32
-	MsgType       int32
-	Msg           [4096]byte
-	_             [4]byte
-	MsgSize       uint64
-	OriginMsgSize uint64
+	SockKey      bpfSockKey
+	EndpointRole int32
+	MsgType      int32
+	_            [4]byte
+	MsgSize      uint64
+	NrSegs       uint64
+	Count        uint32
+	Offset       uint32
+	Msg          [4096]byte
 }
 
 func main() {
@@ -181,6 +183,10 @@ func main() {
 				continue
 			}
 
+			if dataEvent.SockKey.Dport == 443 {
+				continue
+			}
+
 			log.Printf("%-15s %-6d   %-15s %-6d  %-10s %-10s\n",
 				intToIP(dataEvent.SockKey.getSrcIpv4()),
 				dataEvent.SockKey.Sport,
@@ -189,8 +195,10 @@ func main() {
 				intToEndpointRole(dataEvent.EndpointRole),
 				intToMsgType(dataEvent.MsgType),
 			)
-			log.Printf("originSize: %d size: %d, msg: %s\n",
-				dataEvent.OriginMsgSize,
+			log.Printf("nrSegs: %d, count: %d, offset: %d, size: %d, msg: %s\n",
+				dataEvent.NrSegs,
+				dataEvent.Count,
+				dataEvent.Offset,
 				dataEvent.MsgSize,
 				dataEvent.Msg,
 			)

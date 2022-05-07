@@ -28,21 +28,20 @@ type bpfConnEvent struct {
 type bpfConnInfo struct {
 	SockKey      bpfSockKey
 	EndpointRole int32
-	SendSummited bool
-	RecvSummited bool
-	_            [6]byte
 	SendBytes    uint64
 	RecvBytes    uint64
 }
 
 type bpfDataEvent struct {
-	SockKey       bpfSockKey
-	EndpointRole  int32
-	MsgType       int32
-	Msg           [4096]int8
-	_             [4]byte
-	MsgSize       uint64
-	OriginMsgSize uint64
+	SockKey      bpfSockKey
+	EndpointRole int32
+	MsgType      int32
+	_            [4]byte
+	MsgSize      uint64
+	NrSegs       uint64
+	Count        uint32
+	Offset       uint32
+	Msg          [4096]int8
 }
 
 type bpfSockKey struct {

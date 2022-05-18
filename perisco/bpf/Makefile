@@ -7,7 +7,7 @@ CFLAGS := -O2 -g -Wall -Werror $(CFLAGS)
 
 # Obtain an absolute path to the directory of the Makefile.
 # Assume the Makefile is in the root of the repository.
-REPODIR := $(shell dirname $(realpath $(firstword $(MAKEFILE_LIST))))/..
+REPODIR := $(shell dirname $(realpath $(firstword $(MAKEFILE_LIST))))/../..
 
 # Prefer podman if installed, otherwise use docker.
 # Note: Setting the var at runtime will always override.
@@ -23,8 +23,8 @@ VERSION := 1648566014
 # Build all ELF binaries using a containerized LLVM toolchain.
 container-all:
 	sudo ${CONTAINER_ENGINE} run --rm \
-		-v "${REPODIR}":/ebpf -w /ebpf/perisco --env MAKEFLAGS \
-		--env CFLAGS="-fdebug-prefix-map=/ebpf/perisco=." \
+		-v "${REPODIR}":/ebpf -w /ebpf/perisco/bpf --env MAKEFLAGS \
+		--env CFLAGS="-fdebug-prefix-map=/ebpf/perisco/bpf=." \
 		--env HOME="/tmp" \
 		"${IMAGE}:${VERSION}" \
 		$(MAKE) all
@@ -43,8 +43,8 @@ all: generate
 # $BPF_CLANG is used in go:generate invocations.
 generate: export BPF_CLANG := $(CLANG)
 generate: export BPF_CFLAGS := $(CFLAGS)
-generate: export BPF_FILES := bpf/trace_sock.c
-generate: export BPF_HEADERS := bpf
+generate: export BPF_FILES := /ebpf/perisco/bpf/bpfsrc/trace_sock.c
+generate: export BPF_HEADERS := /ebpf/perisco/bpf
 generate:
 	go generate .
 

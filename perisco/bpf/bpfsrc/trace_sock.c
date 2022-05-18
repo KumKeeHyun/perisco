@@ -1,7 +1,7 @@
-#include "headers/vmlinux.h"
-#include "headers/bpf_helpers.h"
-#include "headers/bpf_tracing.h"
-#include "headers/bpf_endian.h"
+#include "../libbpf/vmlinux.h"
+#include "../libbpf/bpf_helpers.h"
+#include "../libbpf/bpf_tracing.h"
+#include "../libbpf/bpf_endian.h"
 
 #include "trace_sock.h"
 

@@ -1,8 +1,8 @@
 #pragma once 
 
-#include "headers/vmlinux.h"
-#include "headers/bpf_helpers.h"
-#include "headers/bpf_endian.h"
+#include "../libbpf/vmlinux.h"
+#include "../libbpf/bpf_helpers.h"
+#include "../libbpf/bpf_endian.h"
 
 #define AF_INET 2
 #define AF_INET6 10

@@ -42,12 +42,14 @@ struct __attribute__((__packed__)) sock_key {
 };
 
 enum endpoint_role {
-  	kRoleClient = 1 << 0,
-  	kRoleServer = 1 << 1,
-  	kRoleUnknown = 1 << 2,
+  	kRoleClient = 0,
+  	kRoleServer = 1,
+  	kRoleUnknown = 2,
 };
 
 enum message_type { kRequest, kResponse, kUnknown };
+
+enum direction_type { egress, ingress };
 
 struct conn_info {
   	struct sock_key sock_key;

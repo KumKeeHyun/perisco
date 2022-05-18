@@ -25,13 +25,6 @@ type bpfConnEvent struct {
 	EndpointRole int32
 }
 
-type bpfConnInfo struct {
-	SockKey      bpfSockKey
-	EndpointRole int32
-	SendBytes    uint64
-	RecvBytes    uint64
-}
-
 type bpfDataEvent struct {
 	SockKey      bpfSockKey
 	EndpointRole int32

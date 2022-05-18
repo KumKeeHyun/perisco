@@ -16,7 +16,7 @@ import (
 	"github.com/cilium/ebpf/rlimit"
 )
 
-//go:generate go run github.com/cilium/ebpf/cmd/bpf2go -cc $BPF_CLANG -cflags $BPF_CFLAGS -target bpfel -type conn_event -type close_event -type data_event bpf $BPF_FILES -- -I$BPF_HEADERS
+//go:generate go run github.com/cilium/ebpf/cmd/bpf2go -cc $BPF_CLANG -cflags $BPF_CFLAGS -target bpfel -type sock_key -type conn_event -type close_event -type data_event -no-global-types bpf $BPF_FILES -- -I$BPF_HEADERS
 
 type dataEvent struct {
 	SockKey      bpfSockKey
@@ -225,9 +225,9 @@ func intToIP(ipNum uint32) net.IP {
 
 func intToEndpointRole(roleNum int32) string {
 	switch roleNum {
-	case 1 << 0:
+	case 0:
 		return "CLIENT"
-	case 1 << 1:
+	case 1:
 		return "SERVER"
 	default:
 		return "UNKNOWN"

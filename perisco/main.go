@@ -11,8 +11,6 @@ import (
 	"github.com/cilium/ebpf/rlimit"
 )
 
-//go:generate go run github.com/cilium/ebpf/cmd/bpf2go -cc $BPF_CLANG -cflags $BPF_CFLAGS -target bpfel -type sock_key -type conn_event -type close_event -type data_event -no-global-types bpf $BPF_FILES -- -I$BPF_HEADERS
-
 func main() {
 	if err := rlimit.RemoveMemlock(); err != nil {
 		log.Fatal(err)
@@ -69,6 +67,9 @@ func main() {
 		for {
 			select {
 			case dataEvent := <-dataCh:
+				if dataEvent.SockKey.Dport == 443 {
+					continue
+				}
 				log.Printf("%-15s %-6d   %-15s %-6d  %-10s %-10s\n",
 					dataEvent.SockKey.GetSrcIpv4(),
 					dataEvent.SockKey.Sport,

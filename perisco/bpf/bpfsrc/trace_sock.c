@@ -96,45 +96,6 @@ int BPF_PROG(tcp_connect, struct sock *sock, long ret) {
 	return 0;
 }
 
-
-// static __always_inline void copy_data_from_iter(struct iov_iter *iter, struct conn_info *conn_info) {
-// 	// struct iov_iter *iter = &msg->msg_iter;
-
-// 	if (iter->iov_offset != 0 || iter->count == 0) {
-// 		return;
-// 	}
-
-// 	const struct kvec *iov = iter->kvec;
-
-// 	size_t to_copy = iov->iov_len;
-// 	size_t copyed = 0;
-	
-// 	#pragma unroll
-// 	for (int i = 0; i < 10; i++) {
-// 		size_t remaining = to_copy - copyed;
-// 		if (remaining <= 0)
-// 			break;
-
-// 		size_t buf_size = remaining > MAX_MSG_SIZE ? MAX_MSG_SIZE : remaining;
-
-// 		struct data_event *event = bpf_ringbuf_reserve(&data_events, sizeof(struct data_event), 0);
-// 		if (event != NULL) {
-// 			event->sock_key = conn_info->sock_key;
-// 			event->endpoint_role = conn_info->endpoint_role;
-// 			event->msg_type = conn_info->endpoint_role == kRoleServer ?  kRequest : kResponse;
-// 			event->nr_segs = iter->nr_segs;
-// 			event->count = iter->count;
-// 			event->offset = i;
-// 			event->msg_size = buf_size;
-// 			bpf_probe_read(event->msg, buf_size, iov->iov_base + copyed);
-
-// 			bpf_ringbuf_submit(event, 0);
-// 		}
-
-// 		copyed += buf_size;
-// 	}
-// }
-
 static __always_inline void copy_data_from_msghdr(struct iov_iter *iter, struct conn_info *conn_info, enum direction_type direction) {
 	if (iter->iov_offset != 0 || iter->count == 0) {
 		return;
@@ -153,8 +114,11 @@ static __always_inline void copy_data_from_msghdr(struct iov_iter *iter, struct 
 		// ingress(1)	client(0)	response(1)
 		// ingress(1)	server(1)	request(0)
 		event->msg_type = direction ^ conn_info->endpoint_role;
+		if (conn_info->endpoint_role == kRoleUnknown)
+			event->msg_type = kUnknown;
 		event->nr_segs = iter->nr_segs;
 		event->count = iter->count;
+		event->offset = iter->iov_offset;
 
 		#pragma unroll
 		for(int i = 0; i < 10; i++) {
@@ -202,14 +166,21 @@ int BPF_PROG(tcp_recvmsg, struct sock *sk, struct msghdr *msg,
 
 	struct sock_key sk_key = {};
 	sk_extract4_key(sk, &sk_key);
-
+	
 	struct conn_info *conn_info = bpf_map_lookup_elem(&conn_info_map, &sk_key);
+	
+	// struct conn_info tmp_conn_info = {};
+	// if (conn_info == NULL) {
+	// 	tmp_conn_info.sock_key = sk_key;
+	// 	tmp_conn_info.endpoint_role = kRoleUnknown;
+	// 	conn_info = &tmp_conn_info;
+	// }
 	if (conn_info == NULL)
 		return 0;
 
 	copy_data_from_msghdr(&msg->msg_iter, conn_info, ingress);
 
-	conn_info->recv_bytes += len;
+	// conn_info->recv_bytes += len;
 	bpf_map_update_elem(&conn_info_map, &conn_info->sock_key, conn_info, BPF_ANY);
 
 	return 0;

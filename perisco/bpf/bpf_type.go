@@ -76,11 +76,21 @@ type BpfSockKey struct {
 }
 
 func (sk *BpfSockKey) GetSrcIpv4() net.IP {
-	return intToIP(sk.Sip.Addr.Pad1)
+	if sk.Family == 2 {
+		return intToIP(sk.Sip.Addr.Pad1)
+	} else if sk.Family == 10 {
+		return []byte("ipv6")	
+	}
+	return []byte("unknown")
 }
 
 func (sk *BpfSockKey) GetDstIpv4() net.IP {
-	return intToIP(sk.Dip.Addr.Pad1)
+	if sk.Family == 2 {
+		return intToIP(sk.Dip.Addr.Pad1)
+	} else if sk.Family == 10 {
+		return []byte("ipv6")	
+	}
+	return []byte("unknown")
 }
 
 // intToIP converts IPv4 number to net.IP

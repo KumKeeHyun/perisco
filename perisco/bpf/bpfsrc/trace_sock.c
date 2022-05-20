@@ -31,16 +31,43 @@ struct {
 	__uint(max_entries, 256 * 4096);
 } data_events SEC(".maps");
 
-static __always_inline void sk_extract4_key(const struct sock *sk,
+static __always_inline bool is_v4_loopback(__u32 addr)
+{
+	/* Check for 127.0.0.0/8 range, RFC3330. */
+	return (addr & bpf_htonl(0x7f000000)) == bpf_htonl(0x7f000000);
+}
+
+static __always_inline bool is_sk_v4_loopback(const struct sock *sk)
+{
+	return is_v4_loopback(sk->__sk_common.skc_rcv_saddr) || is_v4_loopback(sk->__sk_common.skc_daddr);
+}
+
+// static __always_inline void sk_extract4_key(const struct sock *sk,
+// 					    struct sock_key *key)
+// {
+// 	key->sip.ip4.addr = sk->__sk_common.skc_rcv_saddr;
+// 	key->dip.ip4.addr = sk->__sk_common.skc_daddr;
+
+// 	key->sport = sk->__sk_common.skc_num;
+// 	key->dport = bpf_ntohs(sk->__sk_common.skc_dport);
+
+// 	key->family = AF_INET;
+// }
+
+static __always_inline void sk_extract_key(const struct sock *sk,
 					    struct sock_key *key)
 {
-	key->sip.ip4.addr = sk->__sk_common.skc_rcv_saddr;
-	key->dip.ip4.addr = sk->__sk_common.skc_daddr;
-
 	key->sport = sk->__sk_common.skc_num;
 	key->dport = bpf_ntohs(sk->__sk_common.skc_dport);
-
-	key->family = AF_INET;
+	key->family = sk->__sk_common.skc_family;
+	
+	if (key->family == AF_INET) {
+		key->sip.ip4.addr = sk->__sk_common.skc_rcv_saddr;
+		key->dip.ip4.addr = sk->__sk_common.skc_daddr;
+	} else if (key->family == AF_INET6) {
+		bpf_probe_read(key->sip.ip6.addr, sizeof(key->sip.ip6.addr), sk->__sk_common.skc_v6_rcv_saddr.in6_u.u6_addr8);
+		bpf_probe_read(key->dip.ip6.addr, sizeof(key->dip.ip6.addr), sk->__sk_common.skc_v6_daddr.in6_u.u6_addr8);
+	} 
 }
 
 SEC("fexit/inet_accept")
@@ -49,7 +76,10 @@ int BPF_PROG(inet_accept, struct socket *sock,
 	if (ret < 0)
 		return 0;
 	
-	if (newsock->sk->__sk_common.skc_family != AF_INET)
+	u16 family = newsock->sk->__sk_common.skc_family;
+	if (family != AF_INET && family != AF_INET6)
+		return 0;
+	if (is_sk_v4_loopback(newsock->sk))
 		return 0;
 
 	struct conn_event *conn_event = NULL;
@@ -57,7 +87,8 @@ int BPF_PROG(inet_accept, struct socket *sock,
 	if (!conn_event)
 		return 0;
 
-	sk_extract4_key(newsock->sk, &conn_event->sock_key);
+	// sk_extract4_key(newsock->sk, &conn_event->sock_key);
+	sk_extract_key(newsock->sk, &conn_event->sock_key);
 	conn_event->endpoint_role = kRoleServer;
 
 	struct conn_info conn_info = {};
@@ -75,7 +106,10 @@ int BPF_PROG(tcp_connect, struct sock *sock, long ret) {
 	if (ret < 0)
 		return 0;
 
-	if (sock->__sk_common.skc_family != AF_INET)
+	u16 family = sock->__sk_common.skc_family;
+	if (family != AF_INET && family != AF_INET6)
+		return 0;
+	if (is_sk_v4_loopback(sock))
 		return 0;
 
 	struct conn_event *conn_event = NULL;
@@ -83,7 +117,8 @@ int BPF_PROG(tcp_connect, struct sock *sock, long ret) {
 	if (!conn_event)
 		return 0;
 
-	sk_extract4_key(sock, &conn_event->sock_key);
+	// sk_extract4_key(sock, &conn_event->sock_key);
+	sk_extract_key(sock, &conn_event->sock_key);
 	conn_event->endpoint_role = kRoleClient;
 
 	struct conn_info conn_info = {};
@@ -146,7 +181,8 @@ SEC("fentry/tcp_sendmsg")
 int BPF_PROG(tcp_sendmsg, struct sock *sk, struct msghdr *msg, size_t size) {
 
 	struct sock_key sk_key = {};
-	sk_extract4_key(sk, &sk_key);
+	// sk_extract4_key(sk, &sk_key);
+	sk_extract_key(sk, &sk_key);
 
 	struct conn_info *conn_info = bpf_map_lookup_elem(&conn_info_map, &sk_key);
 	if (conn_info == NULL)
@@ -165,7 +201,8 @@ int BPF_PROG(tcp_recvmsg, struct sock *sk, struct msghdr *msg,
 				size_t len, int nonblock, int flags, int *addr_len) {
 
 	struct sock_key sk_key = {};
-	sk_extract4_key(sk, &sk_key);
+	// sk_extract4_key(sk, &sk_key);
+	sk_extract_key(sk, &sk_key);
 	
 	struct conn_info *conn_info = bpf_map_lookup_elem(&conn_info_map, &sk_key);
 	
@@ -192,7 +229,8 @@ int BPF_PROG(tcp_close, struct sock *sk, long ret) {
 		return 0;
 
 	struct sock_key sk_key = {};
-	sk_extract4_key(sk, &sk_key);
+	// sk_extract4_key(sk, &sk_key);
+	sk_extract_key(sk, &sk_key);
 
 	struct conn_info *conn_info = bpf_map_lookup_elem(&conn_info_map, &sk_key);
 	if (conn_info == NULL)

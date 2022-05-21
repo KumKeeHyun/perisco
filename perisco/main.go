@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"bytes"
 	"context"
+	"io"
 	"log"
 	"net/http"
 	"os"
@@ -12,6 +13,8 @@ import (
 
 	"github.com/KumKeeHyun/perisco/perisco/bpf"
 	"github.com/cilium/ebpf/rlimit"
+	"golang.org/x/net/http2"
+	"golang.org/x/net/http2/hpack"
 )
 
 func main() {
@@ -73,17 +76,16 @@ func main() {
 				if dataEvent.SockKey.Dport == 443 {
 					continue
 				}
-				parseAndLoggingDataEvent(&dataEvent)
+				// parseHttp1AndLogging(&dataEvent)
+				parseHttp2AndLogging(&dataEvent)
 
-				// log.Printf("%-15s %-6d   %-15s %-6d  %-10s %-10s\n",
+				// log.Printf("%-15s %-6d   %-15s %-6d  %-10s %-10s\nnrSegs: %d, count: %d, offset: %d, size: %d, msg: %s\n",
 				// 	dataEvent.SockKey.GetSrcIpv4(),
 				// 	dataEvent.SockKey.Sport,
 				// 	dataEvent.SockKey.GetDstIpv4(),
 				// 	dataEvent.SockKey.Dport,
 				// 	bpf.IntToEndpointRole(dataEvent.EndpointRole),
 				// 	bpf.IntToMsgType(dataEvent.MsgType),
-				// )
-				// log.Printf("nrSegs: %d, count: %d, offset: %d, size: %d, msg: %s\n",
 				// 	dataEvent.NrSegs,
 				// 	dataEvent.Count,
 				// 	dataEvent.Offset,
@@ -99,7 +101,7 @@ func main() {
 	<-ctx.Done()
 }
 
-func parseAndLoggingDataEvent(event *bpf.BpfDataEvent) {
+func parseHttp1AndLogging(event *bpf.BpfDataEvent) {
 	rb := bufio.NewReader(bytes.NewReader(event.Msg[:]))
 	
 	if event.MsgType == 0 {
@@ -141,4 +143,48 @@ func parseAndLoggingDataEvent(event *bpf.BpfDataEvent) {
 	} else {
 		return
 	}
+}
+
+func parseHttp2AndLogging(event *bpf.BpfDataEvent) {
+	r := bytes.NewReader(event.Msg[:])
+	
+	preface := make([]byte, len(http2.ClientPreface))
+	r.Read(preface)
+	if !bytes.Equal(preface, []byte(http2.ClientPreface)) {
+		r.Seek(0, 0)
+	}
+	
+	framer := http2.NewFramer(io.Discard, r)
+
+	for {
+		frame, err := framer.ReadFrame()
+		if err != nil {
+			break
+		}	
+		loggingFrame(frame, event)
+	}
+	
+}
+
+func loggingFrame(frame http2.Frame, event *bpf.BpfDataEvent) {
+	if headers, ok := frame.(*http2.HeadersFrame); ok {
+		decoded, _ := hpack.NewDecoder(2048, nil).DecodeFull(headers.HeaderBlockFragment())
+		log.Printf("%-10s %-10s %v\n",
+			bpf.IntToEndpointRole(event.EndpointRole),
+			bpf.IntToMsgType(event.MsgType),
+			decoded,
+		)
+	} else if datas, ok := frame.(*http2.DataFrame); ok {
+		log.Printf("%-10s %-10s DataFrame %s\n",
+			bpf.IntToEndpointRole(event.EndpointRole),
+			bpf.IntToMsgType(event.MsgType),
+			datas.Data(),
+		)
+	} else {
+		log.Printf("%-10s %-10s %v\n",
+			bpf.IntToEndpointRole(event.EndpointRole),
+			bpf.IntToMsgType(event.MsgType),
+			frame,
+		)
+	} 
 }

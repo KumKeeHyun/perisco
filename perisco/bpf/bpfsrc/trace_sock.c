@@ -31,16 +31,16 @@ struct {
 	__uint(max_entries, 256 * 4096);
 } data_events SEC(".maps");
 
-static __always_inline bool is_v4_loopback(__u32 addr)
-{
-	/* Check for 127.0.0.0/8 range, RFC3330. */
-	return (addr & bpf_htonl(0x7f000000)) == bpf_htonl(0x7f000000);
-}
+// static __always_inline bool is_v4_loopback(__u32 addr)
+// {
+// 	/* Check for 127.0.0.0/8 range, RFC3330. */
+// 	return (addr & bpf_htonl(0x7f000000)) == bpf_htonl(0x7f000000);
+// }
 
-static __always_inline bool is_sk_v4_loopback(const struct sock *sk)
-{
-	return is_v4_loopback(sk->__sk_common.skc_rcv_saddr) || is_v4_loopback(sk->__sk_common.skc_daddr);
-}
+// static __always_inline bool is_sk_v4_loopback(const struct sock *sk)
+// {
+// 	return is_v4_loopback(sk->__sk_common.skc_rcv_saddr) || is_v4_loopback(sk->__sk_common.skc_daddr);
+// }
 
 // static __always_inline void sk_extract4_key(const struct sock *sk,
 // 					    struct sock_key *key)
@@ -79,8 +79,8 @@ int BPF_PROG(inet_accept, struct socket *sock,
 	u16 family = newsock->sk->__sk_common.skc_family;
 	if (family != AF_INET && family != AF_INET6)
 		return 0;
-	if (is_sk_v4_loopback(newsock->sk))
-		return 0;
+	// if (is_sk_v4_loopback(newsock->sk))
+	// 	return 0;
 
 	struct conn_event *conn_event = NULL;
 	conn_event = bpf_ringbuf_reserve(&conn_events, sizeof(struct conn_event), 0);
@@ -109,8 +109,8 @@ int BPF_PROG(tcp_connect, struct sock *sock, long ret) {
 	u16 family = sock->__sk_common.skc_family;
 	if (family != AF_INET && family != AF_INET6)
 		return 0;
-	if (is_sk_v4_loopback(sock))
-		return 0;
+	// if (is_sk_v4_loopback(sock))
+	// 	return 0;
 
 	struct conn_event *conn_event = NULL;
 	conn_event = bpf_ringbuf_reserve(&conn_events, sizeof(struct conn_event), 0);

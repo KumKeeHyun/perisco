@@ -39,6 +39,7 @@ struct __attribute__((__packed__)) sock_key {
 	__u8 family;
 	__u8 pad1;
 	__u16 pad2;
+	__u32 pad3;
 };
 
 enum endpoint_role {
@@ -76,13 +77,11 @@ struct close_event *unused_close_event __attribute__((unused));
 #define MAX_MSG_SIZE 4096
 
 struct data_event {
+	char msg[MAX_MSG_SIZE];
 	struct sock_key sock_key;
+	u64 msg_size;
+	s32 ret;
   	enum endpoint_role endpoint_role;
 	enum message_type msg_type;
-	u64 msg_size;
-	u64 nr_segs;
-	u32 count;
-	u32 offset;
-	char msg[MAX_MSG_SIZE];
 };
 struct data_event *unused_data_event __attribute__((unused));

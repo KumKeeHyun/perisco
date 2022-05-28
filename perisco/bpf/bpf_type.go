@@ -40,15 +40,13 @@ type BpfConnEvent struct {
 }
 
 type BpfDataEvent struct {
+	Msg          [4096]byte
 	SockKey      BpfSockKey
+	MsgSize      uint64
+	Ret          int32
 	EndpointRole int32
 	MsgType      int32
 	_            [4]byte
-	MsgSize      uint64
-	NrSegs       uint64
-	Count        uint32
-	Offset       uint32
-	Msg          [4096]byte
 }
 
 type BpfSockKey struct {
@@ -73,29 +71,39 @@ type BpfSockKey struct {
 	Family uint8
 	Pad1   uint8
 	Pad2   uint16
+	Pad3   uint32
 }
 
-func (sk *BpfSockKey) GetSrcIpv4() net.IP {
+func (sk *BpfSockKey) GetSrcIpv4() string {
 	if sk.Family == 2 {
-		return intToIP(sk.Sip.Addr.Pad1)
+		return intToIP(sk.Sip.Addr.Pad1).String()
 	} else if sk.Family == 10 {
-		return []byte("ipv6")	
+		return intToIPv6(sk.Sip.Addr.Pad1, sk.Sip.Addr.Pad2, sk.Sip.Addr.Pad3, sk.Sip.Addr.Pad4).String()
 	}
-	return []byte("unknown")
+	return "unknown"
 }
 
-func (sk *BpfSockKey) GetDstIpv4() net.IP {
+func (sk *BpfSockKey) GetDstIpv4() string {
 	if sk.Family == 2 {
-		return intToIP(sk.Dip.Addr.Pad1)
+		return intToIP(sk.Dip.Addr.Pad1).String()
 	} else if sk.Family == 10 {
-		return []byte("ipv6")	
+		return intToIPv6(sk.Dip.Addr.Pad1, sk.Dip.Addr.Pad2, sk.Dip.Addr.Pad3, sk.Dip.Addr.Pad4).String()
 	}
-	return []byte("unknown")
+	return "unknown"
 }
 
 // intToIP converts IPv4 number to net.IP
 func intToIP(ipNum uint32) net.IP {
 	ip := make(net.IP, 4)
 	binary.LittleEndian.PutUint32(ip, ipNum)
+	return ip
+}
+
+func intToIPv6(p1, p2, p3, p4 uint32) net.IP {
+	ip := make(net.IP, 16)
+	binary.LittleEndian.PutUint32(ip[:4], p1)
+	binary.LittleEndian.PutUint32(ip[4:8], p2)
+	binary.LittleEndian.PutUint32(ip[8:12], p3)
+	binary.LittleEndian.PutUint32(ip[12:], p4)
 	return ip
 }

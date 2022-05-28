@@ -22,12 +22,12 @@ func LoadBpfProgram() (chan BpfConnEvent, chan BpfCloseEvent, chan BpfDataEvent,
 	if err != nil {
 		log.Fatal(err)
 	}
-	connectLink, err := link.AttachTracing(link.TracingOptions{
-		Program: objs.bpfPrograms.TcpConnect,
-	})
-	if err != nil {
-		log.Fatal(err)
-	}
+	// connectLink, err := link.AttachTracing(link.TracingOptions{
+	// 	Program: objs.bpfPrograms.TcpConnect,
+	// })
+	// if err != nil {
+	// 	log.Fatal(err)
+	// }
 	sendLink, err := link.AttachTracing(link.TracingOptions{
 		Program: objs.bpfPrograms.TcpSendmsg,
 	})
@@ -135,7 +135,7 @@ func LoadBpfProgram() (chan BpfConnEvent, chan BpfCloseEvent, chan BpfDataEvent,
 		closeLink.Close()
 		recvLink.Close()
 		sendLink.Close()
-		connectLink.Close()
+		// connectLink.Closcleare()
 		acceptLink.Close()
 		objs.Close()
 	}

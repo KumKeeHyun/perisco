@@ -78,13 +78,13 @@ func main() {
 				}
 
 				// filter response
-				// if dataEvent.MsgType != 0 {
-				// 	continue
-				// }
+				if dataEvent.MsgType != 0 {
+					continue
+				}
 
 				// bytesRawLogging(&dataEvent)
-				// rawLogging(&dataEvent)
-				parseHttp1AndLogging(&dataEvent)
+				rawLogging(&dataEvent)
+				// parseHttp1AndLogging(&dataEvent)
 				// parseHttp2AndLogging(&dataEvent)
 
 				
@@ -107,7 +107,7 @@ func bytesRawLogging(dataEvent *bpf.BpfDataEvent) {
 }
 
 func rawLogging(dataEvent *bpf.BpfDataEvent) {
-	log.Printf("%-15s %-6d   %-15s %-6d  %-10s %-10s %d\nret: %d, size: %d, msg: %s\n",
+	log.Printf("%-15s %-6d   %-15s %-6d  %-10s %-10s %d\nnr_segs: %d, count: %d, iov_offset: %d, iov_idx: %d\nret: %d, size: %d, msg: %s\n",
 		dataEvent.SockKey.GetSrcIpv4(),
 		dataEvent.SockKey.Sport,
 		dataEvent.SockKey.GetDstIpv4(),
@@ -115,9 +115,13 @@ func rawLogging(dataEvent *bpf.BpfDataEvent) {
 		bpf.IntToEndpointRole(dataEvent.EndpointRole),
 		bpf.IntToMsgType(dataEvent.MsgType),
 		dataEvent.SockKey.Family,
+		dataEvent.IterNrSegs,
+		dataEvent.IterCount,
+		dataEvent.IterOffset,
+		dataEvent.IovIdx,
 		dataEvent.Ret,
 		dataEvent.MsgSize,
-		dataEvent.Msg,
+		dataEvent.Msg[:dataEvent.IterOffset],
 	)
 }
 

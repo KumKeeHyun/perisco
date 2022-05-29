@@ -193,13 +193,9 @@ int BPF_PROG(tcp_sendmsg, struct sock *sk, struct msghdr *msg, size_t size) {
 	return 0;
 }
 
-static __always_inline void copy_data_from_msghdr_recv(struct iov_iter *iter, struct conn_info *conn_info, enum direction_type direction, int ret) {
-	if (iter->iov_offset != 0 || iter->count == 0) {
-		return;
-	}
-
-	// size_t copyed = 0;
-
+static __always_inline void submit_data_event(const char *msg, size_t size, struct conn_info *conn_info, enum direction_type direction, int ret,
+		u64 nr_segs, u32 count, u32 iov_offset, u32 iov_idx) {
+	
 	struct data_event *event = bpf_ringbuf_reserve(&data_events, sizeof(struct data_event), 0);
 	if (event != NULL) {
 		event->sock_key = conn_info->sock_key;
@@ -214,56 +210,69 @@ static __always_inline void copy_data_from_msghdr_recv(struct iov_iter *iter, st
 		if (conn_info->endpoint_role == kRoleUnknown)
 			event->msg_type = kUnknown;
 		event->ret = ret;
+		event->msg_size = size;
 
-		size_t to_copy = iter->iov->iov_len;
+		size_t to_copy = size;
 		if (to_copy > MAX_MSG_SIZE)
 			to_copy = MAX_MSG_SIZE;
-		bpf_probe_read(event->msg, to_copy, iter->iov->iov_base);
-		// #pragma unroll
-		// for(int i = 0; i < 10; i++) {
-		// 	if (i >= iter->nr_segs)
-		// 		break;
+		bpf_probe_read(event->msg, to_copy, msg);
 
-		// 	struct kvec iov;
-		// 	bpf_probe_read(&iov, sizeof(iov), &(iter->kvec[i]));
-			
-		// 	size_t remaining = MAX_MSG_SIZE - copyed;
-		// 	if (remaining <= 0)
-		// 		break;
-		// 	size_t to_copy = iov.iov_len;
-		// 	if (to_copy > remaining)
-		// 		to_copy = remaining;
+		event->iter_nr_segs = nr_segs;
+		event->iter_count = count;
+		event->iter_offset = iov_offset;
+		event->iov_idx = iov_idx;
 
-		// 	bpf_probe_read(event->msg+copyed, to_copy, iov.iov_base);
-		// 	copyed += to_copy;
-		// 	event->msg_size += to_copy;
-		// }
 		bpf_ringbuf_submit(event, 0);
+	}	
+}
+
+static __always_inline void copy_data_from_msghdr_recv(struct iov_iter *iter, struct conn_info *conn_info, enum direction_type direction, int ret) {
+	if (iter->count == 0) {
+		return;
 	}
+
+	#pragma unroll
+	for(int i = 0; i < 10; i++) {
+		if (i >= iter->nr_segs)
+			break;
+
+		struct kvec iov;
+		bpf_probe_read(&iov, sizeof(iov), &(iter->kvec[i]));
+		
+		submit_data_event(iov.iov_base, 
+					iov.iov_len, 
+					conn_info,
+					ingress, 
+					ret,
+					iter->nr_segs,
+					iter->count,
+					iter->iov_offset,
+					i);
+	}
+
 }
 
 // SEC("fentry/tcp_recvmsg")
-SEC("fexit/tcp_recvmsg")
-int BPF_PROG(tcp_recvmsg, struct sock *sk, struct msghdr *msg, size_t size, int nonblock, int flags, int *addr_len, int ret) {
+// SEC("fexit/tcp_recvmsg")
+// int BPF_PROG(tcp_recvmsg, struct sock *sk, struct msghdr *msg, size_t size, int nonblock, int flags, int *addr_len) {
 
-	// if (ret <= 0)
-	// 	return 0;
+SEC("fexit/sock_recvmsg")
+int BPF_PROG(tcp_recvmsg, struct socket *sock, struct msghdr *msg, int flags, int ret) {
+	
+	if (ret <= 0)
+		return 0;
 
-	// int ret = 0;
-
+	struct sock *sk = sock->sk;
 	struct sock_key sk_key = {};
-	// sk_extract4_key(sk, &sk_key);
 	sk_extract_key(sk, &sk_key);
-	
+
 	struct conn_info *conn_info = bpf_map_lookup_elem(&conn_info_map, &sk_key);
-	
 	if (conn_info == NULL)
 		return 0;
 
-	// copy_data_from_msghdr(&msg->msg_iter, conn_info, ingress);
 	copy_data_from_msghdr_recv(&msg->msg_iter, conn_info, ingress, ret);
 
-	conn_info->recv_bytes += size;
+	conn_info->recv_bytes += msg->msg_iter.count;
 	bpf_map_update_elem(&conn_info_map, &conn_info->sock_key, conn_info, BPF_ANY);
 
 	return 0;

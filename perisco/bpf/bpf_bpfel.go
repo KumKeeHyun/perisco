@@ -34,6 +34,11 @@ type bpfDataEvent struct {
 	EndpointRole int32
 	MsgType      int32
 	_            [4]byte
+	IterNrSegs   uint64
+	IterCount    uint32
+	IterOffset   uint32
+	IovIdx       uint32
+	_            [4]byte
 }
 
 type bpfSockKey struct {

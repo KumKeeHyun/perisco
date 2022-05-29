@@ -83,5 +83,9 @@ struct data_event {
 	s32 ret;
   	enum endpoint_role endpoint_role;
 	enum message_type msg_type;
+	u64 iter_nr_segs;
+	u32 iter_count;
+	u32 iter_offset;
+	u32 iov_idx;
 };
 struct data_event *unused_data_event __attribute__((unused));

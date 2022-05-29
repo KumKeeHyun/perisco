@@ -78,9 +78,9 @@ func main() {
 				}
 
 				// filter response
-				if dataEvent.MsgType != 0 {
-					continue
-				}
+				// if dataEvent.MsgType != 0 {
+				// 	continue
+				// }
 
 				// bytesRawLogging(&dataEvent)
 				rawLogging(&dataEvent)
@@ -121,7 +121,7 @@ func rawLogging(dataEvent *bpf.BpfDataEvent) {
 		dataEvent.IovIdx,
 		dataEvent.Ret,
 		dataEvent.MsgSize,
-		dataEvent.Msg[:dataEvent.IterOffset],
+		dataEvent.Msg[:dataEvent.MsgSize],
 	)
 }
 

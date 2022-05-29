@@ -3,6 +3,8 @@ package main
 import (
 	"fmt"
 	"io/ioutil"
+	"log"
+	"net"
 	"net/http"
 )
 
@@ -27,5 +29,11 @@ func main() {
 		http.Redirect(w, r, "/greet", http.StatusFound)
 	})
 
-	http.ListenAndServe("0.0.0.0:8880", mux)
+	l, err := net.Listen("tcp4", ":8880")
+	if err != nil {
+		log.Fatal(err)
+	}
+	http.Serve(l, mux)
+
+	// http.ListenAndServe("0.0.0.0:8880", mux)
 }

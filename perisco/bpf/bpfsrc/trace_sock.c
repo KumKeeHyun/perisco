@@ -210,7 +210,7 @@ static __always_inline void submit_data_event(const char *msg, size_t size, stru
 		if (conn_info->endpoint_role == kRoleUnknown)
 			event->msg_type = kUnknown;
 		event->ret = ret;
-		event->msg_size = size;
+		event->msg_size = ret;
 
 		size_t to_copy = size;
 		if (to_copy > MAX_MSG_SIZE)

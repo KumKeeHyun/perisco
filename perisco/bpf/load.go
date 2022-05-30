@@ -10,7 +10,7 @@ import (
 	"github.com/cilium/ebpf/ringbuf"
 )
 
-func LoadBpfProgram() (chan BpfConnEvent, chan BpfCloseEvent, chan BpfDataEvent, func()) {
+func LoadBpfProgram() (chan *BpfConnEvent, chan *BpfCloseEvent, chan *BpfDataEvent, func()) {
 	objs := bpfObjects{}
 	if err := loadBpfObjects(&objs, nil); err != nil {
 		log.Fatalf("loading objects: %v", err)
@@ -22,26 +22,29 @@ func LoadBpfProgram() (chan BpfConnEvent, chan BpfCloseEvent, chan BpfDataEvent,
 	if err != nil {
 		log.Fatal(err)
 	}
-	// connectLink, err := link.AttachTracing(link.TracingOptions{
-	// 	Program: objs.bpfPrograms.TcpConnect,
-	// })
-	// if err != nil {
-	// 	log.Fatal(err)
-	// }
-	sendLink, err := link.AttachTracing(link.TracingOptions{
-		Program: objs.bpfPrograms.TcpSendmsg,
+	inetShutdownLink, err := link.AttachTracing(link.TracingOptions{
+		Program: objs.bpfPrograms.InetShutdown,
 	})
 	if err != nil {
 		log.Fatal(err)
 	}
-	recvLink, err := link.AttachTracing(link.TracingOptions{
-		Program: objs.bpfPrograms.TcpRecvmsg,
+	
+
+	fentrySockRecvmsg, err := link.AttachTracing(link.TracingOptions{
+		Program: objs.bpfPrograms.FentrySockRecvmsg,
 	})
 	if err != nil {
 		log.Fatal(err)
 	}
-	closeLink, err := link.AttachTracing(link.TracingOptions{
-		Program: objs.bpfPrograms.TcpClose,
+	fexitSockRecvmsg, err := link.AttachTracing(link.TracingOptions{
+		Program: objs.bpfPrograms.FexitSockRecvmsg,
+	})
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	fentrySockSendmsg, err := link.AttachTracing(link.TracingOptions{
+		Program: objs.bpfPrograms.FentrySockSendmsg,
 	})
 	if err != nil {
 		log.Fatal(err)
@@ -51,7 +54,7 @@ func LoadBpfProgram() (chan BpfConnEvent, chan BpfCloseEvent, chan BpfDataEvent,
 	if err != nil {
 		log.Fatalf("opening connEvent ringbuf reader: %s", err)
 	}
-	connCh := make(chan BpfConnEvent)
+	connCh := make(chan *BpfConnEvent)
 	go func() {
 		var connEvent BpfConnEvent
 		for {
@@ -70,7 +73,7 @@ func LoadBpfProgram() (chan BpfConnEvent, chan BpfCloseEvent, chan BpfDataEvent,
 				continue
 			}
 
-			connCh <- connEvent
+			connCh <- &connEvent
 		}
 	}()
 
@@ -78,7 +81,7 @@ func LoadBpfProgram() (chan BpfConnEvent, chan BpfCloseEvent, chan BpfDataEvent,
 	if err != nil {
 		log.Fatalf("opening closeEvent ringbuf reader: %s", err)
 	}
-	closeCh := make(chan BpfCloseEvent)
+	closeCh := make(chan *BpfCloseEvent)
 	go func() {
 		var closeEvent BpfCloseEvent
 		for {
@@ -97,7 +100,7 @@ func LoadBpfProgram() (chan BpfConnEvent, chan BpfCloseEvent, chan BpfDataEvent,
 				continue
 			}
 
-			closeCh <- closeEvent
+			closeCh <- &closeEvent
 		}
 	}()
 
@@ -105,7 +108,7 @@ func LoadBpfProgram() (chan BpfConnEvent, chan BpfCloseEvent, chan BpfDataEvent,
 	if err != nil {
 		log.Fatalf("opening dataEvent ringbuf reader: %s", err)
 	}
-	dataCh := make(chan BpfDataEvent)
+	dataCh := make(chan *BpfDataEvent)
 	go func() {
 		var dataEvent BpfDataEvent
 		for {
@@ -124,7 +127,7 @@ func LoadBpfProgram() (chan BpfConnEvent, chan BpfCloseEvent, chan BpfDataEvent,
 				continue
 			}
 
-			dataCh <- dataEvent
+			dataCh <- &dataEvent
 		}
 	}()
 
@@ -132,10 +135,11 @@ func LoadBpfProgram() (chan BpfConnEvent, chan BpfCloseEvent, chan BpfDataEvent,
 		dataRb.Close()
 		closeRb.Close()
 		connRb.Close()
-		closeLink.Close()
-		recvLink.Close()
-		sendLink.Close()
-		// connectLink.Closcleare()
+
+		fentrySockSendmsg.Close()
+		fexitSockRecvmsg.Close()
+		fentrySockRecvmsg.Close()
+		inetShutdownLink.Close()
 		acceptLink.Close()
 		objs.Close()
 	}

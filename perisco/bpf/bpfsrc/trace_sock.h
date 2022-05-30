@@ -42,50 +42,46 @@ struct __attribute__((__packed__)) sock_key {
 	__u32 pad3;
 };
 
-enum endpoint_role {
-  	kRoleClient = 0,
-  	kRoleServer = 1,
-  	kRoleUnknown = 2,
-};
+enum message_type { request, response, unknown };
 
-enum message_type { kRequest, kResponse, kUnknown };
-
-enum direction_type { egress, ingress };
+enum direction_type { ingress, egress };
 
 struct conn_info {
   	struct sock_key sock_key;
-  	enum endpoint_role endpoint_role;
 	u64 send_bytes;
 	u64 recv_bytes;
-	
 };
 
 struct conn_event {
   	struct sock_key sock_key;
-  	enum endpoint_role endpoint_role;
 };
 struct conn_event *unused_conn_event __attribute__((unused));
 
 struct close_event {
 	struct sock_key sock_key;
-  	enum endpoint_role endpoint_role;
 	u64 send_bytes;
 	u64 recv_bytes;
 };
 struct close_event *unused_close_event __attribute__((unused));
 
+
+struct recvmsg_arg {
+	struct iov_iter iter;
+};
+struct recvmsg_arg *unused_recvmsg_arg __attribute__((unused));
+
 #define MAX_MSG_SIZE 4096
+#define MAX_NR_SEGS 10
 
 struct data_event {
 	char msg[MAX_MSG_SIZE];
 	struct sock_key sock_key;
-	u64 msg_size;
-	s32 ret;
-  	enum endpoint_role endpoint_role;
 	enum message_type msg_type;
+	u64 msg_size;
 	u64 iter_nr_segs;
 	u32 iter_count;
 	u32 iter_offset;
 	u32 iov_idx;
+	s32 ret;
 };
 struct data_event *unused_data_event __attribute__((unused));

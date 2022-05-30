@@ -35,12 +35,11 @@ func main() {
 		for {
 			select {
 			case connEvent := <-connCh:
-				log.Printf("%-15s %-6d   %-15s %-6d  %-10s %-10s",
+				log.Printf("%-15s %-6d   %-15s %-6d  %-10s",
 					connEvent.SockKey.GetSrcIpv4(),
 					connEvent.SockKey.Sport,
 					connEvent.SockKey.GetDstIpv4(),
 					connEvent.SockKey.Dport,
-					bpf.IntToEndpointRole(connEvent.EndpointRole),
 					"CONN",
 				)
 			case <-ctx.Done():
@@ -53,12 +52,11 @@ func main() {
 		for {
 			select {
 			case closeEvent := <-closeCh:
-				log.Printf("%-15s %-6d   %-15s %-6d  %-10s %-10s  %-10d %-10d ",
+				log.Printf("%-15s %-6d   %-15s %-6d  %-10s  %-10d %-10d ",
 					closeEvent.SockKey.GetSrcIpv4(),
 					closeEvent.SockKey.Sport,
 					closeEvent.SockKey.GetDstIpv4(),
 					closeEvent.SockKey.Dport,
-					bpf.IntToEndpointRole(closeEvent.EndpointRole),
 					"CLOSE",
 					closeEvent.SendBytes,
 					closeEvent.RecvBytes,
@@ -82,10 +80,9 @@ func main() {
 				// 	continue
 				// }
 
-				// bytesRawLogging(&dataEvent)
-				rawLogging(&dataEvent)
-				// parseHttp1AndLogging(&dataEvent)
-				// parseHttp2AndLogging(&dataEvent)
+				rawLogging(dataEvent)
+				// parseHttp1AndLogging(dataEvent)
+				// parseHttp2AndLogging(dataEvent)
 
 				
 			case <-ctx.Done():
@@ -97,22 +94,12 @@ func main() {
 	<-ctx.Done()
 }
 
-func bytesRawLogging(dataEvent *bpf.BpfDataEvent) {
-	log.Printf("%-10s %-10s ret: %d\nmsg: %v\n",
-		bpf.IntToEndpointRole(dataEvent.EndpointRole),
-		bpf.IntToMsgType(dataEvent.MsgType),
-		dataEvent.Ret,
-		dataEvent.Msg[:500],
-	)
-}
-
 func rawLogging(dataEvent *bpf.BpfDataEvent) {
-	log.Printf("%-15s %-6d   %-15s %-6d  %-10s %-10s %d\nnr_segs: %d, count: %d, iov_offset: %d, iov_idx: %d\nret: %d, size: %d, msg: %s\n",
+	log.Printf("%-15s %-6d   %-15s %-6d  %-10s %d\nnr_segs: %d, count: %d, iov_offset: %d, iov_idx: %d\nret: %d, size: %d, msg: %s\n",
 		dataEvent.SockKey.GetSrcIpv4(),
 		dataEvent.SockKey.Sport,
 		dataEvent.SockKey.GetDstIpv4(),
 		dataEvent.SockKey.Dport,
-		bpf.IntToEndpointRole(dataEvent.EndpointRole),
 		bpf.IntToMsgType(dataEvent.MsgType),
 		dataEvent.SockKey.Family,
 		dataEvent.IterNrSegs,
@@ -135,12 +122,11 @@ func parseHttp1AndLogging(event *bpf.BpfDataEvent) {
 		}
 		req.Body.Close()
 
-		log.Printf("%-15s %-6d   %-15s %-6d  %-10s %-10s\nret: %-5d [%-10s %-15s %-10s %s header: %v]\n",
+		log.Printf("%-15s %-6d   %-15s %-6d  %-10s\nret: %-5d [%-10s %-15s %-10s %s header: %v]\n",
 			event.SockKey.GetSrcIpv4(),
 			event.SockKey.Sport,
 			event.SockKey.GetDstIpv4(),
 			event.SockKey.Dport,
-			bpf.IntToEndpointRole(event.EndpointRole),
 			bpf.IntToMsgType(event.MsgType),
 			event.Ret,
 			req.Proto,
@@ -157,12 +143,11 @@ func parseHttp1AndLogging(event *bpf.BpfDataEvent) {
 		}
 		resp.Body.Close()
 
-		log.Printf("%-15s %-6d   %-15s %-6d  %-10s %-10s\nret: %-5d [%-10s %-15s header: %v]\n",
+		log.Printf("%-15s %-6d   %-15s %-6d  %-10s\nret: %-5d [%-10s %-15s header: %v]\n",
 			event.SockKey.GetSrcIpv4(),
 			event.SockKey.Sport,
 			event.SockKey.GetDstIpv4(),
 			event.SockKey.Dport,
-			bpf.IntToEndpointRole(event.EndpointRole),
 			bpf.IntToMsgType(event.MsgType),
 			event.Ret,
 			resp.Proto,
@@ -198,34 +183,31 @@ func parseHttp2AndLogging(event *bpf.BpfDataEvent) {
 func loggingFrame(frame http2.Frame, event *bpf.BpfDataEvent) {
 	if headers, ok := frame.(*http2.HeadersFrame); ok {
 		decoded, _ := hpack.NewDecoder(2048, nil).DecodeFull(headers.HeaderBlockFragment())
-		log.Printf("%-15s %-6d   %-15s %-6d  %-10s %-10s\nret: %-5d %v\n",
+		log.Printf("%-15s %-6d   %-15s %-6d  %-10s\nret: %-5d %v\n",
 			event.SockKey.GetSrcIpv4(),
 			event.SockKey.Sport,
 			event.SockKey.GetDstIpv4(),
 			event.SockKey.Dport,
-			bpf.IntToEndpointRole(event.EndpointRole),
 			bpf.IntToMsgType(event.MsgType),
 			event.Ret,
 			decoded,
 		)
 	} else if datas, ok := frame.(*http2.DataFrame); ok {
-		log.Printf("%-15s %-6d   %-15s %-6d  %-10s %-10s\nret: %-5d [DataFrame %s]\n",
+		log.Printf("%-15s %-6d   %-15s %-6d  %-10s\nret: %-5d [DataFrame %s]\n",
 			event.SockKey.GetSrcIpv4(),
 			event.SockKey.Sport,
 			event.SockKey.GetDstIpv4(),
 			event.SockKey.Dport,
-			bpf.IntToEndpointRole(event.EndpointRole),
 			bpf.IntToMsgType(event.MsgType),
 			event.Ret,
 			datas.Data(),
 		)
 	} else {
-		log.Printf("%-15s %-6d   %-15s %-6d  %-10s %-10s\nret: %-5d %v\n",
+		log.Printf("%-15s %-6d   %-15s %-6d  %-10s\nret: %-5d %v\n",
 			event.SockKey.GetSrcIpv4(),
 			event.SockKey.Sport,
 			event.SockKey.GetDstIpv4(),
 			event.SockKey.Dport,
-			bpf.IntToEndpointRole(event.EndpointRole),
 			bpf.IntToMsgType(event.MsgType),
 			event.Ret,
 			frame,

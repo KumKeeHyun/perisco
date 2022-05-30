@@ -5,17 +5,6 @@ import (
 	"net"
 )
 
-func IntToEndpointRole(roleNum int32) string {
-	switch roleNum {
-	case 0:
-		return "CLIENT"
-	case 1:
-		return "SERVER"
-	default:
-		return "UNKNOWN"
-	}
-}
-
 func IntToMsgType(msgType int32) string {
 	switch msgType {
 	case 0:
@@ -29,29 +18,25 @@ func IntToMsgType(msgType int32) string {
 
 type BpfCloseEvent struct {
 	SockKey      BpfSockKey
-	EndpointRole int32
 	SendBytes    uint64
 	RecvBytes    uint64
 }
 
 type BpfConnEvent struct {
 	SockKey      BpfSockKey
-	EndpointRole int32
 }
 
 type BpfDataEvent struct {
 	Msg          [4096]byte
 	SockKey      BpfSockKey
-	MsgSize      uint64
-	Ret          int32
-	EndpointRole int32
-	MsgType      int32
-	_            [4]byte
-	IterNrSegs   uint64
-	IterCount    uint32
-	IterOffset   uint32
-	IovIdx       uint32
-	_            [4]byte
+	MsgType    int32
+	_          [4]byte
+	MsgSize    uint64
+	IterNrSegs uint64
+	IterCount  uint32
+	IterOffset uint32
+	IovIdx     uint32
+	Ret        int32
 }
 
 type BpfSockKey struct {

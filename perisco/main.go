@@ -80,9 +80,9 @@ func main() {
 				// 	continue
 				// }
 
-				rawLogging(dataEvent)
-				// parseHttp1AndLogging(dataEvent)
-				// parseHttp2AndLogging(dataEvent)
+				// rawLogging(&dataEvent)
+				parseHttp1AndLogging(&dataEvent)
+				// parseHttp2AndLogging(&dataEvent)
 
 				
 			case <-ctx.Done():

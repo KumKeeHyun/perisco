@@ -14,6 +14,7 @@ var requests = map[string]func(){
 	"greet": greet,
 	"jpg": jpg,
 	"push": push,
+	"pull": pull,
 	"redir": redir,
 }
 
@@ -80,6 +81,20 @@ func push() {
 	fmt.Println(string(data))
 }
 
+func pull() {
+	resp, err := http.Get("http://127.0.0.1:8880/pull")
+	if err != nil {
+		panic(err)
+	}
+	defer resp.Body.Close()
+
+	data, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		panic(err)
+	}
+	fmt.Println(resp.Status, len(data))
+}
+
 func redir() {
 	resp, err := http.Get("http://127.0.0.1:8880/redir")
 	if err != nil {
@@ -91,5 +106,5 @@ func redir() {
 	if err != nil {
 		panic(err)
 	}
-	fmt.Println(string(data))
+	fmt.Println(len(data))
 }

@@ -10,7 +10,7 @@ import (
 	"github.com/cilium/ebpf/ringbuf"
 )
 
-func LoadBpfProgram() (chan *BpfConnEvent, chan *BpfCloseEvent, chan *BpfDataEvent, func()) {
+func LoadBpfProgram() (chan BpfConnEvent, chan BpfCloseEvent, chan BpfDataEvent, func()) {
 	objs := bpfObjects{}
 	if err := loadBpfObjects(&objs, nil); err != nil {
 		log.Fatalf("loading objects: %v", err)
@@ -54,7 +54,7 @@ func LoadBpfProgram() (chan *BpfConnEvent, chan *BpfCloseEvent, chan *BpfDataEve
 	if err != nil {
 		log.Fatalf("opening connEvent ringbuf reader: %s", err)
 	}
-	connCh := make(chan *BpfConnEvent)
+	connCh := make(chan BpfConnEvent)
 	go func() {
 		var connEvent BpfConnEvent
 		for {
@@ -73,7 +73,7 @@ func LoadBpfProgram() (chan *BpfConnEvent, chan *BpfCloseEvent, chan *BpfDataEve
 				continue
 			}
 
-			connCh <- &connEvent
+			connCh <- connEvent
 		}
 	}()
 
@@ -81,7 +81,7 @@ func LoadBpfProgram() (chan *BpfConnEvent, chan *BpfCloseEvent, chan *BpfDataEve
 	if err != nil {
 		log.Fatalf("opening closeEvent ringbuf reader: %s", err)
 	}
-	closeCh := make(chan *BpfCloseEvent)
+	closeCh := make(chan BpfCloseEvent)
 	go func() {
 		var closeEvent BpfCloseEvent
 		for {
@@ -100,7 +100,7 @@ func LoadBpfProgram() (chan *BpfConnEvent, chan *BpfCloseEvent, chan *BpfDataEve
 				continue
 			}
 
-			closeCh <- &closeEvent
+			closeCh <- closeEvent
 		}
 	}()
 
@@ -108,7 +108,7 @@ func LoadBpfProgram() (chan *BpfConnEvent, chan *BpfCloseEvent, chan *BpfDataEve
 	if err != nil {
 		log.Fatalf("opening dataEvent ringbuf reader: %s", err)
 	}
-	dataCh := make(chan *BpfDataEvent)
+	dataCh := make(chan BpfDataEvent)
 	go func() {
 		var dataEvent BpfDataEvent
 		for {
@@ -127,7 +127,7 @@ func LoadBpfProgram() (chan *BpfConnEvent, chan *BpfCloseEvent, chan *BpfDataEve
 				continue
 			}
 
-			dataCh <- &dataEvent
+			dataCh <- dataEvent
 		}
 	}()
 

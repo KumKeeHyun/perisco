@@ -105,7 +105,6 @@ type bpfProgramSpecs struct {
 	FexitSockRecvmsg  *ebpf.ProgramSpec `ebpf:"fexit_sock_recvmsg"`
 	InetAccept        *ebpf.ProgramSpec `ebpf:"inet_accept"`
 	InetShutdown      *ebpf.ProgramSpec `ebpf:"inet_shutdown"`
-	TcpClose          *ebpf.ProgramSpec `ebpf:"tcp_close"`
 }
 
 // bpfMapSpecs contains maps before they are loaded into the kernel.
@@ -164,7 +163,6 @@ type bpfPrograms struct {
 	FexitSockRecvmsg  *ebpf.Program `ebpf:"fexit_sock_recvmsg"`
 	InetAccept        *ebpf.Program `ebpf:"inet_accept"`
 	InetShutdown      *ebpf.Program `ebpf:"inet_shutdown"`
-	TcpClose          *ebpf.Program `ebpf:"tcp_close"`
 }
 
 func (p *bpfPrograms) Close() error {
@@ -174,7 +172,6 @@ func (p *bpfPrograms) Close() error {
 		p.FexitSockRecvmsg,
 		p.InetAccept,
 		p.InetShutdown,
-		p.TcpClose,
 	)
 }
 

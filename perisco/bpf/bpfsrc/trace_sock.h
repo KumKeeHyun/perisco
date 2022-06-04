@@ -36,10 +36,10 @@ struct __attribute__((__packed__)) sock_key {
 	union ip dip;
 	__u32 sport;
 	__u32 dport;
+	__u32 pid;
 	__u8 family;
 	__u8 pad1;
 	__u16 pad2;
-	__u32 pad3;
 };
 
 enum message_type { request, response, unknown };
@@ -77,11 +77,7 @@ struct data_event {
 	char msg[MAX_MSG_SIZE];
 	struct sock_key sock_key;
 	enum message_type msg_type;
-	u64 msg_size;
-	u64 iter_nr_segs;
-	u32 iter_count;
-	u32 iter_offset;
-	u32 iov_idx;
-	s32 ret;
+	s32 proto_type;
+	u32 msg_size;
 };
 struct data_event *unused_data_event __attribute__((unused));

@@ -19,6 +19,7 @@ func main() {
 			},
 		},
 	}
+	defer cli.CloseIdleConnections()
 
 	resp, err := cli.Get("http://127.0.0.1:8881/test")
 	if err != nil {

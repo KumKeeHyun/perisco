@@ -65,6 +65,7 @@ static __always_inline void sk_extract_key(const struct sock *sk,
 	key->sport = sk->__sk_common.skc_num;
 	key->dport = bpf_ntohs(sk->__sk_common.skc_dport);
 	key->family = sk->__sk_common.skc_family;
+	key->pid = bpf_get_current_pid_tgid() >> 32;
 	
 	if (key->family == AF_INET) {
 		key->sip.ip4.addr = sk->__sk_common.skc_rcv_saddr;
@@ -161,18 +162,12 @@ static __always_inline void submit_data_event(const char *msg, size_t size,
 		// ingress(0)	request(0)
 		// egress(1)	response(1)
 		event->msg_type = direction == ingress ? request : response;
-		event->ret = ret;
 
 		size_t to_copy = size;
 		if (to_copy > MAX_MSG_SIZE)
 			to_copy = MAX_MSG_SIZE;
 		bpf_probe_read(event->msg, to_copy, msg);
 		event->msg_size = to_copy;
-
-		event->iter_nr_segs = nr_segs;
-		event->iter_count = count;
-		event->iter_offset = iov_offset;
-		event->iov_idx = iov_idx;
 
 		bpf_ringbuf_submit(event, 0);
 	}	

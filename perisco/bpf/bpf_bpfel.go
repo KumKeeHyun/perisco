@@ -22,16 +22,11 @@ type bpfCloseEvent struct {
 type bpfConnEvent struct{ SockKey bpfSockKey }
 
 type bpfDataEvent struct {
-	Msg        [4096]int8
-	SockKey    bpfSockKey
-	MsgType    int32
-	_          [4]byte
-	MsgSize    uint64
-	IterNrSegs uint64
-	IterCount  uint32
-	IterOffset uint32
-	IovIdx     uint32
-	Ret        int32
+	Msg       [4096]int8
+	SockKey   bpfSockKey
+	MsgType   int32
+	ProtoType int32
+	MsgSize   uint32
 }
 
 type bpfSockKey struct {
@@ -53,10 +48,10 @@ type bpfSockKey struct {
 	}
 	Sport  uint32
 	Dport  uint32
+	Pid    uint32
 	Family uint8
 	Pad1   uint8
 	Pad2   uint16
-	Pad3   uint32
 }
 
 // loadBpf returns the embedded CollectionSpec for bpf.

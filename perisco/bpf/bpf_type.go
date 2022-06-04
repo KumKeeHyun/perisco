@@ -17,26 +17,21 @@ func IntToMsgType(msgType int32) string {
 }
 
 type BpfCloseEvent struct {
-	SockKey      BpfSockKey
-	SendBytes    uint64
-	RecvBytes    uint64
+	SockKey   BpfSockKey
+	SendBytes uint64
+	RecvBytes uint64
 }
 
 type BpfConnEvent struct {
-	SockKey      BpfSockKey
+	SockKey BpfSockKey
 }
 
 type BpfDataEvent struct {
-	Msg          [4096]byte
-	SockKey      BpfSockKey
-	MsgType    int32
-	_          [4]byte
-	MsgSize    uint64
-	IterNrSegs uint64
-	IterCount  uint32
-	IterOffset uint32
-	IovIdx     uint32
-	Ret        int32
+	Msg       [4096]byte
+	SockKey   BpfSockKey
+	MsgType   int32
+	ProtoType int32
+	MsgSize   uint32
 }
 
 type BpfSockKey struct {
@@ -58,10 +53,10 @@ type BpfSockKey struct {
 	}
 	Sport  uint32
 	Dport  uint32
+	Pid    uint32
 	Family uint8
 	Pad1   uint8
 	Pad2   uint16
-	Pad3   uint32
 }
 
 func (sk *BpfSockKey) GetSrcIpv4() string {

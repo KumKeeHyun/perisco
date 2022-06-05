@@ -6,33 +6,40 @@ import (
 	"flag"
 	"fmt"
 	"io/ioutil"
-	"log"
 	"net/http"
 )
 
-var requests = map[string]func(){
+var requests = map[string]func(string){
 	"greet": greet,
-	"jpg": jpg,
-	"push": push,
-	"pull": pull,
+	"jpg":   jpg,
+	"push":  push,
+	"pull":  pull,
 	"redir": redir,
 }
 
 func main() {
 	reqType := flag.String("req", "greet", "greet, jpg, push, redirect")
+	ipVersion := flag.String("ip", "ipv4", "ipv4, ipv6")
 	flag.Parse()
-	
-	if req, ok := requests[*reqType]; ok {
-		req()
+
+	var addr string
+	if *ipVersion == "ipv4" {
+		addr = "127.0.0.1"
+	} else if *ipVersion == "ipv6"{
+		addr = "::1"
 	} else {
-		log.Fatal("greet, jpg, push, redirect")
+		panic("invalid ipVersion")
 	}
 
-
+	if req, ok := requests[*reqType]; ok {
+		req(addr)
+	} else {
+		panic("greet, jpg, push, redirect")
+	}
 }
 
-func greet() {
-	resp, err := http.Get("http://127.0.0.1:8880/greet")
+func greet(addr string) {
+	resp, err := http.Get(fmt.Sprintf("http://%s:8880/greet", addr))
 	if err != nil {
 		panic(err)
 	}
@@ -45,8 +52,8 @@ func greet() {
 	fmt.Println(string(data))
 }
 
-func jpg() {
-	resp, err := http.Get("http://127.0.0.1:8880/static/example.jpg")
+func jpg(addr string) {
+	resp, err := http.Get(fmt.Sprintf("http://%s:8880/static/example.jpg", addr))
 	if err != nil {
 		panic(err)
 	}
@@ -55,20 +62,19 @@ func jpg() {
 	fmt.Println(resp.Status)
 }
 
-
 type pushBody struct {
 	Pad1 [2048]byte
 	Pad2 string
 }
 
-func push() {
+func push(addr string) {
 	body := make([]pushBody, 5)
 	for i, _ := range body {
 		body[i].Pad2 = fmt.Sprintf("padding %d!", i)
 	}
 	bJson, _ := json.Marshal(body)
 
-	resp, err := http.Post("http://127.0.0.1:8880/push", "application/json", bytes.NewBuffer(bJson))
+	resp, err := http.Post(fmt.Sprintf("http://%s:8880/push", addr), "application/json", bytes.NewBuffer(bJson))
 	if err != nil {
 		panic(err)
 	}
@@ -81,8 +87,8 @@ func push() {
 	fmt.Println(string(data))
 }
 
-func pull() {
-	resp, err := http.Get("http://127.0.0.1:8880/pull")
+func pull(addr string) {
+	resp, err := http.Get(fmt.Sprintf("http://%s:8880/pull", addr))
 	if err != nil {
 		panic(err)
 	}
@@ -95,8 +101,8 @@ func pull() {
 	fmt.Println(resp.Status, len(data))
 }
 
-func redir() {
-	resp, err := http.Get("http://127.0.0.1:8880/redir")
+func redir(addr string) {
+	resp, err := http.Get(fmt.Sprintf("http://%s:8880/redir", addr))
 	if err != nil {
 		panic(err)
 	}

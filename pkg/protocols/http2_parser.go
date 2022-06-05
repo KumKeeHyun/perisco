@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"log"
 	"strconv"
 	"strings"
 
@@ -20,6 +21,16 @@ type Http2RequestResult struct {
 
 func (r *Http2RequestResult) String() string {
 	return fmt.Sprintf("[ method: %s, path: %s, header: %v ]", r.Method, r.Path, r.Header)
+}
+
+type Http2RequestResults []*Http2RequestResult
+
+func (rs *Http2RequestResults) String() string {
+	res := make([]string, len(*rs))
+	for i, r := range *rs {
+		res[i] = r.String()
+	}
+	return strings.Join(res, "\n")
 }
 
 type Http2ResponseResult struct {
@@ -41,6 +52,7 @@ func (*Http2Parser) ParseRequest(rawBytes []byte) (RequestResult, error) {
 	skipPrefaceIfExist(r)
 
 	framer := http2.NewFramer(io.Discard, r)
+	var results Http2RequestResults
 	for {
 		frame, err := framer.ReadFrame()
 		if err != nil {
@@ -48,11 +60,15 @@ func (*Http2Parser) ParseRequest(rawBytes []byte) (RequestResult, error) {
 		}
 		headers, err := extractHeaders(frame)
 		if err != nil {
+			log.Printf("failed extractHeaders: %s\n%v", err, frame)
 			continue
 		}
-		return headersToRequest(headers), nil
+		results = append(results, headersToRequest(headers))
 	}
-	return nil, errors.New("cannot find headers frame")
+	if len(results) == 0 {
+		return nil, errors.New("cannot find headers frame")
+	}
+	return &results, nil
 }
 
 func headersToRequest(headers []hpack.HeaderField) *Http2RequestResult {
@@ -106,6 +122,7 @@ func (*Http2Parser) ParseResponse(rawBytes []byte) (ResponseResult, error) {
 		}
 		headers, err := extractHeaders(frame)
 		if err != nil {
+			log.Printf("failed extractHeaders: %s\n%v", err, frame)
 			continue
 		}
 		return headersToResponse(headers), nil

@@ -1,20 +1,9 @@
 package bpf
 
 import (
-	"encoding/binary"
+	"fmt"
 	"net"
 )
-
-func IntToMsgType(msgType int32) string {
-	switch msgType {
-	case 0:
-		return "REQUEST"
-	case 1:
-		return "RESPONSE"
-	default:
-		return "UNKNOWN"
-	}
-}
 
 type BpfCloseEvent struct {
 	SockKey   BpfSockKey
@@ -26,69 +15,114 @@ type BpfConnEvent struct {
 	SockKey BpfSockKey
 }
 
+type FlowType int32
+
+const (
+	FLOW_UNKNOWN FlowType = iota
+	REQUEST
+	RESPONSE
+)
+
+var FlowTypeName = map[FlowType]string {
+	FLOW_UNKNOWN: "UNKNOWN",
+	REQUEST: "REQUEST",
+	RESPONSE: "RESPONSE",
+}
+
+func (f FlowType) String() string {
+	if name, exist := FlowTypeName[f]; exist {
+		return name
+	} 
+	return "UNKNOWN"
+}
+
+type ProtocolType int32
+
+const (
+	PROTO_UNKNOWN ProtocolType = iota
+
+	HTTP1
+	HTTP2
+
+	PROTO_RESERVED1
+	PROTO_RESERVED2
+	PROTO_RESERVED3
+	PROTO_RESERVED4
+	PROTO_RESERVED5
+)
+
+var ProtocolTypeName = map[ProtocolType]string {
+	PROTO_UNKNOWN: "UNKNOWN",
+	HTTP1: "HTTP/1.1",
+	HTTP2: "HTTP/2",
+}
+
+func (p ProtocolType) String() string {
+	if name, exist := ProtocolTypeName[p]; exist {
+		return name
+	} 
+	return "UNKNOWN"
+}
+
 type BpfDataEvent struct {
 	Msg       [4096]byte
 	SockKey   BpfSockKey
-	MsgType   int32
-	ProtoType int32
+	Timestamp uint64
+	FlowType  FlowType
+	Protocol  ProtocolType
 	MsgSize   uint32
+	_         [4]byte
+}
+
+type IpVersion int32
+
+const (
+	IP_UNKNOWN IpVersion = iota
+	IPv4
+	IPv6
+)
+
+type BpfIp struct {
+	Source      [16]byte
+	Destination [16]byte
+	IpVersion   IpVersion
+}
+
+func (ip *BpfIp) GetSrcIp() string {
+	if ip.IpVersion == IPv4 {
+		return net.IP(ip.Source[:4]).String()
+	} else if ip.IpVersion == IPv6 {
+		return net.IP(ip.Source[:]).String()
+	}
+	return "unknown"
+}
+
+func (ip *BpfIp) GetDestIp() string {
+	if ip.IpVersion == IPv4 {
+		return net.IP(ip.Destination[:4]).String()
+	} else if ip.IpVersion == IPv6 {
+		return net.IP(ip.Destination[:]).String()
+	}
+	return "unknown"
+}
+
+type BpfLayer4 struct {
+	SourcePort      uint32
+	DestinationPort uint32
 }
 
 type BpfSockKey struct {
-	Sip struct {
-		Addr struct {
-			Pad1 uint32
-			Pad2 uint32
-			Pad3 uint32
-			Pad4 uint32
-		}
-	}
-	Dip struct {
-		Addr struct {
-			Pad1 uint32
-			Pad2 uint32
-			Pad3 uint32
-			Pad4 uint32
-		}
-	}
-	Sport  uint32
-	Dport  uint32
-	Pid    uint32
-	Family uint8
-	Pad1   uint8
-	Pad2   uint16
+	Ip  BpfIp
+	L4  BpfLayer4
+	Pid uint32
 }
 
-func (sk *BpfSockKey) GetSrcIpv4() string {
-	if sk.Family == 2 {
-		return intToIP(sk.Sip.Addr.Pad1).String()
-	} else if sk.Family == 10 {
-		return intToIPv6(sk.Sip.Addr.Pad1, sk.Sip.Addr.Pad2, sk.Sip.Addr.Pad3, sk.Sip.Addr.Pad4).String()
-	}
-	return "unknown"
-}
-
-func (sk *BpfSockKey) GetDstIpv4() string {
-	if sk.Family == 2 {
-		return intToIP(sk.Dip.Addr.Pad1).String()
-	} else if sk.Family == 10 {
-		return intToIPv6(sk.Dip.Addr.Pad1, sk.Dip.Addr.Pad2, sk.Dip.Addr.Pad3, sk.Dip.Addr.Pad4).String()
-	}
-	return "unknown"
-}
-
-// intToIP converts IPv4 number to net.IP
-func intToIP(ipNum uint32) net.IP {
-	ip := make(net.IP, 4)
-	binary.LittleEndian.PutUint32(ip, ipNum)
-	return ip
-}
-
-func intToIPv6(p1, p2, p3, p4 uint32) net.IP {
-	ip := make(net.IP, 16)
-	binary.LittleEndian.PutUint32(ip[:4], p1)
-	binary.LittleEndian.PutUint32(ip[4:8], p2)
-	binary.LittleEndian.PutUint32(ip[8:12], p3)
-	binary.LittleEndian.PutUint32(ip[12:], p4)
-	return ip
+func (sk *BpfSockKey) String() string {
+	return fmt.Sprintf("%-15s %-6d  %-15s %-6d  %-10d",
+		sk.Ip.GetSrcIp(),
+		sk.L4.SourcePort,
+		sk.Ip.GetDestIp(),
+		sk.L4.DestinationPort,
+		sk.Pid,
+	)
 }

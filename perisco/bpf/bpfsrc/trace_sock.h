@@ -7,47 +7,45 @@
 #define AF_INET 2
 #define AF_INET6 10
 
-struct __attribute__((__packed__)) v6addr {
-	__u8 addr[16];
+enum ip_version { IP_UNKNOWN, IPv4, IPv6 };
+
+struct ip {
+	char source[16];
+	char destination[16];
+	enum ip_version ip_version;
 };
 
-struct __attribute__((__packed__)) v4addr {
-	__u32		addr;
-	__u32		pad1;
-	__u32		pad2;
-	__u32		pad3;
+struct layer4 {
+	u32 source_port;
+	u32 destination_port;
 };
 
-struct __attribute__((__packed__)) ipaddr {
-	__u32		pad1;
-	__u32		pad2;
-	__u32		pad3;
-	__u32		pad4;
+struct sock_key {
+	struct ip ip;
+	struct layer4 l4;
+	u32 pid;
 };
 
-union __attribute__((__packed__)) ip {
-	struct ipaddr addr;
-	struct v4addr ip4;
-	struct v6addr ip6;
+enum flow_type { FLOW_UNKNOWN, REQUEST, RESPONSE };
+
+enum direction { DIR_UNKNOWN, INGRESS, EGRESS };
+
+enum protocol_type {
+	PROTO_UNKNOWN,
+
+	HTTP1,
+	HTTP2,
+
+	RESERVED1,
+	RESERVED2,
+	RESERVED3,
+	RESERVED4,
+	RESERVED5
 };
-
-struct __attribute__((__packed__)) sock_key {
-	union ip sip;
-	union ip dip;
-	__u32 sport;
-	__u32 dport;
-	__u32 pid;
-	__u8 family;
-	__u8 pad1;
-	__u16 pad2;
-};
-
-enum message_type { request, response, unknown };
-
-enum direction_type { ingress, egress };
 
 struct conn_info {
   	struct sock_key sock_key;
+	enum protocol_type protocol;
 	u64 send_bytes;
 	u64 recv_bytes;
 };
@@ -64,20 +62,22 @@ struct close_event {
 };
 struct close_event *unused_close_event __attribute__((unused));
 
-
 struct recvmsg_arg {
 	struct iov_iter iter;
 };
 struct recvmsg_arg *unused_recvmsg_arg __attribute__((unused));
 
 #define MAX_MSG_SIZE 4096
-#define MAX_NR_SEGS 10
+
+// 'unroll for loop'에서 스택 크기 제한으로 크기를 조절해야 함.
+#define MAX_NR_SEGS 7
 
 struct data_event {
 	char msg[MAX_MSG_SIZE];
 	struct sock_key sock_key;
-	enum message_type msg_type;
-	s32 proto_type;
+	u64 timestamp;
+	enum flow_type flow_type;
+	enum protocol_type protocol;
 	u32 msg_size;
 };
 struct data_event *unused_data_event __attribute__((unused));

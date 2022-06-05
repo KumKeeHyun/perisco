@@ -30,11 +30,8 @@ func main() {
 		for {
 			select {
 			case connEvent := <-connCh:
-				log.Printf("%-15s %-6d   %-15s %-6d  %-10s",
-					connEvent.SockKey.GetSrcIpv4(),
-					connEvent.SockKey.Sport,
-					connEvent.SockKey.GetDstIpv4(),
-					connEvent.SockKey.Dport,
+				log.Printf("%s  %-10s",
+					connEvent.SockKey.String(),
 					"CONN",
 				)
 			case <-ctx.Done():
@@ -47,11 +44,8 @@ func main() {
 		for {
 			select {
 			case closeEvent := <-closeCh:
-				log.Printf("%-15s %-6d   %-15s %-6d  %-10s  %-10d %-10d ",
-					closeEvent.SockKey.GetSrcIpv4(),
-					closeEvent.SockKey.Sport,
-					closeEvent.SockKey.GetDstIpv4(),
-					closeEvent.SockKey.Dport,
+				log.Printf("%s  %-10s  %-10d %-10d ",
+					closeEvent.SockKey.String(),
 					"CLOSE",
 					closeEvent.SendBytes,
 					closeEvent.RecvBytes,
@@ -66,10 +60,6 @@ func main() {
 		for {
 			select {
 			case dataEvent := <-dataCh:
-				if dataEvent.SockKey.Dport == 443 {
-					continue
-				}
-
 				// filter response
 				// if dataEvent.MsgType != 0 {
 				// 	continue
@@ -89,47 +79,35 @@ func main() {
 }
 
 func rawLogging(dataEvent *bpf.BpfDataEvent) {
-	log.Printf("%-15s %-6d   %-15s %-6d  %-10s %d\nsize: %d, msg: %s\n",
-		dataEvent.SockKey.GetSrcIpv4(),
-		dataEvent.SockKey.Sport,
-		dataEvent.SockKey.GetDstIpv4(),
-		dataEvent.SockKey.Dport,
-		bpf.IntToMsgType(dataEvent.MsgType),
-		dataEvent.SockKey.Family,
+	log.Printf("%s  %-10s\nsize: %d, msg: %s\n",
+		dataEvent.SockKey.String(),
+		dataEvent.FlowType.String(),
 		dataEvent.MsgSize,
 		dataEvent.Msg[:dataEvent.MsgSize],
 	)
 }
 
 func parseProto(event *bpf.BpfDataEvent, parser protocols.Parser) {
-	if event.MsgType == 0 {
+	if event.FlowType == bpf.REQUEST {
 		req, err := parser.ParseRequest(event.Msg[:event.MsgSize])
 		if err != nil {
 			return
 		}
 
-		log.Printf("%-15s %-6d   %-15s %-6d  %-10s pid: %-5d\n %s\n",
-			event.SockKey.GetSrcIpv4(),
-			event.SockKey.Sport,
-			event.SockKey.GetDstIpv4(),
-			event.SockKey.Dport,
-			bpf.IntToMsgType(event.MsgType),
-			event.SockKey.Pid,
+		log.Printf("%s  %-10s\n %s\n",
+			event.SockKey.String(),
+			event.FlowType.String(),
 			req.String(),
 		)
-	} else if event.MsgType == 1 {
+	} else if event.FlowType == bpf.RESPONSE {
 		resp, err := parser.ParseResponse(event.Msg[:event.MsgSize])
 		if err != nil {
 			return
 		}
 
-		log.Printf("%-15s %-6d   %-15s %-6d  %-10s pid: %-5d\n %s\n",
-			event.SockKey.GetSrcIpv4(),
-			event.SockKey.Sport,
-			event.SockKey.GetDstIpv4(),
-			event.SockKey.Dport,
-			bpf.IntToMsgType(event.MsgType),
-			event.SockKey.Pid,
+		log.Printf("%s  %-10s\n %s\n",
+			event.SockKey.String(),
+			event.FlowType.String(),
 			resp.String(),
 		)
 	}

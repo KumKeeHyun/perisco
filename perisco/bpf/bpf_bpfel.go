@@ -24,34 +24,28 @@ type bpfConnEvent struct{ SockKey bpfSockKey }
 type bpfDataEvent struct {
 	Msg       [4096]int8
 	SockKey   bpfSockKey
-	MsgType   int32
-	ProtoType int32
+	Timestamp uint64
+	FlowType  int32
+	Protocol  int32
 	MsgSize   uint32
+	_         [4]byte
+}
+
+type bpfIp struct {
+	Source      [16]int8
+	Destination [16]int8
+	IpVersion   int32
+}
+
+type bpfLayer4 struct {
+	SourcePort      uint32
+	DestinationPort uint32
 }
 
 type bpfSockKey struct {
-	Sip struct {
-		Addr struct {
-			Pad1 uint32
-			Pad2 uint32
-			Pad3 uint32
-			Pad4 uint32
-		}
-	}
-	Dip struct {
-		Addr struct {
-			Pad1 uint32
-			Pad2 uint32
-			Pad3 uint32
-			Pad4 uint32
-		}
-	}
-	Sport  uint32
-	Dport  uint32
-	Pid    uint32
-	Family uint8
-	Pad1   uint8
-	Pad2   uint16
+	Ip  bpfIp
+	L4  bpfLayer4
+	Pid uint32
 }
 
 // loadBpf returns the embedded CollectionSpec for bpf.

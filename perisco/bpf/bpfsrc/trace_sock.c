@@ -47,33 +47,23 @@ struct {
 // 	return is_v4_loopback(sk->__sk_common.skc_rcv_saddr) || is_v4_loopback(sk->__sk_common.skc_daddr);
 // }
 
-// static __always_inline void sk_extract4_key(const struct sock *sk,
-// 					    struct sock_key *key)
-// {
-// 	key->sip.ip4.addr = sk->__sk_common.skc_rcv_saddr;
-// 	key->dip.ip4.addr = sk->__sk_common.skc_daddr;
-
-// 	key->sport = sk->__sk_common.skc_num;
-// 	key->dport = bpf_ntohs(sk->__sk_common.skc_dport);
-
-// 	key->family = AF_INET;
-// }
-
 static __always_inline void sk_extract_key(const struct sock *sk,
 					    struct sock_key *key)
 {
-	key->sport = sk->__sk_common.skc_num;
-	key->dport = bpf_ntohs(sk->__sk_common.skc_dport);
-	key->family = sk->__sk_common.skc_family;
-	key->pid = bpf_get_current_pid_tgid() >> 32;
-	
-	if (key->family == AF_INET) {
-		key->sip.ip4.addr = sk->__sk_common.skc_rcv_saddr;
-		key->dip.ip4.addr = sk->__sk_common.skc_daddr;
-	} else if (key->family == AF_INET6) {
-		bpf_probe_read(key->sip.ip6.addr, sizeof(key->sip.ip6.addr), sk->__sk_common.skc_v6_rcv_saddr.in6_u.u6_addr8);
-		bpf_probe_read(key->dip.ip6.addr, sizeof(key->dip.ip6.addr), sk->__sk_common.skc_v6_daddr.in6_u.u6_addr8);
+	if (sk->__sk_common.skc_family == AF_INET) {
+		bpf_probe_read(key->ip.source, 4, &sk->__sk_common.skc_rcv_saddr);
+		bpf_probe_read(key->ip.destination, 4, &sk->__sk_common.skc_daddr);
+		key->ip.ip_version = IPv4;
+	} else if (sk->__sk_common.skc_family == AF_INET6) {
+		bpf_probe_read(key->ip.source, 16, sk->__sk_common.skc_v6_rcv_saddr.in6_u.u6_addr8);
+		bpf_probe_read(key->ip.destination, 16, sk->__sk_common.skc_v6_daddr.in6_u.u6_addr8);
+		key->ip.ip_version = IPv6;
 	} 
+
+	key->l4.source_port = sk->__sk_common.skc_num;
+	key->l4.destination_port = bpf_ntohs(sk->__sk_common.skc_dport);
+
+	key->pid = bpf_get_current_pid_tgid() >> 32;
 }
 
 SEC("fexit/inet_accept")
@@ -85,8 +75,6 @@ int BPF_PROG(inet_accept, struct socket *sock,
 	u16 family = newsock->sk->__sk_common.skc_family;
 	if (family != AF_INET && family != AF_INET6)
 		return 0;
-	// if (is_sk_v4_loopback(newsock->sk))
-	// 	return 0;
 
 	struct conn_event *conn_event = NULL;
 	conn_event = bpf_ringbuf_reserve(&conn_events, sizeof(struct conn_event), 0);
@@ -150,18 +138,14 @@ int BPF_PROG(fentry_sock_recvmsg, struct socket *sock, struct msghdr *msg, int f
 	return 0;
 }
 
-static __always_inline void submit_data_event(const char *msg, size_t size, 
-												struct conn_info *conn_info, enum direction_type direction, int ret,
-												u64 nr_segs, u32 count, u32 iov_offset, u32 iov_idx) {
+static __always_inline void submit_data_event(const char *msg, size_t size, struct conn_info *conn_info, enum direction direction, u64 timestamp) {
 	
 	struct data_event *event = bpf_ringbuf_reserve(&data_events, sizeof(struct data_event), 0);
 	if (event != NULL) {
 		event->sock_key = conn_info->sock_key;
-
-		// direction	msg
-		// ingress(0)	request(0)
-		// egress(1)	response(1)
-		event->msg_type = direction == ingress ? request : response;
+		event->timestamp = timestamp;
+		event->flow_type = direction == INGRESS ? REQUEST : RESPONSE;
+		event->protocol = conn_info->protocol;
 
 		size_t to_copy = size;
 		if (to_copy > MAX_MSG_SIZE)
@@ -173,7 +157,7 @@ static __always_inline void submit_data_event(const char *msg, size_t size,
 	}	
 }
 
-static __always_inline void copy_data_from_iov_iter(struct iov_iter *iter, size_t size, struct conn_info *conn_info, enum direction_type direction, int ret) {
+static __always_inline void copy_data_from_iov_iter(struct iov_iter *iter, size_t size, struct conn_info *conn_info, enum direction direction, u64 timestamp) {
 	
 	if (iter->count == 0) 
 		return ;
@@ -192,21 +176,12 @@ static __always_inline void copy_data_from_iov_iter(struct iov_iter *iter, size_
 		if (to_copy > iov.iov_len)
 			to_copy = iov.iov_len;
 		
-		submit_data_event(iov.iov_base, 
-					to_copy,
-					conn_info,
-					direction, 
-					ret,
-					iter->nr_segs,
-					iter->count,
-					iter->iov_offset,
-					i);
+		submit_data_event(iov.iov_base, to_copy, conn_info, direction, timestamp);
 
 		remained -= to_copy;
 		if (remained <= 0)
 			break;
 	}
-
 }
 
 SEC("fexit/sock_recvmsg")
@@ -226,7 +201,7 @@ int BPF_PROG(fexit_sock_recvmsg, struct socket *sock, struct msghdr *msg, int fl
 	if (recvmsg_arg == NULL)
 		return 0;
 
-	copy_data_from_iov_iter(&(recvmsg_arg->iter), ret, conn_info, ingress, ret);
+	copy_data_from_iov_iter(&(recvmsg_arg->iter), ret, conn_info, INGRESS, bpf_ktime_get_ns());
 
 	conn_info->recv_bytes += ret;
 	bpf_map_update_elem(&conn_info_map, &conn_info->sock_key, conn_info, BPF_ANY);
@@ -249,7 +224,7 @@ int BPF_PROG(fentry_sock_sendmsg, struct socket *sock, struct msghdr *msg) {
 		return 0;
 
 	size_t size = msg->msg_iter.count;
-	copy_data_from_iov_iter(&(msg->msg_iter), size, conn_info, egress, 0);
+	copy_data_from_iov_iter(&(msg->msg_iter), size, conn_info, EGRESS, bpf_ktime_get_ns());
 
 	conn_info->send_bytes += size;
 	bpf_map_update_elem(&conn_info_map, &conn_info->sock_key, conn_info, BPF_ANY);

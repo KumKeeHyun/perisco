@@ -1,6 +1,7 @@
 package main
 
 import (
+	"flag"
 	"fmt"
 	"io/ioutil"
 	"log"
@@ -9,6 +10,13 @@ import (
 )
 
 func main() {
+	ipVersion := flag.String("ip", "ipv4", "ipv4, ipv6")
+	flag.Parse()
+
+	if *ipVersion != "ipv4" && *ipVersion != "ipv6" {
+		panic("invalid ipVersion")
+	}
+
 	mux := http.NewServeMux()
 
 	mux.HandleFunc("/greet", func(w http.ResponseWriter, r *http.Request) {
@@ -37,11 +45,16 @@ func main() {
 		http.Redirect(w, r, "/greet", http.StatusFound)
 	})
 
-	l, err := net.Listen("tcp4", ":8880")
+	var l net.Listener
+	var err error
+	if *ipVersion == "ipv4" {
+		l, err = net.Listen("tcp4", ":8880")
+	} else if *ipVersion == "ipv6" {
+		l, err = net.Listen("tcp6", ":8880")
+	}
 	if err != nil {
 		log.Fatal(err)
 	}
 	http.Serve(l, mux)
 
-	// http.ListenAndServe("0.0.0.0:8880", mux)
 }

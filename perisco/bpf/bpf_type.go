@@ -5,16 +5,6 @@ import (
 	"net"
 )
 
-type BpfCloseEvent struct {
-	SockKey   BpfSockKey
-	SendBytes uint64
-	RecvBytes uint64
-}
-
-type BpfConnEvent struct {
-	SockKey BpfSockKey
-}
-
 type FlowType int32
 
 const (
@@ -73,6 +63,21 @@ type BpfDataEvent struct {
 	MsgSize   uint32
 	_         [4]byte
 }
+
+type BpfIpNetwork struct {
+	IpAddr [16]byte
+	IpMask [16]byte
+}
+
+type BpfIpNetworks struct {
+	Data [5]BpfIpNetwork
+	Size uint32
+}
+
+const (
+	NET_FILTER_KEY uint32 = 0
+)
+
 
 type IpVersion int32
 

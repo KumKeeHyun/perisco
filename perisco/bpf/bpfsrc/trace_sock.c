@@ -8,6 +8,15 @@
 char LICENSE[] SEC("license") = "Dual BSD/GPL";
 
 struct {
+	__uint(type, BPF_MAP_TYPE_ARRAY);
+	__type(key, u32);
+	__type(value, struct ip_networks);
+	__uint(max_entries, 1);
+} network_filter SEC(".maps");
+
+const u32 net_filter_key = 0;
+
+struct {
 	__uint(type, BPF_MAP_TYPE_HASH);
 	__type(key, struct sock_key);
 	__type(value, struct recvmsg_arg);
@@ -45,6 +54,34 @@ static __always_inline void extract_sock_key(const struct sock *sk,
 	key->pid = bpf_get_current_pid_tgid() >> 32;
 }
 
+static __always_inline bool is_in_net(const struct sock_key *key, const struct ip_network *ip_net) {
+	#pragma unroll
+	for (int i = 0; i < 16; i++) {
+		if ((key->ip.source[i]&ip_net->ip_mask[i]) != ip_net->ip_addr[i])
+			return false;
+	}
+	return true;
+}
+
+static __always_inline bool is_in_net_filter(const struct sock_key *key) {
+
+	struct ip_networks *networks = bpf_map_lookup_elem(&network_filter, &net_filter_key);
+	if (networks == NULL) 
+		return true;
+
+	#pragma unroll
+	for (int i = 0; i < MAX_NET_FILTER_SIZE; i++) {
+		if (i == networks->size) {
+			// if network filter is empty, allow all IPs.
+			if (networks->size == 0) return true;
+			else return false;
+		}
+		if (is_in_net(key, networks->data + i)) 
+			return true;
+	}
+	return false;
+}
+
 SEC("fentry/sock_recvmsg")
 int BPF_PROG(fentry_sock_recvmsg, struct socket *sock, struct msghdr *msg, int flags) {
 
@@ -56,12 +93,16 @@ int BPF_PROG(fentry_sock_recvmsg, struct socket *sock, struct msghdr *msg, int f
 
 	struct sock_key sk_key = {};
 	extract_sock_key(sk, &sk_key);
-	
+
+	if (!is_in_net_filter(&sk_key))
+		return 0;
+
 	struct recvmsg_arg recvmsg_arg = {};
 	bpf_probe_read(&(recvmsg_arg.iter), sizeof(struct iov_iter), &(msg->msg_iter));
 
 	bpf_map_update_elem(&recvmsg_arg_map, &sk_key, &recvmsg_arg, BPF_NOEXIST);
 
+	
 	return 0;
 }
 
@@ -150,6 +191,9 @@ int BPF_PROG(fentry_sock_sendmsg, struct socket *sock, struct msghdr *msg) {
 
 	struct sock_key sk_key = {};
 	extract_sock_key(sk, &sk_key);
+
+	if (!is_in_net_filter(&sk_key))
+		return 0;
 
 	size_t size = msg->msg_iter.count;
 	copy_data_from_iov_iter(&(msg->msg_iter), size, &sk_key, bpf_ktime_get_ns(), PROTO_UNKNOWN, EGRESS);

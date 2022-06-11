@@ -29,6 +29,16 @@ type bpfIp struct {
 	IpVersion   int32
 }
 
+type bpfIpNetwork struct {
+	IpAddr [16]int8
+	IpMask [16]int8
+}
+
+type bpfIpNetworks struct {
+	Data [5]bpfIpNetwork
+	Size uint32
+}
+
 type bpfLayer4 struct {
 	SourcePort      uint32
 	DestinationPort uint32
@@ -91,6 +101,7 @@ type bpfProgramSpecs struct {
 // It can be passed ebpf.CollectionSpec.Assign.
 type bpfMapSpecs struct {
 	DataEvents    *ebpf.MapSpec `ebpf:"data_events"`
+	NetworkFilter *ebpf.MapSpec `ebpf:"network_filter"`
 	RecvmsgArgMap *ebpf.MapSpec `ebpf:"recvmsg_arg_map"`
 }
 
@@ -114,12 +125,14 @@ func (o *bpfObjects) Close() error {
 // It can be passed to loadBpfObjects or ebpf.CollectionSpec.LoadAndAssign.
 type bpfMaps struct {
 	DataEvents    *ebpf.Map `ebpf:"data_events"`
+	NetworkFilter *ebpf.Map `ebpf:"network_filter"`
 	RecvmsgArgMap *ebpf.Map `ebpf:"recvmsg_arg_map"`
 }
 
 func (m *bpfMaps) Close() error {
 	return _BpfClose(
 		m.DataEvents,
+		m.NetworkFilter,
 		m.RecvmsgArgMap,
 	)
 }

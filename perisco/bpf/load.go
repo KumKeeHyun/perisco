@@ -5,12 +5,18 @@ import (
 	"encoding/binary"
 	"errors"
 	"log"
+	"runtime"
+	"sync"
 
 	"github.com/cilium/ebpf/link"
 	"github.com/cilium/ebpf/ringbuf"
 )
 
-func LoadBpfProgram() (chan BpfDataEvent, func()) {
+var dataEventPool = sync.Pool{
+	New: func() interface{} { return &BpfDataEvent{} },
+}
+
+func LoadBpfProgram() (chan *BpfDataEvent, func()) {
 	objs := bpfObjects{}
 	if err := loadBpfObjects(&objs, nil); err != nil {
 		log.Fatalf("loading objects: %v", err)
@@ -40,9 +46,8 @@ func LoadBpfProgram() (chan BpfDataEvent, func()) {
 	if err != nil {
 		log.Fatalf("opening dataEvent ringbuf reader: %s", err)
 	}
-	dataCh := make(chan BpfDataEvent)
+	dataCh := make(chan *BpfDataEvent)
 	go func() {
-		var dataEvent BpfDataEvent
 		for {
 			record, err := dataRb.Read()
 			if err != nil {
@@ -54,10 +59,14 @@ func LoadBpfProgram() (chan BpfDataEvent, func()) {
 				continue
 			}
 
-			if err := binary.Read(bytes.NewBuffer(record.RawSample), binary.LittleEndian, &dataEvent); err != nil {
+			dataEvent := dataEventPool.Get().(*BpfDataEvent)
+			if err := binary.Read(bytes.NewBuffer(record.RawSample), binary.LittleEndian, dataEvent); err != nil {
 				log.Printf("parsing closeEvent ringbuf event: %s", err)
 				continue
 			}
+			runtime.SetFinalizer(dataEvent, func (obj interface{})  {
+				dataEventPool.Put(obj)
+			})
 
 			dataCh <- dataEvent
 		}
@@ -65,7 +74,7 @@ func LoadBpfProgram() (chan BpfDataEvent, func()) {
 
 	return dataCh, func() {
 		dataRb.Close()
-		
+
 		fentrySockSendmsg.Close()
 		fexitSockRecvmsg.Close()
 		fentrySockRecvmsg.Close()

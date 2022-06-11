@@ -25,7 +25,7 @@ func main() {
 
 	dataCh, clean := bpf.LoadBpfProgram()
 	defer clean()
-	
+
 	go func() {
 		for {
 			select {
@@ -36,8 +36,8 @@ func main() {
 				// }
 
 				// rawLogging(&dataEvent)
-				parseProto(&dataEvent, &protocols.Http1Parser{})
-				parseProto(&dataEvent, &protocols.Http2Parser{})
+				parseProto(dataEvent, &protocols.Http1Parser{})
+				parseProto(dataEvent, &protocols.Http2Parser{})
 
 			case <-ctx.Done():
 				return
@@ -64,7 +64,7 @@ func parseProto(event *bpf.BpfDataEvent, parser protocols.Parser) {
 			return
 		}
 
-		log.Printf("%s  %-10s\n %s\n",
+		log.Printf("%s  %-10s\n %s\n\n",
 			event.SockKey.String(),
 			event.FlowType.String(),
 			req.String(),
@@ -75,7 +75,7 @@ func parseProto(event *bpf.BpfDataEvent, parser protocols.Parser) {
 			return
 		}
 
-		log.Printf("%s  %-10s\n %s\n",
+		log.Printf("%s  %-10s\n %s\n\n",
 			event.SockKey.String(),
 			event.FlowType.String(),
 			resp.String(),

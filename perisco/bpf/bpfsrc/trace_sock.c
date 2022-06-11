@@ -10,23 +10,6 @@ char LICENSE[] SEC("license") = "Dual BSD/GPL";
 struct {
 	__uint(type, BPF_MAP_TYPE_HASH);
 	__type(key, struct sock_key);
-	__type(value, struct conn_info);
-	__uint(max_entries, 1024);
-} conn_info_map SEC(".maps");
-
-struct {
-	__uint(type, BPF_MAP_TYPE_RINGBUF);
-	__uint(max_entries, 256 * 1024);
-} conn_events SEC(".maps");
-
-struct {
-	__uint(type, BPF_MAP_TYPE_RINGBUF);
-	__uint(max_entries, 256 * 1024);
-} close_events SEC(".maps");
-
-struct {
-	__uint(type, BPF_MAP_TYPE_HASH);
-	__type(key, struct sock_key);
 	__type(value, struct recvmsg_arg);
 	__uint(max_entries, 1024);
 } recvmsg_arg_map SEC(".maps");
@@ -36,18 +19,14 @@ struct {
 	__uint(max_entries, 256 * 4096);
 } data_events SEC(".maps");
 
-// static __always_inline bool is_v4_loopback(__u32 addr)
-// {
-// 	/* Check for 127.0.0.0/8 range, RFC3330. */
-// 	return (addr & bpf_htonl(0x7f000000)) == bpf_htonl(0x7f000000);
-// }
+static __always_inline bool is_inet_conn(const struct sock *sk) {
+	u16 family = sk->__sk_common.skc_family;
+	if (family != AF_INET && family != AF_INET6)
+		return false;
+	return true;
+}
 
-// static __always_inline bool is_sk_v4_loopback(const struct sock *sk)
-// {
-// 	return is_v4_loopback(sk->__sk_common.skc_rcv_saddr) || is_v4_loopback(sk->__sk_common.skc_daddr);
-// }
-
-static __always_inline void sk_extract_key(const struct sock *sk,
+static __always_inline void extract_sock_key(const struct sock *sk,
 					    struct sock_key *key)
 {
 	if (sk->__sk_common.skc_family == AF_INET) {
@@ -66,69 +45,17 @@ static __always_inline void sk_extract_key(const struct sock *sk,
 	key->pid = bpf_get_current_pid_tgid() >> 32;
 }
 
-SEC("fexit/inet_accept")
-int BPF_PROG(inet_accept, struct socket *sock,
-				      struct socket *newsock, int flags, bool kern, long ret) {
-	if (ret < 0)
-		return 0;
-	
-	u16 family = newsock->sk->__sk_common.skc_family;
-	if (family != AF_INET && family != AF_INET6)
-		return 0;
-
-	struct conn_event *conn_event = NULL;
-	conn_event = bpf_ringbuf_reserve(&conn_events, sizeof(struct conn_event), 0);
-	if (!conn_event)
-		return 0;
-
-	sk_extract_key(newsock->sk, &conn_event->sock_key);
-
-	struct conn_info conn_info = {};
-	conn_info.sock_key = conn_event->sock_key;
-	bpf_map_update_elem(&conn_info_map, &conn_info.sock_key, &conn_info, BPF_ANY);
-	
-	bpf_ringbuf_submit(conn_event, 0);
-
-	return 0;
-}
-
-SEC("fexit/inet_shutdown")
-int BPF_PROG(inet_shutdown, struct socket *sock, int how, long ret) {
-	if (ret < 0)
-		return 0;
-
-	struct sock *sk = sock->sk;
-	struct sock_key sk_key = {};
-	sk_extract_key(sk, &sk_key);
-
-	struct conn_info *conn_info = bpf_map_lookup_elem(&conn_info_map, &sk_key);
-	if (conn_info == NULL)
-		return 0;
-	
-	struct close_event *close_event = bpf_ringbuf_reserve(&close_events, sizeof(struct close_event), 0);
-	if (close_event == NULL)
-		return 0;
-	
-	close_event->sock_key = conn_info->sock_key;
-	close_event->send_bytes = conn_info->send_bytes;
-	close_event->recv_bytes = conn_info->recv_bytes;
-	bpf_ringbuf_submit(close_event, 0);
-
-	bpf_map_delete_elem(&conn_info_map, &sk_key);
-
-	return 0;
-}
-
 SEC("fentry/sock_recvmsg")
 int BPF_PROG(fentry_sock_recvmsg, struct socket *sock, struct msghdr *msg, int flags) {
 
 	struct sock *sk = sock->sk;
-	struct sock_key sk_key = {};
-	sk_extract_key(sk, &sk_key);
-
-	struct conn_info *conn_info = bpf_map_lookup_elem(&conn_info_map, &sk_key);
-	if (conn_info == NULL)
+	if (!is_inet_conn(sk))
 		return 0;
+	
+	// check blacklist
+
+	struct sock_key sk_key = {};
+	extract_sock_key(sk, &sk_key);
 	
 	struct recvmsg_arg recvmsg_arg = {};
 	bpf_probe_read(&(recvmsg_arg.iter), sizeof(struct iov_iter), &(msg->msg_iter));
@@ -138,14 +65,16 @@ int BPF_PROG(fentry_sock_recvmsg, struct socket *sock, struct msghdr *msg, int f
 	return 0;
 }
 
-static __always_inline void submit_data_event(const char *msg, size_t size, struct conn_info *conn_info, enum direction direction, u64 timestamp) {
+static __always_inline 
+void submit_data_event
+(const char *msg, size_t size, struct sock_key *key, u64 timestamp, enum protocol_type protocol, enum direction direction) {
 	
 	struct data_event *event = bpf_ringbuf_reserve(&data_events, sizeof(struct data_event), 0);
 	if (event != NULL) {
-		event->sock_key = conn_info->sock_key;
+		event->sock_key = *key;
 		event->timestamp = timestamp;
+		event->protocol = protocol;
 		event->flow_type = direction == INGRESS ? REQUEST : RESPONSE;
-		event->protocol = conn_info->protocol;
 
 		size_t to_copy = size;
 		if (to_copy > MAX_MSG_SIZE)
@@ -157,7 +86,9 @@ static __always_inline void submit_data_event(const char *msg, size_t size, stru
 	}	
 }
 
-static __always_inline void copy_data_from_iov_iter(struct iov_iter *iter, size_t size, struct conn_info *conn_info, enum direction direction, u64 timestamp) {
+static __always_inline 
+void copy_data_from_iov_iter
+(struct iov_iter *iter, size_t size, struct sock_key *key, u64 timestamp, enum protocol_type protocol, enum direction direction) {
 	
 	if (iter->count == 0) 
 		return ;
@@ -176,7 +107,7 @@ static __always_inline void copy_data_from_iov_iter(struct iov_iter *iter, size_
 		if (to_copy > iov.iov_len)
 			to_copy = iov.iov_len;
 		
-		submit_data_event(iov.iov_base, to_copy, conn_info, direction, timestamp);
+		submit_data_event(iov.iov_base, to_copy, key, timestamp, protocol, direction);
 
 		remained -= to_copy;
 		if (remained <= 0)
@@ -192,19 +123,15 @@ int BPF_PROG(fexit_sock_recvmsg, struct socket *sock, struct msghdr *msg, int fl
 
 	struct sock *sk = sock->sk;
 	struct sock_key sk_key = {};
-	sk_extract_key(sk, &sk_key);
+	extract_sock_key(sk, &sk_key);
 
-	struct conn_info *conn_info = bpf_map_lookup_elem(&conn_info_map, &sk_key);
-	if (conn_info == NULL)
-		return 0;
 	struct recvmsg_arg *recvmsg_arg = bpf_map_lookup_elem(&recvmsg_arg_map, &sk_key);
 	if (recvmsg_arg == NULL)
 		return 0;
+	
+	// check protocol table
 
-	copy_data_from_iov_iter(&(recvmsg_arg->iter), ret, conn_info, INGRESS, bpf_ktime_get_ns());
-
-	conn_info->recv_bytes += ret;
-	bpf_map_update_elem(&conn_info_map, &conn_info->sock_key, conn_info, BPF_ANY);
+	copy_data_from_iov_iter(&(recvmsg_arg->iter), ret, &sk_key, bpf_ktime_get_ns(), PROTO_UNKNOWN, INGRESS);
 
 	bpf_map_delete_elem(&recvmsg_arg_map, &sk_key);
 
@@ -216,18 +143,16 @@ SEC("fentry/sock_sendmsg")
 int BPF_PROG(fentry_sock_sendmsg, struct socket *sock, struct msghdr *msg) {
 
 	struct sock *sk = sock->sk;
-	struct sock_key sk_key = {};
-	sk_extract_key(sk, &sk_key);
-
-	struct conn_info *conn_info = bpf_map_lookup_elem(&conn_info_map, &sk_key);
-	if (conn_info == NULL)
+	if (!is_inet_conn(sk))
 		return 0;
+	
+	// check blacklist
+
+	struct sock_key sk_key = {};
+	extract_sock_key(sk, &sk_key);
 
 	size_t size = msg->msg_iter.count;
-	copy_data_from_iov_iter(&(msg->msg_iter), size, conn_info, EGRESS, bpf_ktime_get_ns());
-
-	conn_info->send_bytes += size;
-	bpf_map_update_elem(&conn_info_map, &conn_info->sock_key, conn_info, BPF_ANY);
+	copy_data_from_iov_iter(&(msg->msg_iter), size, &sk_key, bpf_ktime_get_ns(), PROTO_UNKNOWN, EGRESS);
 
 	return 0;
 }

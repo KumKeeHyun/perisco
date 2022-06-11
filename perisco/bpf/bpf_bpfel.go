@@ -13,14 +13,6 @@ import (
 	"github.com/cilium/ebpf"
 )
 
-type bpfCloseEvent struct {
-	SockKey   bpfSockKey
-	SendBytes uint64
-	RecvBytes uint64
-}
-
-type bpfConnEvent struct{ SockKey bpfSockKey }
-
 type bpfDataEvent struct {
 	Msg       [4096]int8
 	SockKey   bpfSockKey
@@ -92,17 +84,12 @@ type bpfProgramSpecs struct {
 	FentrySockRecvmsg *ebpf.ProgramSpec `ebpf:"fentry_sock_recvmsg"`
 	FentrySockSendmsg *ebpf.ProgramSpec `ebpf:"fentry_sock_sendmsg"`
 	FexitSockRecvmsg  *ebpf.ProgramSpec `ebpf:"fexit_sock_recvmsg"`
-	InetAccept        *ebpf.ProgramSpec `ebpf:"inet_accept"`
-	InetShutdown      *ebpf.ProgramSpec `ebpf:"inet_shutdown"`
 }
 
 // bpfMapSpecs contains maps before they are loaded into the kernel.
 //
 // It can be passed ebpf.CollectionSpec.Assign.
 type bpfMapSpecs struct {
-	CloseEvents   *ebpf.MapSpec `ebpf:"close_events"`
-	ConnEvents    *ebpf.MapSpec `ebpf:"conn_events"`
-	ConnInfoMap   *ebpf.MapSpec `ebpf:"conn_info_map"`
 	DataEvents    *ebpf.MapSpec `ebpf:"data_events"`
 	RecvmsgArgMap *ebpf.MapSpec `ebpf:"recvmsg_arg_map"`
 }
@@ -126,18 +113,12 @@ func (o *bpfObjects) Close() error {
 //
 // It can be passed to loadBpfObjects or ebpf.CollectionSpec.LoadAndAssign.
 type bpfMaps struct {
-	CloseEvents   *ebpf.Map `ebpf:"close_events"`
-	ConnEvents    *ebpf.Map `ebpf:"conn_events"`
-	ConnInfoMap   *ebpf.Map `ebpf:"conn_info_map"`
 	DataEvents    *ebpf.Map `ebpf:"data_events"`
 	RecvmsgArgMap *ebpf.Map `ebpf:"recvmsg_arg_map"`
 }
 
 func (m *bpfMaps) Close() error {
 	return _BpfClose(
-		m.CloseEvents,
-		m.ConnEvents,
-		m.ConnInfoMap,
 		m.DataEvents,
 		m.RecvmsgArgMap,
 	)
@@ -150,8 +131,6 @@ type bpfPrograms struct {
 	FentrySockRecvmsg *ebpf.Program `ebpf:"fentry_sock_recvmsg"`
 	FentrySockSendmsg *ebpf.Program `ebpf:"fentry_sock_sendmsg"`
 	FexitSockRecvmsg  *ebpf.Program `ebpf:"fexit_sock_recvmsg"`
-	InetAccept        *ebpf.Program `ebpf:"inet_accept"`
-	InetShutdown      *ebpf.Program `ebpf:"inet_shutdown"`
 }
 
 func (p *bpfPrograms) Close() error {
@@ -159,8 +138,6 @@ func (p *bpfPrograms) Close() error {
 		p.FentrySockRecvmsg,
 		p.FentrySockSendmsg,
 		p.FexitSockRecvmsg,
-		p.InetAccept,
-		p.InetShutdown,
 	)
 }
 

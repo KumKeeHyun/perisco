@@ -43,25 +43,6 @@ enum protocol_type {
 	RESERVED5
 };
 
-struct conn_info {
-  	struct sock_key sock_key;
-	enum protocol_type protocol;
-	u64 send_bytes;
-	u64 recv_bytes;
-};
-
-struct conn_event {
-  	struct sock_key sock_key;
-};
-struct conn_event *unused_conn_event __attribute__((unused));
-
-struct close_event {
-	struct sock_key sock_key;
-	u64 send_bytes;
-	u64 recv_bytes;
-};
-struct close_event *unused_close_event __attribute__((unused));
-
 struct recvmsg_arg {
 	struct iov_iter iter;
 };

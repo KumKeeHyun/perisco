@@ -23,39 +23,9 @@ func main() {
 		syscall.SIGTERM)
 	defer cancel()
 
-	connCh, closeCh, dataCh, clean := bpf.LoadBpfProgram()
+	dataCh, clean := bpf.LoadBpfProgram()
 	defer clean()
-
-	go func() {
-		for {
-			select {
-			case connEvent := <-connCh:
-				log.Printf("%s  %-10s",
-					connEvent.SockKey.String(),
-					"CONN",
-				)
-			case <-ctx.Done():
-				return
-			}
-		}
-	}()
-
-	go func() {
-		for {
-			select {
-			case closeEvent := <-closeCh:
-				log.Printf("%s  %-10s  %-10d %-10d ",
-					closeEvent.SockKey.String(),
-					"CLOSE",
-					closeEvent.SendBytes,
-					closeEvent.RecvBytes,
-				)
-			case <-ctx.Done():
-				return
-			}
-		}
-	}()
-
+	
 	go func() {
 		for {
 			select {

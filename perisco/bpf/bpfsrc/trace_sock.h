@@ -49,6 +49,7 @@ enum direction { DIR_UNKNOWN, INGRESS, EGRESS };
 
 enum protocol_type {
 	PROTO_UNKNOWN,
+	PROTO_SKIP,
 
 	HTTP1,
 	HTTP2,

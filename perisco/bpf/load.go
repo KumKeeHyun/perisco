@@ -8,6 +8,7 @@ import (
 	"runtime"
 	"sync"
 
+	"github.com/cilium/ebpf"
 	"github.com/cilium/ebpf/link"
 	"github.com/cilium/ebpf/ringbuf"
 )
@@ -16,7 +17,7 @@ var dataEventPool = sync.Pool{
 	New: func() interface{} { return &BpfDataEvent{} },
 }
 
-func LoadBpfProgram() (chan *BpfDataEvent, func()) {
+func LoadBpfProgram() (chan *BpfDataEvent, *ebpf.Map, func()) {
 	objs := bpfObjects{}
 	if err := loadBpfObjects(&objs, nil); err != nil {
 		log.Fatalf("loading objects: %v", err)
@@ -72,12 +73,13 @@ func LoadBpfProgram() (chan *BpfDataEvent, func()) {
 		}
 	}()
 
-	return dataCh, func() {
+	return dataCh, objs.NetworkFilter, func() {
 		dataRb.Close()
 
 		fentrySockSendmsg.Close()
 		fexitSockRecvmsg.Close()
 		fentrySockRecvmsg.Close()
+
 		objs.Close()
 	}
 }

@@ -8,11 +8,18 @@ import (
 	"syscall"
 
 	"github.com/KumKeeHyun/perisco/perisco/bpf"
+	"github.com/KumKeeHyun/perisco/perisco/config"
 	"github.com/KumKeeHyun/perisco/pkg/protocols"
 	"github.com/cilium/ebpf/rlimit"
 )
 
 func main() {
+
+	config, err := config.LoadConfig()
+	if err != nil {
+		log.Fatal(err)
+	}
+
 	if err := rlimit.RemoveMemlock(); err != nil {
 		log.Fatal(err)
 	}
@@ -23,17 +30,21 @@ func main() {
 		syscall.SIGTERM)
 	defer cancel()
 
-	dataCh, clean := bpf.LoadBpfProgram()
+	dataCh, netFilterMap, clean := bpf.LoadBpfProgram()
 	defer clean()
+
+	nf := bpf.NewNetworkFilter(netFilterMap)
+	defer nf.Close()
+
+	if err := nf.Update(config.CidrSlice()); err != nil {
+		log.Fatal(err)
+	}
+	log.Printf("network filter: %v", config.CidrSlice())
 
 	go func() {
 		for {
 			select {
 			case dataEvent := <-dataCh:
-				// filter response
-				// if dataEvent.MsgType != 0 {
-				// 	continue
-				// }
 
 				// rawLogging(&dataEvent)
 				parseProto(dataEvent, &protocols.Http1Parser{})

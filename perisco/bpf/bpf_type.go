@@ -30,6 +30,7 @@ type ProtocolType int32
 
 const (
 	PROTO_UNKNOWN ProtocolType = iota
+	PROTO_SKIP
 
 	HTTP1
 	HTTP2
@@ -74,9 +75,9 @@ type BpfIpNetworks struct {
 	Size uint32
 }
 
-const (
-	NET_FILTER_KEY uint32 = 0
-)
+const MAX_NET_FILTER_SIZE = 5
+var	NET_FILTER_KEY uint32 = 0
+
 
 
 type IpVersion int32

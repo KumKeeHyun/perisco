@@ -18,6 +18,13 @@ const u32 net_filter_key = 0;
 
 struct {
 	__uint(type, BPF_MAP_TYPE_HASH);
+	__type(key, struct endpoint_key);
+	__type(value, enum protocol_type);
+	__uint(max_entries, 1024);
+} protocol_map SEC(".maps");
+
+struct {
+	__uint(type, BPF_MAP_TYPE_HASH);
 	__type(key, struct sock_key);
 	__type(value, struct recvmsg_arg);
 	__uint(max_entries, 1024);
@@ -54,7 +61,8 @@ static __always_inline void extract_sock_key(const struct sock *sk,
 	key->pid = bpf_get_current_pid_tgid() >> 32;
 }
 
-static __always_inline bool is_in_net(const struct sock_key *key, const struct ip_network *ip_net) {
+static __always_inline 
+bool is_in_net(const struct sock_key *key, const struct ip_network *ip_net) {
 	#pragma unroll
 	for (int i = 0; i < 16; i++) {
 		if ((key->ip.source[i]&ip_net->ip_mask[i]) != ip_net->ip_addr[i])
@@ -63,7 +71,8 @@ static __always_inline bool is_in_net(const struct sock_key *key, const struct i
 	return true;
 }
 
-static __always_inline bool is_in_net_filter(const struct sock_key *key) {
+static __always_inline 
+bool is_in_net_filter(const struct sock_key *key) {
 
 	struct ip_networks *networks = bpf_map_lookup_elem(&network_filter, &net_filter_key);
 	if (networks == NULL) 
@@ -82,6 +91,24 @@ static __always_inline bool is_in_net_filter(const struct sock_key *key) {
 	return false;
 }
 
+static __always_inline 
+void sock_key_to_endpoint_key(struct sock_key *sk_key, struct endpoint_key *ep_key) {
+	bpf_probe_read(ep_key->ip_addr, 16, sk_key->ip.source);
+	ep_key->ip_version = sk_key->ip.ip_version;
+	ep_key->port = sk_key->l4.source_port;
+}
+
+static __always_inline 
+enum protocol_type lookup_protocol(struct sock_key *key) {
+	struct endpoint_key ep_key;
+	sock_key_to_endpoint_key(key, &ep_key);
+
+	enum protocol_type *protocol = bpf_map_lookup_elem(&protocol_map, &ep_key);
+	if (protocol == NULL)
+		return PROTO_UNKNOWN;
+	return *protocol;
+}
+
 SEC("fentry/sock_recvmsg")
 int BPF_PROG(fentry_sock_recvmsg, struct socket *sock, struct msghdr *msg, int flags) {
 
@@ -96,12 +123,12 @@ int BPF_PROG(fentry_sock_recvmsg, struct socket *sock, struct msghdr *msg, int f
 
 	if (!is_in_net_filter(&sk_key))
 		return 0;
-
+	
 	struct recvmsg_arg recvmsg_arg = {};
 	bpf_probe_read(&(recvmsg_arg.iter), sizeof(struct iov_iter), &(msg->msg_iter));
+	recvmsg_arg.protocol = lookup_protocol(&sk_key);;
 
 	bpf_map_update_elem(&recvmsg_arg_map, &sk_key, &recvmsg_arg, BPF_NOEXIST);
-
 	
 	return 0;
 }
@@ -172,7 +199,7 @@ int BPF_PROG(fexit_sock_recvmsg, struct socket *sock, struct msghdr *msg, int fl
 	
 	// check protocol table
 
-	copy_data_from_iov_iter(&(recvmsg_arg->iter), ret, &sk_key, bpf_ktime_get_ns(), PROTO_UNKNOWN, INGRESS);
+	copy_data_from_iov_iter(&(recvmsg_arg->iter), ret, &sk_key, bpf_ktime_get_ns(), recvmsg_arg->protocol, INGRESS);
 
 	bpf_map_delete_elem(&recvmsg_arg_map, &sk_key);
 
@@ -194,9 +221,11 @@ int BPF_PROG(fentry_sock_sendmsg, struct socket *sock, struct msghdr *msg) {
 
 	if (!is_in_net_filter(&sk_key))
 		return 0;
+	
+	enum protocol_type protocol = lookup_protocol(&sk_key);
 
 	size_t size = msg->msg_iter.count;
-	copy_data_from_iov_iter(&(msg->msg_iter), size, &sk_key, bpf_ktime_get_ns(), PROTO_UNKNOWN, EGRESS);
+	copy_data_from_iov_iter(&(msg->msg_iter), size, &sk_key, bpf_ktime_get_ns(), protocol, EGRESS);
 
 	return 0;
 }

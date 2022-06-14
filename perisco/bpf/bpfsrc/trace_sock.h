@@ -43,6 +43,12 @@ struct ip_networks {
 	u32 size;
 };
 
+struct endpoint_key {
+	char ip_addr[16];
+	enum ip_version ip_version;
+	u32 port;
+};
+
 enum flow_type { FLOW_UNKNOWN, REQUEST, RESPONSE };
 
 enum direction { DIR_UNKNOWN, INGRESS, EGRESS };
@@ -63,6 +69,7 @@ enum protocol_type {
 
 struct recvmsg_arg {
 	struct iov_iter iter;
+	enum protocol_type protocol;
 };
 struct recvmsg_arg *unused_recvmsg_arg __attribute__((unused));
 

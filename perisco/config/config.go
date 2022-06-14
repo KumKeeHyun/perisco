@@ -19,7 +19,7 @@ func LoadConfig() (*Config, error) {
 	viper.SetEnvPrefix("perisco")
 
 	viper.BindEnv("cidrs")
-	viper.SetDefault("cidrs", "127.0.0.0/8")
+	viper.SetDefault("cidrs", "0.0.0.0/0")
 
 	viper.AutomaticEnv()
 

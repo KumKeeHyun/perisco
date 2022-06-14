@@ -23,6 +23,12 @@ type bpfDataEvent struct {
 	_         [4]byte
 }
 
+type bpfEndpointKey struct {
+	IpAddr    [16]int8
+	IpVersion int32
+	Port      uint32
+}
+
 type bpfIp struct {
 	Source      [16]int8
 	Destination [16]int8
@@ -102,6 +108,7 @@ type bpfProgramSpecs struct {
 type bpfMapSpecs struct {
 	DataEvents    *ebpf.MapSpec `ebpf:"data_events"`
 	NetworkFilter *ebpf.MapSpec `ebpf:"network_filter"`
+	ProtocolMap   *ebpf.MapSpec `ebpf:"protocol_map"`
 	RecvmsgArgMap *ebpf.MapSpec `ebpf:"recvmsg_arg_map"`
 }
 
@@ -126,6 +133,7 @@ func (o *bpfObjects) Close() error {
 type bpfMaps struct {
 	DataEvents    *ebpf.Map `ebpf:"data_events"`
 	NetworkFilter *ebpf.Map `ebpf:"network_filter"`
+	ProtocolMap   *ebpf.Map `ebpf:"protocol_map"`
 	RecvmsgArgMap *ebpf.Map `ebpf:"recvmsg_arg_map"`
 }
 
@@ -133,6 +141,7 @@ func (m *bpfMaps) Close() error {
 	return _BpfClose(
 		m.DataEvents,
 		m.NetworkFilter,
+		m.ProtocolMap,
 		m.RecvmsgArgMap,
 	)
 }

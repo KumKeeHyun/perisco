@@ -118,7 +118,7 @@ int BPF_PROG(fentry_sock_recvmsg, struct socket *sock, struct msghdr *msg, int f
 	
 	// check blacklist
 
-	struct sock_key sk_key = {};
+	struct sock_key sk_key = {0, };
 	extract_sock_key(sk, &sk_key);
 
 	if (!is_in_net_filter(&sk_key))
@@ -190,7 +190,7 @@ int BPF_PROG(fexit_sock_recvmsg, struct socket *sock, struct msghdr *msg, int fl
 		return 0;
 
 	struct sock *sk = sock->sk;
-	struct sock_key sk_key = {};
+	struct sock_key sk_key = {0, };
 	extract_sock_key(sk, &sk_key);
 
 	struct recvmsg_arg *recvmsg_arg = bpf_map_lookup_elem(&recvmsg_arg_map, &sk_key);
@@ -216,7 +216,7 @@ int BPF_PROG(fentry_sock_sendmsg, struct socket *sock, struct msghdr *msg) {
 	
 	// check blacklist
 
-	struct sock_key sk_key = {};
+	struct sock_key sk_key = {0, };
 	extract_sock_key(sk, &sk_key);
 
 	if (!is_in_net_filter(&sk_key))

@@ -1,62 +1,39 @@
-# The development version of clang is distributed as the 'clang' binary,
-# while stable/released versions have a version number attached.
-# Pin the default clang to a stable version.
 CLANG ?= clang-14
 STRIP ?= llvm-strip-14
 CFLAGS := -O2 -g -Wall -Werror $(CFLAGS)
 
-# Obtain an absolute path to the directory of the Makefile.
-# Assume the Makefile is in the root of the repository.
-REPODIR := $(shell dirname $(realpath $(firstword $(MAKEFILE_LIST))))/../..
+# path where go.mod is located
+REPODIR := $(realpath ../..)
 
-# Prefer podman if installed, otherwise use docker.
-# Note: Setting the var at runtime will always override.
-CONTAINER_ENGINE ?= docker
+# podman if installed, otherwise docker
+CONTAINER_ENGINE ?= $(if $(shell command -v podman), podman, docker)
 
-IMAGE := quay.io/cilium/ebpf-builder
-VERSION := 1648566014
+# ebpf-builder image
+BUILDER_IMAGE := $(shell cat EBPF_BUILDER_IMAGE)
 
-#.PHONY: all clean container-all container-shell generate
+.PHONY: container-build container-shell clean generate
 
-.DEFAULT_TARGET = container-all
+.DEFAULT_TARGET = container-build
 
-# Build all ELF binaries using a containerized LLVM toolchain.
-container-all:
+# Build ELF binaries using a containerized LLVM toolchain.
+container-build:
 	sudo ${CONTAINER_ENGINE} run --rm \
-		-v "${REPODIR}":/ebpf -w /ebpf/perisco/bpf --env MAKEFLAGS \
-		--env CFLAGS="-fdebug-prefix-map=/ebpf/perisco/bpf=." \
+		-v "${REPODIR}":/perisco -w /perisco/perisco/bpf --env MAKEFLAGS \
 		--env HOME="/tmp" \
-		"${IMAGE}:${VERSION}" \
-		$(MAKE) all
+		"${BUILDER_IMAGE}" \
+		$(MAKE) generate
 
-# (debug) Drop the user into a shell inside the container as root.
+# (debug) 
 container-shell:
 	sudo ${CONTAINER_ENGINE} run --rm -ti \
-		-v "${REPODIR}":/ebpf -w /ebpf \
-		"${IMAGE}:${VERSION}"
+		-v "${REPODIR}":/perisco -w /perisco \
+		"${BUILDER_IMAGE}"
 
 clean:
+	rm *.o
 
-
-all: generate
-
-# $BPF_CLANG is used in go:generate invocations.
+# BPF_CLANG, BPF_CFLAGS is used in go:generate invocations.
 generate: export BPF_CLANG := $(CLANG)
 generate: export BPF_CFLAGS := $(CFLAGS)
-generate: export BPF_FILES := /ebpf/perisco/bpf/bpfsrc/trace_sock.c
-generate: export BPF_HEADERS := /ebpf/perisco/bpf
 generate:
 	go generate .
-
-# BUILD_IMAGE := kbzjung359/perisco
-# BUILD_VERSION := 
-
-# build: container-all
-# 	sudo docker build -t ${BUILD_IMAGE}:${BUILD_VERSION} .
-
-# push:
-# 	sudo docker push "${BUILD_IMAGE}:${BUILD_VERSION}"
-
-# run:
-# 	sudo docker run --rm --privileged \
-# 		"${BUILD_IMAGE}:${BUILD_VERSION}"

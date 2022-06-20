@@ -1,5 +1,7 @@
 FROM golang:1.17.8-alpine AS builder
 
+RUN apk add --update make
+
 ENV GO111MODULE=on \
     CGO_ENABLED=0 \
     GOOS=linux \
@@ -7,13 +9,14 @@ ENV GO111MODULE=on \
 
 WORKDIR /build
 COPY . .
-RUN go mod download
+# RUN go mod download
 WORKDIR /build/perisco
-RUN go build -o main .
+RUN make bin-only
 
 WORKDIR /dist
-RUN cp /build/perisco/main .
-FROM alpine:latest
-COPY --from=builder /dist/main .
+RUN cp /build/perisco/perisco .
 
-ENTRYPOINT ["/main"]
+FROM alpine:latest
+COPY --from=builder /dist/perisco .
+
+ENTRYPOINT ["/perisco"]

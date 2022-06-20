@@ -17,7 +17,7 @@ BUILDER_IMAGE := $(shell cat EBPF_BUILDER_IMAGE)
 
 # Build ELF binaries using a containerized LLVM toolchain.
 container-build:
-	sudo ${CONTAINER_ENGINE} run --rm \
+	${CONTAINER_ENGINE} run --rm \
 		-v "${REPODIR}":/perisco -w /perisco/perisco/bpf --env MAKEFLAGS \
 		--env HOME="/tmp" \
 		"${BUILDER_IMAGE}" \
@@ -25,7 +25,7 @@ container-build:
 
 # (debug) 
 container-shell:
-	sudo ${CONTAINER_ENGINE} run --rm -ti \
+	${CONTAINER_ENGINE} run --rm -ti \
 		-v "${REPODIR}":/perisco -w /perisco \
 		"${BUILDER_IMAGE}"
 

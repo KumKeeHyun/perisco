@@ -1,16 +1,21 @@
 TARGET := perisco
 BPF_DIR := bpf
 
-.PHONY: all $(TARGET) clean run
+.PHONY: all $(TARGET) bpf bin-only clean run
 
 all: $(TARGET)
 
-$(TARGET):
-	make -C $(BPF_DIR)
+$(TARGET): bpf
 	go build -o $@
+
+bpf:
+	make -C $(BPF_DIR)
+
+bin-only:
+	go build -o $(TARGET)
 
 clean:
 	rm -f $(TARGET)
 
-run: $(TARGET)
+run: $(TARGET)-bin
 	sudo ./$(TARGET)

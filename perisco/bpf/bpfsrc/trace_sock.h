@@ -9,6 +9,9 @@
 #define AF_INET 2
 #define AF_INET6 10
 
+// #define SOCK_STREAM 1
+// #define SOCK_DGRAM 2
+
 #define MAX_MSG_SIZE 4096
 
 // 'unroll for loop'에서 스택 크기 제한으로 크기를 조절해야 함.
@@ -47,6 +50,7 @@ struct endpoint_key {
 	char ip_addr[16];
 	enum ip_version ip_version;
 	u32 port;
+	u32 pid;
 };
 
 enum flow_type { FLOW_UNKNOWN, REQUEST, RESPONSE };
@@ -67,11 +71,11 @@ enum protocol_type {
 	RESERVED5
 };
 
-struct recvmsg_arg {
+struct msg_arg {
 	struct iov_iter iter;
 	enum protocol_type protocol;
 };
-struct recvmsg_arg *unused_recvmsg_arg __attribute__((unused));
+struct msg_arg *unused_msg_arg __attribute__((unused));
 
 struct data_event {
 	char msg[MAX_MSG_SIZE];

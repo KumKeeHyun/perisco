@@ -27,6 +27,7 @@ type bpfEndpointKey struct {
 	IpAddr    [16]int8
 	IpVersion int32
 	Port      uint32
+	Pid       uint32
 }
 
 type bpfIp struct {
@@ -99,6 +100,7 @@ type bpfSpecs struct {
 type bpfProgramSpecs struct {
 	FentrySockRecvmsg *ebpf.ProgramSpec `ebpf:"fentry_sock_recvmsg"`
 	FentrySockSendmsg *ebpf.ProgramSpec `ebpf:"fentry_sock_sendmsg"`
+	FexitInetAccept   *ebpf.ProgramSpec `ebpf:"fexit_inet_accept"`
 	FexitSockRecvmsg  *ebpf.ProgramSpec `ebpf:"fexit_sock_recvmsg"`
 }
 
@@ -110,6 +112,7 @@ type bpfMapSpecs struct {
 	NetworkFilter *ebpf.MapSpec `ebpf:"network_filter"`
 	ProtocolMap   *ebpf.MapSpec `ebpf:"protocol_map"`
 	RecvmsgArgMap *ebpf.MapSpec `ebpf:"recvmsg_arg_map"`
+	ServerMap     *ebpf.MapSpec `ebpf:"server_map"`
 }
 
 // bpfObjects contains all objects after they have been loaded into the kernel.
@@ -135,6 +138,7 @@ type bpfMaps struct {
 	NetworkFilter *ebpf.Map `ebpf:"network_filter"`
 	ProtocolMap   *ebpf.Map `ebpf:"protocol_map"`
 	RecvmsgArgMap *ebpf.Map `ebpf:"recvmsg_arg_map"`
+	ServerMap     *ebpf.Map `ebpf:"server_map"`
 }
 
 func (m *bpfMaps) Close() error {
@@ -143,6 +147,7 @@ func (m *bpfMaps) Close() error {
 		m.NetworkFilter,
 		m.ProtocolMap,
 		m.RecvmsgArgMap,
+		m.ServerMap,
 	)
 }
 
@@ -152,6 +157,7 @@ func (m *bpfMaps) Close() error {
 type bpfPrograms struct {
 	FentrySockRecvmsg *ebpf.Program `ebpf:"fentry_sock_recvmsg"`
 	FentrySockSendmsg *ebpf.Program `ebpf:"fentry_sock_sendmsg"`
+	FexitInetAccept   *ebpf.Program `ebpf:"fexit_inet_accept"`
 	FexitSockRecvmsg  *ebpf.Program `ebpf:"fexit_sock_recvmsg"`
 }
 
@@ -159,6 +165,7 @@ func (p *bpfPrograms) Close() error {
 	return _BpfClose(
 		p.FentrySockRecvmsg,
 		p.FentrySockSendmsg,
+		p.FexitInetAccept,
 		p.FexitSockRecvmsg,
 	)
 }

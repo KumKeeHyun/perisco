@@ -25,8 +25,15 @@ struct {
 
 struct {
 	__uint(type, BPF_MAP_TYPE_HASH);
+	__type(key, struct endpoint_key);
+	__type(value, u32);
+	__uint(max_entries, 1024);
+} server_map SEC(".maps");
+
+struct {
+	__uint(type, BPF_MAP_TYPE_HASH);
 	__type(key, struct sock_key);
-	__type(value, struct recvmsg_arg);
+	__type(value, struct msg_arg);
 	__uint(max_entries, 1024);
 } recvmsg_arg_map SEC(".maps");
 
@@ -40,6 +47,13 @@ static __always_inline bool is_inet_conn(const struct sock *sk) {
 	if (family != AF_INET && family != AF_INET6)
 		return false;
 	return true;
+}
+
+static __always_inline bool is_tcp_conn(const struct socket *sock) {
+	if (sock->type == SOCK_STREAM) {
+		return true;
+	}
+	return false;
 }
 
 static __always_inline void extract_sock_key(const struct sock *sk,
@@ -92,10 +106,21 @@ bool is_in_net_filter(const struct sock_key *key) {
 }
 
 static __always_inline 
-void sock_key_to_endpoint_key(struct sock_key *sk_key, struct endpoint_key *ep_key) {
+void sock_key_to_endpoint_key(const struct sock_key *sk_key, struct endpoint_key *ep_key) {
 	bpf_probe_read(ep_key->ip_addr, 16, sk_key->ip.source);
 	ep_key->ip_version = sk_key->ip.ip_version;
 	ep_key->port = sk_key->l4.source_port;
+	ep_key->pid = sk_key->pid;
+}
+
+static __always_inline bool is_server(const struct sock_key *key) {
+	struct endpoint_key ep_key = {0, };
+	sock_key_to_endpoint_key(key, &ep_key);
+
+	u32 *exist = bpf_map_lookup_elem(&server_map, &ep_key);
+	if (exist != NULL)
+		return true;
+	return false;
 }
 
 static __always_inline 
@@ -109,24 +134,49 @@ enum protocol_type lookup_protocol(struct sock_key *key) {
 	return *protocol;
 }
 
+SEC("fexit/inet_accept")
+int BPF_PROG(fexit_inet_accept, struct socket *sock, struct socket *newsock, int flags, bool kern, int ret) {
+	if (ret < 0) 
+		return 0;
+
+	struct sock_key sk_key = {0, };
+	extract_sock_key(newsock->sk, &sk_key);
+	
+	if (!is_in_net_filter(&sk_key))
+		return 0;
+	
+	struct endpoint_key ep_key = {0, };
+	sock_key_to_endpoint_key(&sk_key, &ep_key);
+	u32 value = 1;
+
+	bpf_map_update_elem(&server_map, &ep_key, &value, BPF_ANY);
+
+	return 0;
+}
+
 SEC("fentry/sock_recvmsg")
 int BPF_PROG(fentry_sock_recvmsg, struct socket *sock, struct msghdr *msg, int flags) {
 
 	struct sock *sk = sock->sk;
 	if (!is_inet_conn(sk))
 		return 0;
-	
-	// check blacklist
 
 	struct sock_key sk_key = {0, };
 	extract_sock_key(sk, &sk_key);
 
+	if (is_tcp_conn(sock) && !is_server(&sk_key))
+		return 0;
+
 	if (!is_in_net_filter(&sk_key))
 		return 0;
 	
-	struct recvmsg_arg recvmsg_arg = {};
+	enum protocol_type protocol = lookup_protocol(&sk_key);
+	if (protocol == PROTO_SKIP)
+		return 0;
+
+	struct msg_arg recvmsg_arg = {};
 	bpf_probe_read(&(recvmsg_arg.iter), sizeof(struct iov_iter), &(msg->msg_iter));
-	recvmsg_arg.protocol = lookup_protocol(&sk_key);;
+	recvmsg_arg.protocol = protocol;
 
 	bpf_map_update_elem(&recvmsg_arg_map, &sk_key, &recvmsg_arg, BPF_NOEXIST);
 	
@@ -193,7 +243,7 @@ int BPF_PROG(fexit_sock_recvmsg, struct socket *sock, struct msghdr *msg, int fl
 	struct sock_key sk_key = {0, };
 	extract_sock_key(sk, &sk_key);
 
-	struct recvmsg_arg *recvmsg_arg = bpf_map_lookup_elem(&recvmsg_arg_map, &sk_key);
+	struct msg_arg *recvmsg_arg = bpf_map_lookup_elem(&recvmsg_arg_map, &sk_key);
 	if (recvmsg_arg == NULL)
 		return 0;
 	
@@ -208,16 +258,19 @@ int BPF_PROG(fexit_sock_recvmsg, struct socket *sock, struct msghdr *msg, int fl
 
 
 SEC("fentry/sock_sendmsg")
-int BPF_PROG(fentry_sock_sendmsg, struct socket *sock, struct msghdr *msg) {
+int BPF_PROG(fentry_sock_sendmsg, struct socket *sock, struct msghdr *msg, int ret) {
 
 	struct sock *sk = sock->sk;
 	if (!is_inet_conn(sk))
 		return 0;
+	if (!is_tcp_conn(sock))
+		return 0;	
 	
-	// check blacklist
-
 	struct sock_key sk_key = {0, };
 	extract_sock_key(sk, &sk_key);
+
+	if (is_tcp_conn(sock) && !is_server(&sk_key))
+		return 0;
 
 	if (!is_in_net_filter(&sk_key))
 		return 0;

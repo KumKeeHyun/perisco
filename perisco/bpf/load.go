@@ -23,6 +23,12 @@ func LoadBpfProgram() (chan *BpfDataEvent, *ebpf.Map, func()) {
 		log.Fatalf("loading objects: %v", err)
 	}
 
+	fentryInetAccept, err := link.AttachTracing(link.TracingOptions{
+		Program: objs.bpfPrograms.FexitInetAccept,
+	})
+	if err != nil {
+		log.Fatal(err)
+	}
 	fentrySockRecvmsg, err := link.AttachTracing(link.TracingOptions{
 		Program: objs.bpfPrograms.FentrySockRecvmsg,
 	})
@@ -79,7 +85,8 @@ func LoadBpfProgram() (chan *BpfDataEvent, *ebpf.Map, func()) {
 		fentrySockSendmsg.Close()
 		fexitSockRecvmsg.Close()
 		fentrySockRecvmsg.Close()
-
+		fentryInetAccept.Close()
+		
 		objs.Close()
 	}
 }

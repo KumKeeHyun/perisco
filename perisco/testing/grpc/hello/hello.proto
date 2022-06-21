@@ -6,6 +6,9 @@ package hello;
 
 service HelloService {
     rpc SayHello (HelloRequest) returns (HelloResponse) {}
+    rpc HelloSSS (HelloRequest) returns (stream HelloResponse) {}
+    rpc HelloCSS (stream HelloRequest) returns (HelloResponse) {}
+    rpc HelloBDS (stream HelloRequest) returns (stream HelloResponse) {}
 }
 
 message HelloRequest {

@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"log"
 	"strconv"
 	"strings"
 
@@ -46,12 +45,17 @@ type Http2Parser struct{}
 
 var _ Parser = &Http2Parser{}
 
+var reqDec *hpack.Decoder = hpack.NewDecoder(4096, nil)
+var respDec *hpack.Decoder = hpack.NewDecoder(4096, nil)
+
 // ParseRequest implements protocols.Parser
 func (*Http2Parser) ParseRequest(rawBytes []byte) (RequestResult, error) {
 	r := bytes.NewReader(rawBytes)
 	skipPrefaceIfExist(r)
 
 	framer := http2.NewFramer(io.Discard, r)
+	framer.ReadMetaHeaders = reqDec
+	// framer.ReadMetaHeaders = hpack.NewDecoder(4096, nil)
 	var results Http2RequestResults
 	for {
 		frame, err := framer.ReadFrame()
@@ -60,7 +64,7 @@ func (*Http2Parser) ParseRequest(rawBytes []byte) (RequestResult, error) {
 		}
 		headers, err := extractHeaders(frame)
 		if err != nil {
-			log.Printf("failed extractHeaders: %s\n%v", err, frame)
+			// log.Printf("failed extractHeaders: %s\n%v", err, frame)
 			continue
 		}
 		results = append(results, headersToRequest(headers))
@@ -90,15 +94,11 @@ func headersToRequest(headers []hpack.HeaderField) *Http2RequestResult {
 }
 
 func extractHeaders(frame http2.Frame) ([]hpack.HeaderField, error) {
-	hFrame, ok := frame.(*http2.HeadersFrame)
+	mhFrame, ok := frame.(*http2.MetaHeadersFrame)
 	if !ok {
 		return nil, errors.New("frame is not headers frame")
 	}
-	headers, err := hpack.NewDecoder(4096, nil).DecodeFull(hFrame.HeaderBlockFragment())
-	if err != nil {
-		return nil, err
-	}
-	return headers, nil
+	return mhFrame.Fields, nil
 }
 
 func skipPrefaceIfExist(r *bytes.Reader) {
@@ -115,6 +115,8 @@ func (*Http2Parser) ParseResponse(rawBytes []byte) (ResponseResult, error) {
 	skipPrefaceIfExist(r)
 
 	framer := http2.NewFramer(io.Discard, r)
+	framer.ReadMetaHeaders = respDec
+	// framer.ReadMetaHeaders = hpack.NewDecoder(4096, nil)
 	for {
 		frame, err := framer.ReadFrame()
 		if err != nil {
@@ -122,7 +124,7 @@ func (*Http2Parser) ParseResponse(rawBytes []byte) (ResponseResult, error) {
 		}
 		headers, err := extractHeaders(frame)
 		if err != nil {
-			log.Printf("failed extractHeaders: %s\n%v", err, frame)
+			// log.Printf("failed extractHeaders: %s\n%v", err, frame)
 			continue
 		}
 		return headersToResponse(headers), nil

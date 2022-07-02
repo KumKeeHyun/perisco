@@ -55,7 +55,7 @@ func (p ProtocolType) String() string {
 	return "UNKNOWN"
 }
 
-type BpfDataEvent struct {
+type BpfMsgEvent struct {
 	Msg       [4096]byte
 	SockKey   BpfSockKey
 	Timestamp uint64

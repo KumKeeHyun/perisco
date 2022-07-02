@@ -77,7 +77,7 @@ struct msg_arg {
 };
 struct msg_arg *unused_msg_arg __attribute__((unused));
 
-struct data_event {
+struct msg_event {
 	char msg[MAX_MSG_SIZE];
 	struct sock_key sock_key;
 	u64 timestamp;
@@ -85,4 +85,4 @@ struct data_event {
 	enum protocol_type protocol;
 	u32 msg_size;
 };
-struct data_event *unused_data_event __attribute__((unused));
+struct msg_event *unused_data_event __attribute__((unused));

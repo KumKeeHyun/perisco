@@ -13,16 +13,6 @@ import (
 	"github.com/cilium/ebpf"
 )
 
-type bpfDataEvent struct {
-	Msg       [4096]int8
-	SockKey   bpfSockKey
-	Timestamp uint64
-	FlowType  int32
-	Protocol  int32
-	MsgSize   uint32
-	_         [4]byte
-}
-
 type bpfEndpointKey struct {
 	IpAddr    [16]int8
 	IpVersion int32
@@ -49,6 +39,16 @@ type bpfIpNetworks struct {
 type bpfLayer4 struct {
 	SourcePort      uint32
 	DestinationPort uint32
+}
+
+type bpfMsgEvent struct {
+	Msg       [4096]int8
+	SockKey   bpfSockKey
+	Timestamp uint64
+	FlowType  int32
+	Protocol  int32
+	MsgSize   uint32
+	_         [4]byte
 }
 
 type bpfSockKey struct {
@@ -108,10 +108,11 @@ type bpfProgramSpecs struct {
 //
 // It can be passed ebpf.CollectionSpec.Assign.
 type bpfMapSpecs struct {
-	DataEvents    *ebpf.MapSpec `ebpf:"data_events"`
 	NetworkFilter *ebpf.MapSpec `ebpf:"network_filter"`
 	ProtocolMap   *ebpf.MapSpec `ebpf:"protocol_map"`
 	RecvmsgArgMap *ebpf.MapSpec `ebpf:"recvmsg_arg_map"`
+	RecvmsgEvents *ebpf.MapSpec `ebpf:"recvmsg_events"`
+	SendmsgEvents *ebpf.MapSpec `ebpf:"sendmsg_events"`
 	ServerMap     *ebpf.MapSpec `ebpf:"server_map"`
 }
 
@@ -134,19 +135,21 @@ func (o *bpfObjects) Close() error {
 //
 // It can be passed to loadBpfObjects or ebpf.CollectionSpec.LoadAndAssign.
 type bpfMaps struct {
-	DataEvents    *ebpf.Map `ebpf:"data_events"`
 	NetworkFilter *ebpf.Map `ebpf:"network_filter"`
 	ProtocolMap   *ebpf.Map `ebpf:"protocol_map"`
 	RecvmsgArgMap *ebpf.Map `ebpf:"recvmsg_arg_map"`
+	RecvmsgEvents *ebpf.Map `ebpf:"recvmsg_events"`
+	SendmsgEvents *ebpf.Map `ebpf:"sendmsg_events"`
 	ServerMap     *ebpf.Map `ebpf:"server_map"`
 }
 
 func (m *bpfMaps) Close() error {
 	return _BpfClose(
-		m.DataEvents,
 		m.NetworkFilter,
 		m.ProtocolMap,
 		m.RecvmsgArgMap,
+		m.RecvmsgEvents,
+		m.SendmsgEvents,
 		m.ServerMap,
 	)
 }

@@ -13,11 +13,11 @@ import (
 	"github.com/cilium/ebpf/ringbuf"
 )
 
-var dataEventPool = sync.Pool{
-	New: func() interface{} { return &BpfDataEvent{} },
+var msgEventPool = sync.Pool{
+	New: func() interface{} { return &BpfMsgEvent{} },
 }
 
-func LoadBpfProgram() (chan *BpfDataEvent, *ebpf.Map, func()) {
+func LoadBpfProgram() (chan *BpfMsgEvent, chan *BpfMsgEvent, *ebpf.Map, func()) {
 	objs := bpfObjects{}
 	if err := loadBpfObjects(&objs, nil); err != nil {
 		log.Fatalf("loading objects: %v", err)
@@ -49,14 +49,14 @@ func LoadBpfProgram() (chan *BpfDataEvent, *ebpf.Map, func()) {
 		log.Fatal(err)
 	}
 
-	dataRb, err := ringbuf.NewReader(objs.bpfMaps.DataEvents)
+	recvRb, err := ringbuf.NewReader(objs.bpfMaps.RecvmsgEvents)
 	if err != nil {
 		log.Fatalf("opening dataEvent ringbuf reader: %s", err)
 	}
-	dataCh := make(chan *BpfDataEvent)
+	recvCh := make(chan *BpfMsgEvent)
 	go func() {
 		for {
-			record, err := dataRb.Read()
+			record, err := recvRb.Read()
 			if err != nil {
 				if errors.Is(err, ringbuf.ErrClosed) {
 					log.Println("received signal, exiting..")
@@ -66,21 +66,52 @@ func LoadBpfProgram() (chan *BpfDataEvent, *ebpf.Map, func()) {
 				continue
 			}
 
-			dataEvent := dataEventPool.Get().(*BpfDataEvent)
-			if err := binary.Read(bytes.NewBuffer(record.RawSample), binary.LittleEndian, dataEvent); err != nil {
+			msgEvent := msgEventPool.Get().(*BpfMsgEvent)
+			if err := binary.Read(bytes.NewBuffer(record.RawSample), binary.LittleEndian, msgEvent); err != nil {
 				log.Printf("parsing closeEvent ringbuf event: %s", err)
 				continue
 			}
-			runtime.SetFinalizer(dataEvent, func (obj interface{})  {
-				dataEventPool.Put(obj)
+			runtime.SetFinalizer(msgEvent, func (obj interface{})  {
+				msgEventPool.Put(obj)
 			})
 
-			dataCh <- dataEvent
+			recvCh <- msgEvent
 		}
 	}()
 
-	return dataCh, objs.NetworkFilter, func() {
-		dataRb.Close()
+	sendRb, err := ringbuf.NewReader(objs.bpfMaps.SendmsgEvents)
+	if err != nil {
+		log.Fatalf("opening dataEvent ringbuf reader: %s", err)
+	}
+	sendCh := make(chan *BpfMsgEvent)
+	go func() {
+		for {
+			record, err := sendRb.Read()
+			if err != nil {
+				if errors.Is(err, ringbuf.ErrClosed) {
+					log.Println("received signal, exiting..")
+					return
+				}
+				log.Printf("reading from reader: %s", err)
+				continue
+			}
+
+			msgEvent := msgEventPool.Get().(*BpfMsgEvent)
+			if err := binary.Read(bytes.NewBuffer(record.RawSample), binary.LittleEndian, msgEvent); err != nil {
+				log.Printf("parsing closeEvent ringbuf event: %s", err)
+				continue
+			}
+			runtime.SetFinalizer(msgEvent, func (obj interface{})  {
+				msgEventPool.Put(obj)
+			})
+
+			recvCh <- msgEvent
+		}
+	}()
+
+	return recvCh, sendCh, objs.NetworkFilter, func() {
+		sendRb.Close()
+		recvRb.Close()
 
 		fentrySockSendmsg.Close()
 		fexitSockRecvmsg.Close()

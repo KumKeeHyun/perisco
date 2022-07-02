@@ -24,7 +24,7 @@ struct {
 } protocol_map SEC(".maps");
 
 struct {
-	__uint(type, BPF_MAP_TYPE_HASH);
+	__uint(type, BPF_MAP_TYPE_LRU_HASH);
 	__type(key, struct endpoint_key);
 	__type(value, u32);
 	__uint(max_entries, 1024);
@@ -40,7 +40,12 @@ struct {
 struct {
 	__uint(type, BPF_MAP_TYPE_RINGBUF);
 	__uint(max_entries, 256 * 4096);
-} data_events SEC(".maps");
+} sendmsg_events SEC(".maps");
+
+struct {
+	__uint(type, BPF_MAP_TYPE_RINGBUF);
+	__uint(max_entries, 256 * 4096);
+} recvmsg_events SEC(".maps");
 
 static __always_inline bool is_inet_conn(const struct sock *sk) {
 	u16 family = sk->__sk_common.skc_family;
@@ -184,10 +189,13 @@ int BPF_PROG(fentry_sock_recvmsg, struct socket *sock, struct msghdr *msg, int f
 }
 
 static __always_inline 
-void submit_data_event
+void submit_msg_event
 (const char *msg, size_t size, struct sock_key *key, u64 timestamp, enum protocol_type protocol, enum direction direction) {
 	
-	struct data_event *event = bpf_ringbuf_reserve(&data_events, sizeof(struct data_event), 0);
+	struct msg_event *event;
+	if (direction == INGRESS) event = bpf_ringbuf_reserve(&recvmsg_events, sizeof(struct msg_event), 0);
+	else event = bpf_ringbuf_reserve(&sendmsg_events, sizeof(struct msg_event), 0);
+
 	if (event != NULL) {
 		event->sock_key = *key;
 		event->timestamp = timestamp;
@@ -205,7 +213,7 @@ void submit_data_event
 }
 
 static __always_inline 
-void copy_data_from_iov_iter
+void copy_msg_from_iov_iter
 (struct iov_iter *iter, size_t size, struct sock_key *key, u64 timestamp, enum protocol_type protocol, enum direction direction) {
 	
 	if (iter->count == 0) 
@@ -225,7 +233,7 @@ void copy_data_from_iov_iter
 		if (to_copy > iov.iov_len)
 			to_copy = iov.iov_len;
 		
-		submit_data_event(iov.iov_base, to_copy, key, timestamp, protocol, direction);
+		submit_msg_event(iov.iov_base, to_copy, key, timestamp, protocol, direction);
 
 		remained -= to_copy;
 		if (remained <= 0)
@@ -249,7 +257,7 @@ int BPF_PROG(fexit_sock_recvmsg, struct socket *sock, struct msghdr *msg, int fl
 	
 	// check protocol table
 
-	copy_data_from_iov_iter(&(recvmsg_arg->iter), ret, &sk_key, bpf_ktime_get_ns(), recvmsg_arg->protocol, INGRESS);
+	copy_msg_from_iov_iter(&(recvmsg_arg->iter), ret, &sk_key, bpf_ktime_get_ns(), recvmsg_arg->protocol, INGRESS);
 
 	bpf_map_delete_elem(&recvmsg_arg_map, &sk_key);
 
@@ -278,7 +286,7 @@ int BPF_PROG(fentry_sock_sendmsg, struct socket *sock, struct msghdr *msg, int r
 	enum protocol_type protocol = lookup_protocol(&sk_key);
 
 	size_t size = msg->msg_iter.count;
-	copy_data_from_iov_iter(&(msg->msg_iter), size, &sk_key, bpf_ktime_get_ns(), protocol, EGRESS);
+	copy_msg_from_iov_iter(&(msg->msg_iter), size, &sk_key, bpf_ktime_get_ns(), protocol, EGRESS);
 
 	return 0;
 }

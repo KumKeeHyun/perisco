@@ -30,7 +30,7 @@ func main() {
 		syscall.SIGTERM)
 	defer cancel()
 
-	dataCh, netFilterMap, clean := bpf.LoadBpfProgram()
+	recvCh, sendCh, netFilterMap, clean := bpf.LoadBpfProgram()
 	defer clean()
 
 	nf := bpf.NewNetworkFilter(netFilterMap)
@@ -44,7 +44,22 @@ func main() {
 	go func() {
 		for {
 			select {
-			case dataEvent := <-dataCh:
+			case dataEvent := <-recvCh:
+
+				// rawLogging(&dataEvent)
+				parseProto(dataEvent, &protocols.Http1Parser{})
+				parseProto(dataEvent, &protocols.Http2Parser{})
+
+			case <-ctx.Done():
+				return
+			}
+		}
+	}()
+
+	go func() {
+		for {
+			select {
+			case dataEvent := <-sendCh:
 
 				// rawLogging(&dataEvent)
 				parseProto(dataEvent, &protocols.Http1Parser{})
@@ -59,7 +74,7 @@ func main() {
 	<-ctx.Done()
 }
 
-func rawLogging(dataEvent *bpf.BpfDataEvent) {
+func rawLogging(dataEvent *bpf.BpfMsgEvent) {
 	log.Printf("%s  %-10s\nsize: %d, msg: %s\n",
 		dataEvent.SockKey.String(),
 		dataEvent.FlowType.String(),
@@ -68,7 +83,7 @@ func rawLogging(dataEvent *bpf.BpfDataEvent) {
 	)
 }
 
-func parseProto(event *bpf.BpfDataEvent, parser protocols.Parser) {
+func parseProto(event *bpf.BpfMsgEvent, parser protocols.Parser) {
 	if event.FlowType == bpf.REQUEST {
 		req, err := parser.ParseRequest(event.Msg[:event.MsgSize])
 		if err != nil {

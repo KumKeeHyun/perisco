@@ -41,15 +41,16 @@ func main() {
 	}
 	log.Printf("network filter: %v", config.CidrSlice())
 
+	h1Parser := protocols.NewHTTP1Parser()
+	h2Parser := protocols.NewHTTP2Parser()
+
 	go func() {
 		for {
 			select {
 			case dataEvent := <-recvCh:
-
-				// rawLogging(&dataEvent)
-				parseProto(dataEvent, &protocols.Http1Parser{})
-				parseProto(dataEvent, &protocols.Http2Parser{})
-
+				// rawLogging(dataEvent)
+				parseH1Req(dataEvent, h1Parser)
+				parseH2Req(dataEvent, h2Parser)
 			case <-ctx.Done():
 				return
 			}
@@ -60,11 +61,9 @@ func main() {
 		for {
 			select {
 			case dataEvent := <-sendCh:
-
-				// rawLogging(&dataEvent)
-				parseProto(dataEvent, &protocols.Http1Parser{})
-				parseProto(dataEvent, &protocols.Http2Parser{})
-
+				// rawLogging(dataEvent)
+				parseH1Resp(dataEvent, h1Parser)
+				parseH2Resp(dataEvent, h2Parser)
 			case <-ctx.Done():
 				return
 			}
@@ -83,28 +82,45 @@ func rawLogging(dataEvent *bpf.MsgEvent) {
 	)
 }
 
-func parseProto(event *bpf.MsgEvent, parser protocols.Parser) {
-	if event.FlowType == bpf.REQUEST {
-		req, err := parser.ParseRequest(event.Msg[:event.MsgSize])
-		if err != nil {
-			return
-		}
+func parseH1Req(msg *bpf.MsgEvent, parser *protocols.HTTP1Parser) {
+	req, err := parser.ParseRequest(msg)
+	if err != nil {
+		return
+	}
 
-		log.Printf("%s  %-10s\n %s\n\n",
-			event.SockKey.String(),
-			event.FlowType.String(),
-			req.String(),
-		)
-	} else if event.FlowType == bpf.RESPONSE {
-		resp, err := parser.ParseResponse(event.Msg[:event.MsgSize])
-		if err != nil {
-			return
-		}
+	h1Req := req[0].(*protocols.HTTP1RequestHeader)
+	log.Printf("%s\n", h1Req.String())
+}
 
-		log.Printf("%s  %-10s\n %s\n\n",
-			event.SockKey.String(),
-			event.FlowType.String(),
-			resp.String(),
-		)
+
+func parseH1Resp(msg *bpf.MsgEvent, parser *protocols.HTTP1Parser) {
+	resp, err := parser.ParseResponse(msg)
+	if err != nil {
+		return
+	}
+
+	h1Resp := resp[0].(*protocols.HTTP1ResponseHeader)
+	log.Printf("%s\n", h1Resp.String())
+}
+
+func parseH2Req(msg *bpf.MsgEvent, parser *protocols.HTTP2Parser) {
+	reqs, err := parser.ParseRequest(msg)
+	if err != nil {
+		return
+	}
+
+	for _, req := range reqs {
+		log.Printf("%s\n", req.(*protocols.HTTP2RequestHeader).String())
+	}
+}
+
+func parseH2Resp(msg *bpf.MsgEvent, parser *protocols.HTTP2Parser) {
+	resps, err := parser.ParseResponse(msg)
+	if err != nil {
+		return
+	}
+
+	for _, resp := range resps {
+		log.Printf("%s\n", resp.(*protocols.HTTP2ResponseHeader).String())
 	}
 }

@@ -2,106 +2,122 @@ package protocols
 
 import (
 	"bytes"
-	"errors"
 	"fmt"
 	"io"
-	"strconv"
-	"strings"
 
+	"github.com/KumKeeHyun/perisco/perisco/bpf"
 	"golang.org/x/net/http2"
 	"golang.org/x/net/http2/hpack"
 )
 
-type Http2RequestResult struct {
-	Method string
-	Path   string
-	Header map[string]string
+type HTTP2RequestHeader struct {
+	SockKey     bpf.SockKey
+	MetaHeaders *http2.MetaHeadersFrame
 }
 
-func (r *Http2RequestResult) String() string {
-	return fmt.Sprintf("[ method: %s, path: %s, header: %v ]", r.Method, r.Path, r.Header)
+var _ RequestHeader = &HTTP2RequestHeader{}
+
+// GetSockKey implements RequestHeader
+func (rh *HTTP2RequestHeader) GetSockKey() bpf.SockKey {
+	return rh.SockKey
 }
 
-type Http2RequestResults []*Http2RequestResult
+// RequestHeader implements RequestHeader
+func (*HTTP2RequestHeader) RequestHeader() {}
 
-func (rs *Http2RequestResults) String() string {
-	res := make([]string, len(*rs))
-	for i, r := range *rs {
-		res[i] = r.String()
+func (rh *HTTP2RequestHeader) String() string {
+	return fmt.Sprintf("%s\n%v\n",
+		rh.SockKey.String(),
+		rh.MetaHeaders.Fields,
+	)
+}
+
+type HTTP2ResponseHeader struct {
+	SockKey     bpf.SockKey
+	MetaHeaders *http2.MetaHeadersFrame
+}
+
+var _ ResponseHeader = &HTTP2ResponseHeader{}
+
+// GetSockKey implements ResponseHeader
+func (rh *HTTP2ResponseHeader) GetSockKey() bpf.SockKey {
+	return rh.SockKey
+}
+
+// ResponseHeader implements ResponseHeader
+func (*HTTP2ResponseHeader) ResponseHeader() {}
+
+func (rh *HTTP2ResponseHeader) String() string {
+	return fmt.Sprintf("%s\n%v\n",
+		rh.SockKey.String(),
+		rh.MetaHeaders.Fields,
+	)
+}
+
+
+type HTTP2Parser struct {
+	reqDecMap  map[bpf.SockKey]*hpack.Decoder
+	respDecMap map[bpf.SockKey]*hpack.Decoder
+}
+
+var _ ProtoParser = &HTTP2Parser{}
+
+func NewHTTP2Parser() *HTTP2Parser {
+	return &HTTP2Parser{
+		reqDecMap:  make(map[bpf.SockKey]*hpack.Decoder, 100),
+		respDecMap: make(map[bpf.SockKey]*hpack.Decoder, 100),
 	}
-	return strings.Join(res, "\n")
 }
 
-type Http2ResponseResult struct {
-	Status int
-	Header map[string]string
+func (p *HTTP2Parser) getReqDec(key *bpf.SockKey) *hpack.Decoder {
+	dec, exists := p.reqDecMap[*key]
+	if !exists {
+		dec = hpack.NewDecoder(4096, nil)
+		p.reqDecMap[*key] = dec
+	}
+	return dec
 }
 
-func (r *Http2ResponseResult) String() string {
-	return fmt.Sprintf("[ status: %d, header: %v ]", r.Status, r.Header)
+func (p *HTTP2Parser) getRespDec(key *bpf.SockKey) *hpack.Decoder {
+	dec, exists := p.respDecMap[*key]
+	if !exists {
+		dec = hpack.NewDecoder(4096, nil)
+		p.respDecMap[*key] = dec
+	}
+	return dec
 }
 
-type Http2Parser struct{}
+// ParseRequest implements ProtoParser
+func (p *HTTP2Parser) ParseRequest(msg *bpf.MsgEvent) ([]RequestHeader, error) {
+	br := bytes.NewReader(msg.Msg[:])
+	skipPrefaceIfExists(br)
 
-var _ Parser = &Http2Parser{}
+	f := http2.NewFramer(io.Discard, br)
+	f.ReadMetaHeaders = p.getReqDec(&msg.SockKey)
 
-var reqDec *hpack.Decoder = hpack.NewDecoder(4096, nil)
-var respDec *hpack.Decoder = hpack.NewDecoder(4096, nil)
-
-// ParseRequest implements protocols.Parser
-func (*Http2Parser) ParseRequest(rawBytes []byte) (RequestResult, error) {
-	r := bytes.NewReader(rawBytes)
-	skipPrefaceIfExist(r)
-
-	framer := http2.NewFramer(io.Discard, r)
-	framer.ReadMetaHeaders = reqDec
-	// framer.ReadMetaHeaders = hpack.NewDecoder(4096, nil)
-	var results Http2RequestResults
+	rhs := make([]RequestHeader, 0, 1)
 	for {
-		frame, err := framer.ReadFrame()
+		fr, err := f.ReadFrame()
 		if err != nil {
 			break
 		}
-		headers, err := extractHeaders(frame)
-		if err != nil {
-			// log.Printf("failed extractHeaders: %s\n%v", err, frame)
+		mh, ok := fr.(*http2.MetaHeadersFrame)
+		if !ok {
 			continue
 		}
-		results = append(results, headersToRequest(headers))
+		rhs = append(rhs, &HTTP2RequestHeader{
+			SockKey:     msg.SockKey,
+			MetaHeaders: mh,
+		})
 	}
-	if len(results) == 0 {
-		return nil, errors.New("cannot find headers frame")
+
+	if len(rhs) == 0 {
+		return nil, ErrNotExistsHeader
 	}
-	return &results, nil
+	return rhs, nil
 }
 
-func headersToRequest(headers []hpack.HeaderField) *Http2RequestResult {
-	req := &Http2RequestResult{
-		Header: make(map[string]string),
-	}
-	for _, h := range headers {
-		if h.Name == ":method" {
-			req.Method = h.Value
-		} else if h.Name == ":path" {
-			req.Path = h.Value
-		} else if strings.HasPrefix(h.Name, ":") {
-
-		} else {
-			req.Header[h.Name] = h.Value
-		}
-	}
-	return req
-}
-
-func extractHeaders(frame http2.Frame) ([]hpack.HeaderField, error) {
-	mhFrame, ok := frame.(*http2.MetaHeadersFrame)
-	if !ok {
-		return nil, errors.New("frame is not headers frame")
-	}
-	return mhFrame.Fields, nil
-}
-
-func skipPrefaceIfExist(r *bytes.Reader) {
+func skipPrefaceIfExists(r *bytes.Reader) {
 	preface := make([]byte, len(http2.ClientPreface))
 	r.Read(preface)
 	if !bytes.Equal(preface, []byte(http2.ClientPreface)) {
@@ -109,41 +125,32 @@ func skipPrefaceIfExist(r *bytes.Reader) {
 	}
 }
 
-// ParseResponse implements protocols.Parser
-func (*Http2Parser) ParseResponse(rawBytes []byte) (ResponseResult, error) {
-	r := bytes.NewReader(rawBytes)
-	skipPrefaceIfExist(r)
+// ParseResponse implements ProtoParser
+func (p *HTTP2Parser) ParseResponse(msg *bpf.MsgEvent) ([]ResponseHeader, error) {
+	br := bytes.NewReader(msg.Msg[:])
+	skipPrefaceIfExists(br)
 
-	framer := http2.NewFramer(io.Discard, r)
-	framer.ReadMetaHeaders = respDec
-	// framer.ReadMetaHeaders = hpack.NewDecoder(4096, nil)
+	f := http2.NewFramer(io.Discard, br)
+	f.ReadMetaHeaders = p.getRespDec(&msg.SockKey)
+
+	rhs := make([]ResponseHeader, 0, 1)
 	for {
-		frame, err := framer.ReadFrame()
+		fr, err := f.ReadFrame()
 		if err != nil {
 			break
 		}
-		headers, err := extractHeaders(frame)
-		if err != nil {
-			// log.Printf("failed extractHeaders: %s\n%v", err, frame)
+		mh, ok := fr.(*http2.MetaHeadersFrame)
+		if !ok {
 			continue
 		}
-		return headersToResponse(headers), nil
+		rhs = append(rhs, &HTTP2ResponseHeader{
+			SockKey:     msg.SockKey,
+			MetaHeaders: mh,
+		})
 	}
-	return nil, errors.New("cannot find headers frame")
-}
 
-func headersToResponse(headers []hpack.HeaderField) *Http2ResponseResult {
-	resp := &Http2ResponseResult{
-		Header: make(map[string]string),
+	if len(rhs) == 0 {
+		return nil, ErrNotExistsHeader
 	}
-	for _, h := range headers {
-		if h.Name == ":status" {
-			resp.Status, _ = strconv.Atoi(h.Value)
-		} else if strings.HasPrefix(h.Name, ":") {
-
-		} else {
-			resp.Header[h.Name] = h.Value
-		}
-	}
-	return resp
+	return rhs, nil
 }

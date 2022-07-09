@@ -5,30 +5,103 @@ import (
 	"bytes"
 	"fmt"
 	"net/http"
+
+	"github.com/KumKeeHyun/perisco/perisco/bpf"
 )
 
-type Http1RequestResult struct {
-	Method string
-	Path   string
-	Header http.Header
+type HTTP1RequestHeader struct {
+	SockKey bpf.SockKey
+	Request *http.Request
 }
 
-func (r *Http1RequestResult) String() string {
-	return fmt.Sprintf("[ method: %s, path: %s, header: %v ]", r.Method, r.Path, r.Header)
+var _ RequestHeader = &HTTP1RequestHeader{}
+
+// GetSockKey implements RequestHeader
+func (rh *HTTP1RequestHeader) GetSockKey() bpf.SockKey {
+	return rh.SockKey
 }
 
-type Http1ResponseResult struct {
-	Status     string
-	StatusCode int
-	Header     http.Header
+// RequestHeader implements RequestHeader
+func (*HTTP1RequestHeader) RequestHeader() {}
+
+func (rh *HTTP1RequestHeader) String() string {
+	return fmt.Sprintf("%s\n%s %s %s %s %d\n%v\n",
+		rh.SockKey.String(),
+		rh.Request.Proto,
+		rh.Request.Method,
+		rh.Request.RequestURI,
+		rh.Request.Host,
+		rh.Request.ContentLength,
+		rh.Request.Header,
+	)
 }
 
-func (r *Http1ResponseResult) String() string {
-	return fmt.Sprintf("[ status: %s, statusCode: %d, header: %v ]", r.Status, r.StatusCode, r.Header)
+type HTTP1ResponseHeader struct {
+	SockKey  bpf.SockKey
+	Response *http.Response
 }
 
-func isValidMethod(method string) bool {
-	switch method {
+var _ ResponseHeader = &HTTP1ResponseHeader{}
+
+// GetSockKey implements ResponseHeader
+func (rh *HTTP1ResponseHeader) GetSockKey() bpf.SockKey {
+	return rh.SockKey
+}
+
+// ResponseHeader implements ResponseHeader
+func (*HTTP1ResponseHeader) ResponseHeader() {}
+
+func (rh *HTTP1ResponseHeader) String() string {
+	return fmt.Sprintf("%s\n%s %s\n%v\n",
+		rh.SockKey.String(),
+		rh.Response.Proto,
+		rh.Response.Status,
+		rh.Response.Header,
+	)
+}
+
+const bufSize = 4096
+
+type HTTP1Parser struct {
+	reqReader  *bufio.Reader
+	respReader *bufio.Reader
+}
+
+func NewHTTP1Parser() *HTTP1Parser {
+	return &HTTP1Parser{
+		reqReader:  bufio.NewReaderSize(nil, bufSize),
+		respReader: bufio.NewReaderSize(nil, bufSize),
+	}
+}
+
+var _ ProtoParser = &HTTP1Parser{}
+
+// ParseRequest implements ProtoParser
+func (p *HTTP1Parser) ParseRequest(msg *bpf.MsgEvent) ([]RequestHeader, error) {
+	r := p.reqReader
+	br := bytes.NewReader(msg.Msg[:])
+	r.Reset(br)
+
+	req, err := http.ReadRequest(r)
+	if err != nil {
+		return nil, err
+	}
+	req.Body.Close()
+
+	if !isValidMethod(req) {
+		return nil, fmt.Errorf("invalid http method. got: %s", req.Method)
+	}
+
+	return []RequestHeader{
+		&HTTP1RequestHeader{
+			SockKey: msg.SockKey,
+			Request: req,
+		},
+	}, nil
+}
+
+func isValidMethod(req *http.Request) bool {
+	switch req.Method {
 	case http.MethodGet,
 		http.MethodPost,
 		http.MethodPut,
@@ -44,44 +117,22 @@ func isValidMethod(method string) bool {
 	}
 }
 
-type Http1Parser struct{}
+// ParseResponse implements ProtoParser
+func (p *HTTP1Parser) ParseResponse(msg *bpf.MsgEvent) ([]ResponseHeader, error) {
+	r := p.respReader
+	br := bytes.NewReader(msg.Msg[:])
+	r.Reset(br)
 
-var _ Parser = &Http1Parser{}
-
-// ParseRequest implements protocols.Parser
-func (*Http1Parser) ParseRequest(rawBytes []byte) (RequestResult, error) {
-	b := bufio.NewReader(bytes.NewReader(rawBytes))
-
-	req, err := http.ReadRequest(b)
-	if err != nil {
-		return nil, err
-	}
-	req.Body.Close()
-
-	if !isValidMethod(req.Method) {
-		return nil, fmt.Errorf("invalid method. got: %s", req.Method)
-	}
-
-	return &Http1RequestResult{
-		Method: req.Method,
-		Path:   req.URL.Path,
-		Header: req.Header,
-	}, nil
-}
-
-// ParseResponse implements protocols.Parser
-func (*Http1Parser) ParseResponse(rawBytes []byte) (ResponseResult, error) {
-	b := bufio.NewReader(bytes.NewReader(rawBytes))
-
-	resp, err := http.ReadResponse(b, nil)
+	resp, err := http.ReadResponse(r, nil)
 	if err != nil {
 		return nil, err
 	}
 	resp.Body.Close()
 
-	return &Http1ResponseResult{
-		Status:     resp.Status,
-		StatusCode: resp.StatusCode,
-		Header:     resp.Header,
+	return []ResponseHeader{
+		&HTTP1ResponseHeader{
+			SockKey:  msg.SockKey,
+			Response: resp,
+		},
 	}, nil
 }

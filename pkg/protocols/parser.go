@@ -1,14 +1,33 @@
 package protocols
 
-type RequestResult interface {
-	String() string
+import (
+	"errors"
+
+	"github.com/KumKeeHyun/perisco/perisco/bpf"
+)
+
+var (
+	ErrNotExistsHeader = errors.New("protocols: not exists header")
+)
+
+type RequestHeader interface {
+	GetSockKey() bpf.SockKey
+	RequestHeader()
 }
 
-type ResponseResult interface {
-	String() string
+type ResponseHeader interface {
+	GetSockKey() bpf.SockKey
+	ResponseHeader()
 }
 
-type Parser interface {
-	ParseRequest([]byte) (RequestResult, error)
-	ParseResponse([]byte) (ResponseResult, error)
+type ProtoParser interface {
+	ParseRequest(msg *bpf.MsgEvent) ([]RequestHeader, error)
+	ParseResponse(msg *bpf.MsgEvent) ([]ResponseHeader, error)
+}
+
+type ReqRespParser struct {
+	sendCh chan *bpf.MsgEvent
+	recvCh chan *bpf.MsgEvent
+
+	protoParser map[bpf.ProtocolType]ProtoParser
 }

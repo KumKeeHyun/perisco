@@ -74,7 +74,7 @@ func main() {
 	<-ctx.Done()
 }
 
-func rawLogging(dataEvent *bpf.BpfMsgEvent) {
+func rawLogging(dataEvent *bpf.MsgEvent) {
 	log.Printf("%s  %-10s\nsize: %d, msg: %s\n",
 		dataEvent.SockKey.String(),
 		dataEvent.FlowType.String(),
@@ -83,7 +83,7 @@ func rawLogging(dataEvent *bpf.BpfMsgEvent) {
 	)
 }
 
-func parseProto(event *bpf.BpfMsgEvent, parser protocols.Parser) {
+func parseProto(event *bpf.MsgEvent, parser protocols.Parser) {
 	if event.FlowType == bpf.REQUEST {
 		req, err := parser.ParseRequest(event.Msg[:event.MsgSize])
 		if err != nil {

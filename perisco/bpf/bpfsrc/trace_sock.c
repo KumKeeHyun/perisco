@@ -17,7 +17,7 @@ struct {
 const u32 net_filter_key = 0;
 
 struct {
-	__uint(type, BPF_MAP_TYPE_HASH);
+	__uint(type, BPF_MAP_TYPE_LRU_HASH);
 	__type(key, struct endpoint_key);
 	__type(value, enum protocol_type);
 	__uint(max_entries, 1024);
@@ -76,6 +76,12 @@ static __always_inline void extract_sock_key(const struct sock *sk,
 
 	key->l4.source_port = sk->__sk_common.skc_num;
 	key->l4.destination_port = bpf_ntohs(sk->__sk_common.skc_dport);
+	if (sk->sk_socket->type == SOCK_STREAM)
+		key->l4.l4_type = TCP;
+	else if (sk->sk_socket->type == SOCK_DGRAM)
+		key->l4.l4_type = UDP;
+	else
+		key->l4.l4_type = LAYER4_UNKNOWN;
 
 	key->pid = bpf_get_current_pid_tgid() >> 32;
 }
@@ -271,8 +277,6 @@ int BPF_PROG(fentry_sock_sendmsg, struct socket *sock, struct msghdr *msg, int r
 	struct sock *sk = sock->sk;
 	if (!is_inet_conn(sk))
 		return 0;
-	if (!is_tcp_conn(sock))
-		return 0;	
 	
 	struct sock_key sk_key = {0, };
 	extract_sock_key(sk, &sk_key);
@@ -284,6 +288,8 @@ int BPF_PROG(fentry_sock_sendmsg, struct socket *sock, struct msghdr *msg, int r
 		return 0;
 	
 	enum protocol_type protocol = lookup_protocol(&sk_key);
+	if (protocol == PROTO_SKIP)
+		return 0;
 
 	size_t size = msg->msg_iter.count;
 	copy_msg_from_iov_iter(&(msg->msg_iter), size, &sk_key, bpf_ktime_get_ns(), protocol, EGRESS);

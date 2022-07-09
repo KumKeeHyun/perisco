@@ -55,30 +55,27 @@ func (p ProtocolType) String() string {
 	return "UNKNOWN"
 }
 
-type BpfMsgEvent struct {
+type MsgEvent struct {
 	Msg       [4096]byte
-	SockKey   BpfSockKey
+	SockKey   SockKey
+	MsgSize   uint32
 	Timestamp uint64
 	FlowType  FlowType
 	Protocol  ProtocolType
-	MsgSize   uint32
-	_         [4]byte
 }
 
-type BpfIpNetwork struct {
+type IpNetwork struct {
 	IpAddr [16]byte
 	IpMask [16]byte
 }
 
-type BpfIpNetworks struct {
-	Data [5]BpfIpNetwork
+type IpNetworks struct {
+	Data [5]IpNetwork
 	Size uint32
 }
 
 const MAX_NET_FILTER_SIZE = 5
 var	NET_FILTER_KEY uint32 = 0
-
-
 
 type IpVersion int32
 
@@ -88,13 +85,13 @@ const (
 	IPv6
 )
 
-type BpfIp struct {
+type Ip struct {
 	Source      [16]byte
 	Destination [16]byte
 	IpVersion   IpVersion
 }
 
-func (ip *BpfIp) GetSrcIp() string {
+func (ip *Ip) GetSrcIp() string {
 	if ip.IpVersion == IPv4 {
 		return net.IP(ip.Source[:4]).String()
 	} else if ip.IpVersion == IPv6 {
@@ -103,7 +100,7 @@ func (ip *BpfIp) GetSrcIp() string {
 	return "unknown"
 }
 
-func (ip *BpfIp) GetDestIp() string {
+func (ip *Ip) GetDestIp() string {
 	if ip.IpVersion == IPv4 {
 		return net.IP(ip.Destination[:4]).String()
 	} else if ip.IpVersion == IPv6 {
@@ -112,18 +109,27 @@ func (ip *BpfIp) GetDestIp() string {
 	return "unknown"
 }
 
-type BpfLayer4 struct {
+type Layer4Type int32
+
+const (
+	LAYER4_UNKNOWN Layer4Type = iota
+	TCP
+	UDP
+)
+
+type Layer4 struct {
 	SourcePort      uint32
 	DestinationPort uint32
+	L4Type          int32
 }
 
-type BpfSockKey struct {
-	Ip  BpfIp
-	L4  BpfLayer4
+type SockKey struct {
+	Ip  Ip
+	L4  Layer4
 	Pid uint32
 }
 
-func (sk *BpfSockKey) String() string {
+func (sk *SockKey) String() string {
 	return fmt.Sprintf("%-15s %-6d  %-15s %-6d  %-10d",
 		sk.Ip.GetSrcIp(),
 		sk.L4.SourcePort,

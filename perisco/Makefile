@@ -17,5 +17,5 @@ bin-only:
 clean:
 	rm -f $(TARGET)
 
-run: $(TARGET)-bin
+run: bin-only
 	sudo ./$(TARGET)

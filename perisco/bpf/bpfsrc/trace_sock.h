@@ -25,9 +25,12 @@ struct ip {
 	enum ip_version ip_version;
 };
 
+enum layer4_type { LAYER4_UNKNOWN, TCP, UDP };
+
 struct layer4 {
 	u32 source_port;
 	u32 destination_port;
+	enum layer4_type l4_type;
 };
 
 struct sock_key {
@@ -80,9 +83,9 @@ struct msg_arg *unused_msg_arg __attribute__((unused));
 struct msg_event {
 	char msg[MAX_MSG_SIZE];
 	struct sock_key sock_key;
+	u32 msg_size;
 	u64 timestamp;
 	enum flow_type flow_type;
 	enum protocol_type protocol;
-	u32 msg_size;
 };
 struct msg_event *unused_data_event __attribute__((unused));

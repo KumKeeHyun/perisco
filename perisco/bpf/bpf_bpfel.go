@@ -39,16 +39,16 @@ type bpfIpNetworks struct {
 type bpfLayer4 struct {
 	SourcePort      uint32
 	DestinationPort uint32
+	L4Type          int32
 }
 
 type bpfMsgEvent struct {
 	Msg       [4096]int8
 	SockKey   bpfSockKey
+	MsgSize   uint32
 	Timestamp uint64
 	FlowType  int32
 	Protocol  int32
-	MsgSize   uint32
-	_         [4]byte
 }
 
 type bpfSockKey struct {

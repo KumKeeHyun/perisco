@@ -14,10 +14,10 @@ import (
 )
 
 var msgEventPool = sync.Pool{
-	New: func() interface{} { return &BpfMsgEvent{} },
+	New: func() interface{} { return &MsgEvent{} },
 }
 
-func LoadBpfProgram() (chan *BpfMsgEvent, chan *BpfMsgEvent, *ebpf.Map, func()) {
+func LoadBpfProgram() (chan *MsgEvent, chan *MsgEvent, *ebpf.Map, func()) {
 	objs := bpfObjects{}
 	if err := loadBpfObjects(&objs, nil); err != nil {
 		log.Fatalf("loading objects: %v", err)
@@ -53,7 +53,7 @@ func LoadBpfProgram() (chan *BpfMsgEvent, chan *BpfMsgEvent, *ebpf.Map, func()) 
 	if err != nil {
 		log.Fatalf("opening dataEvent ringbuf reader: %s", err)
 	}
-	recvCh := make(chan *BpfMsgEvent)
+	recvCh := make(chan *MsgEvent)
 	go func() {
 		for {
 			record, err := recvRb.Read()
@@ -66,7 +66,7 @@ func LoadBpfProgram() (chan *BpfMsgEvent, chan *BpfMsgEvent, *ebpf.Map, func()) 
 				continue
 			}
 
-			msgEvent := msgEventPool.Get().(*BpfMsgEvent)
+			msgEvent := msgEventPool.Get().(*MsgEvent)
 			if err := binary.Read(bytes.NewBuffer(record.RawSample), binary.LittleEndian, msgEvent); err != nil {
 				log.Printf("parsing closeEvent ringbuf event: %s", err)
 				continue
@@ -83,7 +83,7 @@ func LoadBpfProgram() (chan *BpfMsgEvent, chan *BpfMsgEvent, *ebpf.Map, func()) 
 	if err != nil {
 		log.Fatalf("opening dataEvent ringbuf reader: %s", err)
 	}
-	sendCh := make(chan *BpfMsgEvent)
+	sendCh := make(chan *MsgEvent)
 	go func() {
 		for {
 			record, err := sendRb.Read()
@@ -96,7 +96,7 @@ func LoadBpfProgram() (chan *BpfMsgEvent, chan *BpfMsgEvent, *ebpf.Map, func()) 
 				continue
 			}
 
-			msgEvent := msgEventPool.Get().(*BpfMsgEvent)
+			msgEvent := msgEventPool.Get().(*MsgEvent)
 			if err := binary.Read(bytes.NewBuffer(record.RawSample), binary.LittleEndian, msgEvent); err != nil {
 				log.Printf("parsing closeEvent ringbuf event: %s", err)
 				continue

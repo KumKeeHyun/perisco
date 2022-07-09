@@ -31,7 +31,7 @@ func (nf *NetworkFilter) Update(cidrs []string) error {
 		return fmt.Errorf("network filter cannot contain cidrs more than %d", MAX_NET_FILTER_SIZE)
 	}
 	
-	bpfIpNets := BpfIpNetworks{
+	ipNets := IpNetworks{
 		Size: uint32(len(cidrs)),
 	}
 	for i, cidr := range cidrs {
@@ -39,23 +39,23 @@ func (nf *NetworkFilter) Update(cidrs []string) error {
 		if err != nil {
 			return fmt.Errorf("failed to parse cidr: %s", err)
 		}
-		bpfIpNets.Data[i] = ipNet2BpfIpNet(ipNet)
+		ipNets.Data[i] = ipNet2BpfIpNet(ipNet)
 	}
 
-	if err := nf.update(&bpfIpNets); err != nil {
+	if err := nf.update(&ipNets); err != nil {
 		return fmt.Errorf("failed to update map: %s", err)
 	}
 	
 	return nil
 }
 
-func ipNet2BpfIpNet(ipNet *net.IPNet) (bpfIpNet BpfIpNetwork) {
+func ipNet2BpfIpNet(ipNet *net.IPNet) (bpfIpNet IpNetwork) {
 	copy(bpfIpNet.IpAddr[:], ipNet.IP)
 	copy(bpfIpNet.IpMask[:], ipNet.Mask)
 	return 
 }
 
-func (nf *NetworkFilter) update(networks *BpfIpNetworks) error {
+func (nf *NetworkFilter) update(networks *IpNetworks) error {
 	err := nf.cm.Do(func(m *ebpf.Map) error {
 		return m.Update(&NET_FILTER_KEY, networks, ebpf.UpdateAny)
 	})

@@ -105,7 +105,7 @@ func LoadBpfProgram() (chan *MsgEvent, chan *MsgEvent, *ebpf.Map, func()) {
 				msgEventPool.Put(obj)
 			})
 
-			recvCh <- msgEvent
+			sendCh <- msgEvent
 		}
 	}()
 

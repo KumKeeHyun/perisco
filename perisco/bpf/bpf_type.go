@@ -130,11 +130,18 @@ type SockKey struct {
 }
 
 func (sk *SockKey) String() string {
-	return fmt.Sprintf("%-15s %-6d  %-15s %-6d  %-10d",
+	return fmt.Sprintf("%s %d\t%s %d\t%d",
 		sk.Ip.GetSrcIp(),
 		sk.L4.SourcePort,
 		sk.Ip.GetDestIp(),
 		sk.L4.DestinationPort,
 		sk.Pid,
 	)
+}
+
+type EndpointKey struct {
+	IpAddr    [16]byte
+	IpVersion IpVersion
+	Port      uint32
+	Pid       uint32
 }

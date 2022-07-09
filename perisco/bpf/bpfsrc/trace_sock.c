@@ -261,10 +261,8 @@ int BPF_PROG(fexit_sock_recvmsg, struct socket *sock, struct msghdr *msg, int fl
 	if (recvmsg_arg == NULL)
 		return 0;
 	
-	// check protocol table
 
 	copy_msg_from_iov_iter(&(recvmsg_arg->iter), ret, &sk_key, bpf_ktime_get_ns(), recvmsg_arg->protocol, INGRESS);
-
 	bpf_map_delete_elem(&recvmsg_arg_map, &sk_key);
 
 	return 0;
@@ -272,7 +270,7 @@ int BPF_PROG(fexit_sock_recvmsg, struct socket *sock, struct msghdr *msg, int fl
 
 
 SEC("fentry/sock_sendmsg")
-int BPF_PROG(fentry_sock_sendmsg, struct socket *sock, struct msghdr *msg, int ret) {
+int BPF_PROG(fentry_sock_sendmsg, struct socket *sock, struct msghdr *msg) {
 
 	struct sock *sk = sock->sk;
 	if (!is_inet_conn(sk))

@@ -22,6 +22,11 @@ func (rh *HTTP2RequestHeader) GetSockKey() bpf.SockKey {
 	return rh.SockKey
 }
 
+// GetProtoType implements RequestHeader
+func (rh *HTTP2RequestHeader) GetProtoType() bpf.ProtocolType {
+	return bpf.HTTP2
+}
+
 // RequestHeader implements RequestHeader
 func (*HTTP2RequestHeader) RequestHeader() {}
 
@@ -44,6 +49,11 @@ func (rh *HTTP2ResponseHeader) GetSockKey() bpf.SockKey {
 	return rh.SockKey
 }
 
+// GetProtoType implements ResponseHeader
+func (rh *HTTP2ResponseHeader) GetProtoType() bpf.ProtocolType {
+	return bpf.HTTP2
+}
+
 // ResponseHeader implements ResponseHeader
 func (*HTTP2ResponseHeader) ResponseHeader() {}
 
@@ -60,13 +70,18 @@ type HTTP2Parser struct {
 	respDecMap map[bpf.SockKey]*hpack.Decoder
 }
 
-var _ ProtoParser = &HTTP2Parser{}
-
 func NewHTTP2Parser() *HTTP2Parser {
 	return &HTTP2Parser{
 		reqDecMap:  make(map[bpf.SockKey]*hpack.Decoder, 100),
 		respDecMap: make(map[bpf.SockKey]*hpack.Decoder, 100),
 	}
+}
+
+var _ ProtoParser = &HTTP2Parser{}
+
+// GetProtoType implements ProtoParser
+func (p *HTTP2Parser) GetProtoType() bpf.ProtocolType {
+	return bpf.HTTP1
 }
 
 func (p *HTTP2Parser) getReqDec(key *bpf.SockKey) *hpack.Decoder {

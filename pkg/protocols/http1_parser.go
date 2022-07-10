@@ -21,6 +21,11 @@ func (rh *HTTP1RequestHeader) GetSockKey() bpf.SockKey {
 	return rh.SockKey
 }
 
+// GetProtoType implements RequestHeader
+func (rh *HTTP1RequestHeader) GetProtoType() bpf.ProtocolType {
+	return bpf.HTTP1
+}
+
 // RequestHeader implements RequestHeader
 func (*HTTP1RequestHeader) RequestHeader() {}
 
@@ -46,6 +51,11 @@ var _ ResponseHeader = &HTTP1ResponseHeader{}
 // GetSockKey implements ResponseHeader
 func (rh *HTTP1ResponseHeader) GetSockKey() bpf.SockKey {
 	return rh.SockKey
+}
+
+// GetProtoType implements ResponseHeader
+func (rh *HTTP1ResponseHeader) GetProtoType() bpf.ProtocolType {
+	return bpf.HTTP1
 }
 
 // ResponseHeader implements ResponseHeader
@@ -76,10 +86,15 @@ func NewHTTP1Parser() *HTTP1Parser {
 
 var _ ProtoParser = &HTTP1Parser{}
 
+// GetProtoType implements ProtoParser
+func (p *HTTP1Parser) GetProtoType() bpf.ProtocolType {
+	return bpf.HTTP1
+}
+
 // ParseRequest implements ProtoParser
 func (p *HTTP1Parser) ParseRequest(msg *bpf.MsgEvent) ([]RequestHeader, error) {
 	r := p.reqReader
-	br := bytes.NewReader(msg.Msg[:])
+	br := bytes.NewReader(msg.GetBytes())
 	r.Reset(br)
 
 	req, err := http.ReadRequest(r)
@@ -120,7 +135,7 @@ func isValidMethod(req *http.Request) bool {
 // ParseResponse implements ProtoParser
 func (p *HTTP1Parser) ParseResponse(msg *bpf.MsgEvent) ([]ResponseHeader, error) {
 	r := p.respReader
-	br := bytes.NewReader(msg.Msg[:])
+	br := bytes.NewReader(msg.GetBytes())
 	r.Reset(br)
 
 	resp, err := http.ReadResponse(r, nil)

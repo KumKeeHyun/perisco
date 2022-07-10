@@ -64,6 +64,10 @@ type MsgEvent struct {
 	Protocol  ProtocolType
 }
 
+func (msg *MsgEvent) GetBytes() []byte {
+	return msg.Msg[:msg.MsgSize]
+}
+
 type IpNetwork struct {
 	IpAddr [16]byte
 	IpMask [16]byte
@@ -137,6 +141,15 @@ func (sk *SockKey) String() string {
 		sk.L4.DestinationPort,
 		sk.Pid,
 	)
+}
+
+func (sk *SockKey) ToEndpointKey() EndpointKey {
+	return EndpointKey{
+		IpAddr:    sk.Ip.Source,
+		IpVersion: sk.Ip.IpVersion,
+		Port:      sk.L4.SourcePort,
+		Pid:       sk.Pid,
+	}
 }
 
 type EndpointKey struct {

@@ -1,6 +1,7 @@
 package protocols
 
 import (
+	"bufio"
 	"bytes"
 	"net/http"
 	"reflect"
@@ -8,6 +9,7 @@ import (
 	"testing"
 
 	"github.com/KumKeeHyun/perisco/perisco/bpf"
+	"golang.org/x/net/http2"
 )
 
 func TestHTTP1Parser_GetProtoType(t *testing.T) {
@@ -42,7 +44,7 @@ func (t *http1Parser_ParseRequest_Test) args() *bpf.MsgEvent {
 
 	msg := &bpf.MsgEvent{}
 	msg.MsgSize = uint32(buf.Len())
-	if buf.Len() > len(msg.Msg){ 
+	if buf.Len() > len(msg.Msg) {
 		msg.MsgSize = uint32(len(msg.Msg))
 	}
 	copy(msg.GetBytes(), buf.Bytes())
@@ -60,27 +62,22 @@ func (t *http1Parser_ParseRequest_Test) equal(got []RequestHeader) bool {
 	if len(got) != 1 {
 		return false
 	}
-	h1Req, ok := got[0].(*HTTP1RequestHeader)
+	gotReq, ok := got[0].(*HTTP1RequestHeader)
 	if !ok {
 		return false
 	}
-	req := h1Req.Request
+	wantBytes := make([]byte, 0, 4096)
+	t.req.Write(bytes.NewBuffer(wantBytes))
+	gotBytes := make([]byte, 0, 4096)
+	gotReq.Request.Write(bytes.NewBuffer(gotBytes))
 
-	if t.req.Proto != req.Proto ||
-		t.req.Method != req.Method ||
-		t.req.Host != req.Host ||
-		t.req.URL.Path != req.URL.Path ||
-		!reflect.DeepEqual(t.req.Header, req.Header){
-		return false
-	}
-
-	return true
+	return bytes.Equal(wantBytes, gotBytes)
 }
 
 func TestHTTP1Parser_ParseRequest(t *testing.T) {
 	tests := []http1Parser_ParseRequest_Test{
 		{
-			name: "Short Get Request",
+			name: "Short Header Get Request",
 			req: func() *http.Request {
 				req, _ := http.NewRequest(http.MethodGet, "http://perisco.org/test/url", nil)
 				req.Header.Add("User-Agent", "test-clinet/1.1")
@@ -89,11 +86,50 @@ func TestHTTP1Parser_ParseRequest(t *testing.T) {
 			wantErr: false,
 		},
 		{
-			name: "Long Get Request",
+			name: "Long Header Get Request",
 			req: func() *http.Request {
 				req, _ := http.NewRequest(http.MethodGet, "http://perisco.org/test/url", nil)
 				req.Header.Add("User-Agent", "test-clinet/1.1")
 				req.Header.Add("Long-Cookie", strings.Repeat("1234567890", 500))
+				return req
+			}(),
+			wantErr: true,
+		},
+		{
+			name: "Short Header Short Body Post Request",
+			req: func() *http.Request {
+				body := bytes.NewReader([]byte(strings.Repeat("1234567890", 10)))
+				req, _ := http.NewRequest(http.MethodPost, "http://perisco.org/test/url", body)
+				req.Header.Add("User-Agent", "test-clinet/1.1")
+				return req
+			}(),
+			wantErr: false,
+		},
+		{
+			name: "Short Header Long Body Post Request",
+			req: func() *http.Request {
+				body := bytes.NewReader([]byte(strings.Repeat("1234567890", 500)))
+				req, _ := http.NewRequest(http.MethodPost, "http://perisco.org/test/url", body)
+				req.Header.Add("User-Agent", "test-clinet/1.1")
+				return req
+			}(),
+			wantErr: false,
+		},
+		{
+			name: "Long Header Long Body Post Request",
+			req: func() *http.Request {
+				body := bytes.NewReader([]byte(strings.Repeat("1234567890", 500)))
+				req, _ := http.NewRequest(http.MethodPost, "http://perisco.org/test/url", body)
+				req.Header.Add("User-Agent", "test-clinet/1.1")
+				req.Header.Add("Long-Cookie", strings.Repeat("1234567890", 500))
+				return req
+			}(),
+			wantErr: true,
+		},
+		{
+			name: "HTTP/2 Preface",
+			req: func() *http.Request {
+				req, _ :=http.ReadRequest(bufio.NewReader(strings.NewReader(http2.ClientPreface)))
 				return req
 			}(),
 			wantErr: true,

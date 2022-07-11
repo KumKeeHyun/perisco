@@ -3,6 +3,7 @@ package protocols
 import (
 	"bufio"
 	"bytes"
+	"io"
 	"net/http"
 	"reflect"
 	"strings"
@@ -129,7 +130,7 @@ func TestHTTP1Parser_ParseRequest(t *testing.T) {
 		{
 			name: "HTTP/2 Preface",
 			req: func() *http.Request {
-				req, _ :=http.ReadRequest(bufio.NewReader(strings.NewReader(http2.ClientPreface)))
+				req, _ := http.ReadRequest(bufio.NewReader(strings.NewReader(http2.ClientPreface)))
 				return req
 			}(),
 			wantErr: true,
@@ -226,28 +227,106 @@ func Test_isValidMethod(t *testing.T) {
 	}
 }
 
-func TestHTTP1Parser_ParseResponse(t *testing.T) {
-	type args struct {
-		msg *bpf.MsgEvent
+type http1Parser_ParseResponse_Test struct {
+	name    string
+	resp    *http.Response
+	wantErr bool
+}
+
+func (t *http1Parser_ParseResponse_Test) args() *bpf.MsgEvent {
+	buf := bytes.NewBuffer(make([]byte, 0, 4096))
+	t.resp.Write(buf)
+
+	msg := &bpf.MsgEvent{}
+	msg.MsgSize = uint32(buf.Len())
+	if buf.Len() > len(msg.Msg) {
+		msg.MsgSize = uint32(len(msg.Msg))
 	}
-	tests := []struct {
-		name    string
-		args    args
-		want    []ResponseHeader
-		wantErr bool
-	}{
-		// TODO: Add test cases.
+	copy(msg.GetBytes(), buf.Bytes())
+
+	return msg
+}
+
+func (t *http1Parser_ParseResponse_Test) want() []ResponseHeader {
+	return []ResponseHeader{
+		&HTTP1ResponseHeader{Response: t.resp},
+	}
+}
+
+func (t *http1Parser_ParseResponse_Test) equal(got []ResponseHeader) bool {
+	if len(got) != 1 {
+		return false
+	}
+	gotResp, ok := got[0].(*HTTP1ResponseHeader)
+	if !ok {
+		return false
+	}
+	wantBytes := make([]byte, 0, 4096)
+	t.resp.Write(bytes.NewBuffer(wantBytes))
+	gotBytes := make([]byte, 0, 4096)
+	gotResp.Response.Write(bytes.NewBuffer(gotBytes))
+
+	return bytes.Equal(wantBytes, gotBytes)
+}
+
+func TestHTTP1Parser_ParseResponse(t *testing.T) {
+	tests := []http1Parser_ParseResponse_Test {
+		{
+			name: "Short Header Short Body",
+			resp: func() *http.Response {
+				resp := &http.Response{}
+				resp.Proto = "HTTP/1.1"
+				resp.StatusCode = http.StatusOK
+				resp.Header = make(http.Header)
+				resp.Header.Add("User-Agent", "test-clinet/1.1")
+				resp.Body = io.NopCloser(bytes.NewReader([]byte(strings.Repeat("1234567890", 10))))
+				
+				return resp
+			}(),
+			wantErr: false,
+		},
+		{
+			name: "Short Header Long Body",
+			resp: func() *http.Response {
+				resp := &http.Response{}
+				resp.Proto = "HTTP/1.1"
+				resp.StatusCode = http.StatusOK
+				resp.Header = make(http.Header)
+				resp.Header.Add("User-Agent", "test-clinet/1.1")
+				resp.Body = io.NopCloser(bytes.NewReader([]byte(strings.Repeat("1234567890", 500))))
+				return resp
+			}(),
+			wantErr: false,
+		},
+		{
+			name: "Long Header Short Body",
+			resp: func() *http.Response {
+				resp := &http.Response{}
+				resp.Proto = "HTTP/1.1"
+				resp.StatusCode = http.StatusOK
+				resp.Header = make(http.Header)
+				resp.Header.Add("User-Agent", "test-clinet/1.1")
+				resp.Header.Add("Long-Cookie", strings.Repeat("1234567890", 500))
+				resp.Body = io.NopCloser(bytes.NewReader([]byte(strings.Repeat("1234567890", 10))))
+				return resp
+			}(),
+			wantErr: true,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			p := NewHTTP1Parser()
-			got, err := p.ParseResponse(tt.args.msg)
+
+			got, err := p.ParseResponse(tt.args())
 			if (err != nil) != tt.wantErr {
 				t.Errorf("HTTP1Parser.ParseResponse() error = %v, wantErr %v", err, tt.wantErr)
 				return
 			}
-			if !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("HTTP1Parser.ParseResponse() = %v, want %v", got, tt.want)
+			if tt.wantErr {
+				return
+			}
+			if !tt.equal(got) {
+				t.Errorf("HTTP1Parser.ParseResponse() = %v, want %v", got, tt.want())
 			}
 		})
 	}

@@ -63,13 +63,3 @@ func (up *UnknownParser) ParseResponse(sockKey *bpf.SockKey, msg []byte) (Respon
 	}
 	return nil, ErrUnknownProtocolMsg
 }
-
-
-type ReqRespParser struct {
-	parsers map[bpf.ProtocolType]ProtoParser
-	breaker Breaker
-}
-
-func parseRequest(me *bpf.MsgEvent) {
-
-}

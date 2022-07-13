@@ -9,6 +9,7 @@ import (
 
 	"github.com/KumKeeHyun/perisco/perisco/bpf"
 	"github.com/KumKeeHyun/perisco/perisco/config"
+	"github.com/KumKeeHyun/perisco/pkg/ebpf/types"
 	"github.com/KumKeeHyun/perisco/pkg/protocols"
 	"github.com/cilium/ebpf/rlimit"
 )
@@ -76,7 +77,7 @@ func main() {
 	<-ctx.Done()
 }
 
-func rawLogging(dataEvent *bpf.MsgEvent) {
+func rawLogging(dataEvent *types.MsgEvent) {
 	log.Printf("%s  %-10s\nsize: %d, msg: %s\n",
 		dataEvent.SockKey.String(),
 		dataEvent.FlowType.String(),

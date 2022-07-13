@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net"
 
+	"github.com/KumKeeHyun/perisco/pkg/ebpf/types"
 	"github.com/cilium/ebpf"
 )
 
@@ -27,11 +28,11 @@ type NetworkFilter struct {
 }
 
 func (nf *NetworkFilter) Update(cidrs []string) error {
-	if len(cidrs) > MAX_NET_FILTER_SIZE {
-		return fmt.Errorf("network filter cannot contain cidrs more than %d", MAX_NET_FILTER_SIZE)
+	if len(cidrs) > types.MAX_NET_FILTER_SIZE {
+		return fmt.Errorf("network filter cannot contain cidrs more than %d", types.MAX_NET_FILTER_SIZE)
 	}
 	
-	ipNets := IpNetworks{
+	ipNets := types.IpNetworks{
 		Size: uint32(len(cidrs)),
 	}
 	for i, cidr := range cidrs {
@@ -49,15 +50,15 @@ func (nf *NetworkFilter) Update(cidrs []string) error {
 	return nil
 }
 
-func ipNet2BpfIpNet(ipNet *net.IPNet) (bpfIpNet IpNetwork) {
+func ipNet2BpfIpNet(ipNet *net.IPNet) (bpfIpNet types.IpNetwork) {
 	copy(bpfIpNet.IpAddr[:], ipNet.IP)
 	copy(bpfIpNet.IpMask[:], ipNet.Mask)
 	return 
 }
 
-func (nf *NetworkFilter) update(networks *IpNetworks) error {
+func (nf *NetworkFilter) update(networks *types.IpNetworks) error {
 	err := nf.cm.Do(func(m *ebpf.Map) error {
-		return m.Update(&NET_FILTER_KEY, networks, ebpf.UpdateAny)
+		return m.Update(&types.NET_FILTER_KEY, networks, ebpf.UpdateAny)
 	})
 	if err != nil {
 		return err

@@ -9,68 +9,53 @@ import (
 	"github.com/KumKeeHyun/perisco/perisco/bpf"
 )
 
-type HTTP1RequestHeader struct {
-	SockKey bpf.SockKey
-	Request *http.Request
+type HTTP1RequestRecord struct {
+	h1Req *http.Request
 }
 
-var _ RequestHeader = &HTTP1RequestHeader{}
+var _ RequestRecord = &HTTP1RequestRecord{}
 
-// GetSockKey implements RequestHeader
-func (rh *HTTP1RequestHeader) GetSockKey() bpf.SockKey {
-	return rh.SockKey
-}
+// ProtoType implements RequestRecord
+func (*HTTP1RequestRecord) ProtoType() bpf.ProtocolType { return bpf.HTTP1 }
 
-// GetProtoType implements RequestHeader
-func (rh *HTTP1RequestHeader) GetProtoType() bpf.ProtocolType {
-	return bpf.HTTP1
-}
+// RequestRecord implements RequestRecord
+func (*HTTP1RequestRecord) RequestRecord() {}
 
-// RequestHeader implements RequestHeader
-func (*HTTP1RequestHeader) RequestHeader() {}
-
-func (rh *HTTP1RequestHeader) String() string {
-	return fmt.Sprintf("%s\n%s %s %s %s %d\n%v\n",
-		rh.SockKey.String(),
-		rh.Request.Proto,
-		rh.Request.Method,
-		rh.Request.RequestURI,
-		rh.Request.Host,
-		rh.Request.ContentLength,
-		rh.Request.Header,
+// String implements RequestRecord
+func (rr *HTTP1RequestRecord) String() string {
+	return fmt.Sprintf("%s %s %s %s %d\n%v\n",
+		rr.h1Req.Proto,
+		rr.h1Req.Method,
+		rr.h1Req.RequestURI,
+		rr.h1Req.Host,
+		rr.h1Req.ContentLength,
+		rr.h1Req.Header,
 	)
 }
 
-type HTTP1ResponseHeader struct {
-	SockKey  bpf.SockKey
-	Response *http.Response
+
+type HTTP1ResponseRecord struct {
+	h1Resp *http.Response
 }
 
-var _ ResponseHeader = &HTTP1ResponseHeader{}
+var _ ResponseRecord = &HTTP1ResponseRecord{}
 
-// GetSockKey implements ResponseHeader
-func (rh *HTTP1ResponseHeader) GetSockKey() bpf.SockKey {
-	return rh.SockKey
-}
+// ProtoType implements ResponseRecord
+func (*HTTP1ResponseRecord) ProtoType() bpf.ProtocolType { return bpf.HTTP1 }
 
-// GetProtoType implements ResponseHeader
-func (rh *HTTP1ResponseHeader) GetProtoType() bpf.ProtocolType {
-	return bpf.HTTP1
-}
+// ResponseRecord implements ResponseRecord
+func (*HTTP1ResponseRecord) ResponseRecord() {}
 
-// ResponseHeader implements ResponseHeader
-func (*HTTP1ResponseHeader) ResponseHeader() {}
-
-func (rh *HTTP1ResponseHeader) String() string {
-	return fmt.Sprintf("%s\n%s %s\n%v\n",
-		rh.SockKey.String(),
-		rh.Response.Proto,
-		rh.Response.Status,
-		rh.Response.Header,
+// String implements ResponseRecord
+func (rr *HTTP1ResponseRecord) String() string {
+	return fmt.Sprintf("%s %s\n%v\n",
+		rr.h1Resp.Proto,
+		rr.h1Resp.Status,
+		rr.h1Resp.Header,
 	)
 }
 
-const bufSize = 4096
+const h1ReaderBufSize = 4096
 
 type HTTP1Parser struct {
 	reqReader  *bufio.Reader
@@ -79,8 +64,8 @@ type HTTP1Parser struct {
 
 func NewHTTP1Parser() *HTTP1Parser {
 	return &HTTP1Parser{
-		reqReader:  bufio.NewReaderSize(nil, bufSize),
-		respReader: bufio.NewReaderSize(nil, bufSize),
+		reqReader:  bufio.NewReaderSize(nil, h1ReaderBufSize),
+		respReader: bufio.NewReaderSize(nil, h1ReaderBufSize),
 	}
 }
 
@@ -92,9 +77,9 @@ func (p *HTTP1Parser) GetProtoType() bpf.ProtocolType {
 }
 
 // ParseRequest implements ProtoParser
-func (p *HTTP1Parser) ParseRequest(msg *bpf.MsgEvent) ([]RequestHeader, error) {
+func (p *HTTP1Parser) ParseRequest(_ *bpf.SockKey, msg []byte) (RequestRecord, error) {
 	r := p.reqReader
-	br := bytes.NewReader(msg.GetBytes())
+	br := bytes.NewReader(msg)
 	r.Reset(br)
 
 	req, err := http.ReadRequest(r)
@@ -103,19 +88,16 @@ func (p *HTTP1Parser) ParseRequest(msg *bpf.MsgEvent) ([]RequestHeader, error) {
 	}
 	req.Body.Close()
 
-	if !isValidMethod(req) {
+	if !validMethod(req) {
 		return nil, fmt.Errorf("invalid http method. got: %s", req.Method)
 	}
 
-	return []RequestHeader{
-		&HTTP1RequestHeader{
-			SockKey: msg.SockKey,
-			Request: req,
-		},
+	return &HTTP1RequestRecord{
+		h1Req:   req,
 	}, nil
 }
 
-func isValidMethod(req *http.Request) bool {
+func validMethod(req *http.Request) bool {
 	switch req.Method {
 	case http.MethodGet,
 		http.MethodPost,
@@ -133,9 +115,9 @@ func isValidMethod(req *http.Request) bool {
 }
 
 // ParseResponse implements ProtoParser
-func (p *HTTP1Parser) ParseResponse(msg *bpf.MsgEvent) ([]ResponseHeader, error) {
+func (p *HTTP1Parser) ParseResponse(_ *bpf.SockKey, msg []byte) (ResponseRecord, error) {
 	r := p.respReader
-	br := bytes.NewReader(msg.GetBytes())
+	br := bytes.NewReader(msg)
 	r.Reset(br)
 
 	resp, err := http.ReadResponse(r, nil)
@@ -144,10 +126,7 @@ func (p *HTTP1Parser) ParseResponse(msg *bpf.MsgEvent) ([]ResponseHeader, error)
 	}
 	resp.Body.Close()
 
-	return []ResponseHeader{
-		&HTTP1ResponseHeader{
-			SockKey:  msg.SockKey,
-			Response: resp,
-		},
+	return &HTTP1ResponseRecord{
+		h1Resp: resp,
 	}, nil
 }

@@ -8,62 +8,58 @@ import (
 
 var (
 	ErrNotExistsHeader = errors.New("protocols: not exists header")
+	ErrUnknownProtocolMsg = errors.New("protocols: unknown protocol msg")
 )
 
-type RequestHeader interface {
-	GetSockKey() bpf.SockKey
-	GetProtoType() bpf.ProtocolType
-	RequestHeader()
+type RequestRecord interface {
+	ProtoType() bpf.ProtocolType
+	RequestRecord()
+	String() string
 }
 
-type ResponseHeader interface {
-	GetSockKey() bpf.SockKey
-	GetProtoType() bpf.ProtocolType
-	ResponseHeader()
+type ResponseRecord interface {
+	ProtoType() bpf.ProtocolType
+	ResponseRecord()
+	String() string
 }
 
 type ProtoParser interface {
 	GetProtoType() bpf.ProtocolType
-	ParseRequest(msg *bpf.MsgEvent) ([]RequestHeader, error)
-	ParseResponse(msg *bpf.MsgEvent) ([]ResponseHeader, error)
+	ParseRequest(sockKey *bpf.SockKey, msg []byte) (RequestRecord, error)
+	ParseResponse(sockKey *bpf.SockKey, msg []byte) (ResponseRecord, error)
 }
-
-
-type ReqRespParser struct {
-	sendc chan *bpf.MsgEvent
-	recvc chan *bpf.MsgEvent
-
-	reqc  chan RequestHeader
-	respc chan ResponseHeader
-
-	protoParsers map[bpf.ProtocolType]ProtoParser
-}
-
 
 type UnknownParser struct {
-	parserMap map[bpf.ProtocolType]ProtoParser
-	protoMap  *bpf.ProtocolMap
+	parsers []ProtoParser
 }
 
 var _ ProtoParser = &UnknownParser{}
 
-// GetProtoType implements ProtoParser
-func (*UnknownParser) GetProtoType() bpf.ProtocolType {
-	return bpf.PROTO_UNKNOWN
+func newUnknownParser(parsers []ProtoParser) *UnknownParser {
+	return &UnknownParser{
+		parsers: parsers,
+	}
 }
 
+// GetProtoType implements ProtoParser
+func (*UnknownParser) GetProtoType() bpf.ProtocolType { return bpf.PROTO_UNKNOWN }
+
 // ParseRequest implements ProtoParser
-func (p *UnknownParser) ParseRequest(msg *bpf.MsgEvent) ([]RequestHeader, error) {
-	for pt, pp := range p.parserMap {
-		if rhs, err := pp.ParseRequest(msg); err == nil {
-			p.protoMap.Update(msg.SockKey.ToEndpointKey(), pt)
-			return rhs, nil
+func (up *UnknownParser) ParseRequest(sockKey *bpf.SockKey, msg []byte) (RequestRecord, error) {
+	for _, p := range up.parsers {
+		if rr, err := p.ParseRequest(sockKey, msg); err == nil {
+			return rr, nil
 		}
-	}
-	panic("unimplemented")
+	} 
+	return nil, ErrUnknownProtocolMsg
 }
 
 // ParseResponse implements ProtoParser
-func (p *UnknownParser) ParseResponse(msg *bpf.MsgEvent) ([]ResponseHeader, error) {
-	panic("unimplemented")
+func (up *UnknownParser) ParseResponse(sockKey *bpf.SockKey, msg []byte) (ResponseRecord, error) {
+	for _, p := range up.parsers {
+		if rr, err := p.ParseResponse(sockKey, msg); err == nil {
+			return rr, nil
+		}
+	}
+	return nil, ErrUnknownProtocolMsg
 }

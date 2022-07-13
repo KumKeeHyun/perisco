@@ -10,60 +10,39 @@ import (
 	"golang.org/x/net/http2/hpack"
 )
 
-type HTTP2RequestHeader struct {
-	SockKey     bpf.SockKey
-	MetaHeaders *http2.MetaHeadersFrame
+type HTTP2RequestRecord struct {
+	headerFrames []*http2.MetaHeadersFrame
 }
 
-var _ RequestHeader = &HTTP2RequestHeader{}
+var _ RequestRecord = &HTTP2RequestRecord{}
 
-// GetSockKey implements RequestHeader
-func (rh *HTTP2RequestHeader) GetSockKey() bpf.SockKey {
-	return rh.SockKey
+// ProtoType implements RequestRecord
+func (*HTTP2RequestRecord) ProtoType() bpf.ProtocolType { return bpf.HTTP2 }
+
+// RequestRecord implements RequestRecord
+func (*HTTP2RequestRecord) RequestRecord() {}
+
+// String implements RequestRecord
+func (rr *HTTP2RequestRecord) String() string {
+	return fmt.Sprintf("%v\n", rr.headerFrames)
 }
 
-// GetProtoType implements RequestHeader
-func (rh *HTTP2RequestHeader) GetProtoType() bpf.ProtocolType {
-	return bpf.HTTP2
+type HTTP2ResponseRecord struct {
+	headerFrames []*http2.MetaHeadersFrame
 }
 
-// RequestHeader implements RequestHeader
-func (*HTTP2RequestHeader) RequestHeader() {}
+var _ ResponseRecord = &HTTP2ResponseRecord{}
 
-func (rh *HTTP2RequestHeader) String() string {
-	return fmt.Sprintf("%s\n%v\n",
-		rh.SockKey.String(),
-		rh.MetaHeaders.Fields,
-	)
+// ProtoType implements ResponseRecord
+func (*HTTP2ResponseRecord) ProtoType() bpf.ProtocolType { return bpf.HTTP2 }
+
+// ResponseRecord implements ResponseRecord
+func (*HTTP2ResponseRecord) ResponseRecord() {}
+
+// String implements ResponseRecord
+func (rr *HTTP2ResponseRecord) String() string {
+	return fmt.Sprintf("%v\n", rr.headerFrames)
 }
-
-type HTTP2ResponseHeader struct {
-	SockKey     bpf.SockKey
-	MetaHeaders *http2.MetaHeadersFrame
-}
-
-var _ ResponseHeader = &HTTP2ResponseHeader{}
-
-// GetSockKey implements ResponseHeader
-func (rh *HTTP2ResponseHeader) GetSockKey() bpf.SockKey {
-	return rh.SockKey
-}
-
-// GetProtoType implements ResponseHeader
-func (rh *HTTP2ResponseHeader) GetProtoType() bpf.ProtocolType {
-	return bpf.HTTP2
-}
-
-// ResponseHeader implements ResponseHeader
-func (*HTTP2ResponseHeader) ResponseHeader() {}
-
-func (rh *HTTP2ResponseHeader) String() string {
-	return fmt.Sprintf("%s\n%v\n",
-		rh.SockKey.String(),
-		rh.MetaHeaders.Fields,
-	)
-}
-
 
 type HTTP2Parser struct {
 	reqDecMap  map[bpf.SockKey]*hpack.Decoder
@@ -103,14 +82,16 @@ func (p *HTTP2Parser) getRespDec(key *bpf.SockKey) *hpack.Decoder {
 }
 
 // ParseRequest implements ProtoParser
-func (p *HTTP2Parser) ParseRequest(msg *bpf.MsgEvent) ([]RequestHeader, error) {
-	br := bytes.NewReader(msg.Msg[:])
+func (p *HTTP2Parser) ParseRequest(sockKey *bpf.SockKey, msg []byte) (RequestRecord, error) {
+	br := bytes.NewReader(msg)
 	skipPrefaceIfExists(br)
 
 	f := http2.NewFramer(io.Discard, br)
-	f.ReadMetaHeaders = p.getReqDec(&msg.SockKey)
+	f.ReadMetaHeaders = p.getReqDec(sockKey)
 
-	rhs := make([]RequestHeader, 0, 1)
+	rr := &HTTP2RequestRecord{
+		headerFrames: make([]*http2.MetaHeadersFrame, 0, 1),
+	}
 	for {
 		fr, err := f.ReadFrame()
 		if err != nil {
@@ -120,16 +101,13 @@ func (p *HTTP2Parser) ParseRequest(msg *bpf.MsgEvent) ([]RequestHeader, error) {
 		if !ok {
 			continue
 		}
-		rhs = append(rhs, &HTTP2RequestHeader{
-			SockKey:     msg.SockKey,
-			MetaHeaders: mh,
-		})
+		rr.headerFrames = append(rr.headerFrames, mh)
 	}
 
-	if len(rhs) == 0 {
+	if len(rr.headerFrames) == 0 {
 		return nil, ErrNotExistsHeader
 	}
-	return rhs, nil
+	return rr, nil
 }
 
 func skipPrefaceIfExists(r *bytes.Reader) {
@@ -141,14 +119,16 @@ func skipPrefaceIfExists(r *bytes.Reader) {
 }
 
 // ParseResponse implements ProtoParser
-func (p *HTTP2Parser) ParseResponse(msg *bpf.MsgEvent) ([]ResponseHeader, error) {
-	br := bytes.NewReader(msg.Msg[:])
+func (p *HTTP2Parser) ParseResponse(sockKey *bpf.SockKey, msg []byte) (ResponseRecord, error) {
+	br := bytes.NewReader(msg)
 	skipPrefaceIfExists(br)
 
 	f := http2.NewFramer(io.Discard, br)
-	f.ReadMetaHeaders = p.getRespDec(&msg.SockKey)
+	f.ReadMetaHeaders = p.getRespDec(sockKey)
 
-	rhs := make([]ResponseHeader, 0, 1)
+	rr := &HTTP2ResponseRecord{
+		headerFrames: make([]*http2.MetaHeadersFrame, 0, 1),
+	}
 	for {
 		fr, err := f.ReadFrame()
 		if err != nil {
@@ -158,14 +138,11 @@ func (p *HTTP2Parser) ParseResponse(msg *bpf.MsgEvent) ([]ResponseHeader, error)
 		if !ok {
 			continue
 		}
-		rhs = append(rhs, &HTTP2ResponseHeader{
-			SockKey:     msg.SockKey,
-			MetaHeaders: mh,
-		})
+		rr.headerFrames = append(rr.headerFrames, mh)
 	}
 
-	if len(rhs) == 0 {
+	if len(rr.headerFrames) == 0 {
 		return nil, ErrNotExistsHeader
 	}
-	return rhs, nil
+	return rr, nil
 }

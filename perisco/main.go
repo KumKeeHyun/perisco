@@ -42,7 +42,7 @@ func main() {
 	log.Printf("network filter: %v", config.CidrSlice())
 
 	h1Parser := protocols.NewHTTP1Parser()
-	h2Parser := protocols.NewHTTP2Parser()
+	// h2Parser := protocols.NewHTTP2Parser()
 
 	go func() {
 		for {
@@ -50,7 +50,7 @@ func main() {
 			case dataEvent := <-recvCh:
 				// rawLogging(dataEvent)
 				parseH1Req(dataEvent, h1Parser)
-				parseH2Req(dataEvent, h2Parser)
+				// parseH2Req(dataEvent, h2Parser)
 			case <-ctx.Done():
 				return
 			}
@@ -63,7 +63,7 @@ func main() {
 			case dataEvent := <-sendCh:
 				// rawLogging(dataEvent)
 				parseH1Resp(dataEvent, h1Parser)
-				parseH2Resp(dataEvent, h2Parser)
+				// parseH2Resp(dataEvent, h2Parser)
 			case <-ctx.Done():
 				return
 			}
@@ -83,44 +83,37 @@ func rawLogging(dataEvent *bpf.MsgEvent) {
 }
 
 func parseH1Req(msg *bpf.MsgEvent, parser *protocols.HTTP1Parser) {
-	req, err := parser.ParseRequest(msg)
+	req, err := parser.ParseRequest(nil, msg.GetBytes())
 	if err != nil {
 		return
 	}
 
-	h1Req := req[0].(*protocols.HTTP1RequestHeader)
-	log.Printf("%s\n", h1Req.String())
+	log.Printf("%s\n%s\n", msg.SockKey.String(), req.String())
 }
 
-
 func parseH1Resp(msg *bpf.MsgEvent, parser *protocols.HTTP1Parser) {
-	resp, err := parser.ParseResponse(msg)
+	resp, err := parser.ParseResponse(nil, msg.GetBytes())
 	if err != nil {
 		return
 	}
 
-	h1Resp := resp[0].(*protocols.HTTP1ResponseHeader)
-	log.Printf("%s\n", h1Resp.String())
+	log.Printf("%s\n%s\n", msg.SockKey.String(), resp.String())
 }
 
 func parseH2Req(msg *bpf.MsgEvent, parser *protocols.HTTP2Parser) {
-	reqs, err := parser.ParseRequest(msg)
+	req, err := parser.ParseRequest(&msg.SockKey, msg.GetBytes())
 	if err != nil {
 		return
 	}
 
-	for _, req := range reqs {
-		log.Printf("%s\n", req.(*protocols.HTTP2RequestHeader).String())
-	}
+	log.Printf("%s\n%s\n", msg.SockKey.String(), req.String())
 }
 
 func parseH2Resp(msg *bpf.MsgEvent, parser *protocols.HTTP2Parser) {
-	resps, err := parser.ParseResponse(msg)
+	resp, err := parser.ParseResponse(&msg.SockKey, msg.GetBytes())
 	if err != nil {
 		return
 	}
 
-	for _, resp := range resps {
-		log.Printf("%s\n", resp.(*protocols.HTTP2ResponseHeader).String())
-	}
+	log.Printf("%s\n%s\n", msg.SockKey.String(), resp.String())
 }

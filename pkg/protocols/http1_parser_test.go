@@ -39,38 +39,30 @@ type http1Parser_ParseRequest_Test struct {
 	wantErr bool
 }
 
-func (t *http1Parser_ParseRequest_Test) args() *bpf.MsgEvent {
+func (t *http1Parser_ParseRequest_Test) args() []byte {
 	buf := bytes.NewBuffer(make([]byte, 0, 4096))
 	t.req.Write(buf)
 
-	msg := &bpf.MsgEvent{}
-	msg.MsgSize = uint32(buf.Len())
-	if buf.Len() > len(msg.Msg) {
-		msg.MsgSize = uint32(len(msg.Msg))
+	len := buf.Len()
+	if len > 4096 {
+		len = 4096
 	}
-	copy(msg.GetBytes(), buf.Bytes())
-
-	return msg
+	return buf.Bytes()[:len]
 }
 
-func (t *http1Parser_ParseRequest_Test) want() []RequestHeader {
-	return []RequestHeader{
-		&HTTP1RequestHeader{Request: t.req},
-	}
+func (t *http1Parser_ParseRequest_Test) want() RequestRecord {
+	return &HTTP1RequestRecord{h1Req: t.req}
 }
 
-func (t *http1Parser_ParseRequest_Test) equal(got []RequestHeader) bool {
-	if len(got) != 1 {
-		return false
-	}
-	gotReq, ok := got[0].(*HTTP1RequestHeader)
+func (t *http1Parser_ParseRequest_Test) equal(got RequestRecord) bool {
+	h1rr, ok := got.(*HTTP1RequestRecord)
 	if !ok {
 		return false
 	}
 	wantBytes := make([]byte, 0, 4096)
 	t.req.Write(bytes.NewBuffer(wantBytes))
 	gotBytes := make([]byte, 0, 4096)
-	gotReq.Request.Write(bytes.NewBuffer(gotBytes))
+	h1rr.h1Req.Write(bytes.NewBuffer(gotBytes))
 
 	return bytes.Equal(wantBytes, gotBytes)
 }
@@ -140,7 +132,7 @@ func TestHTTP1Parser_ParseRequest(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			p := NewHTTP1Parser()
 
-			got, err := p.ParseRequest(tt.args())
+			got, err := p.ParseRequest(nil, tt.args())
 			if (err != nil) != tt.wantErr {
 				t.Errorf("HTTP1Parser.ParseRequest() error = %v, wantErr %v", err, tt.wantErr)
 				return
@@ -220,7 +212,7 @@ func Test_isValidMethod(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got := isValidMethod(tt.args.req); got != tt.want {
+			if got := validMethod(tt.args.req); got != tt.want {
 				t.Errorf("isValidMethod() = %v, want %v", got, tt.want)
 			}
 		})
@@ -233,38 +225,31 @@ type http1Parser_ParseResponse_Test struct {
 	wantErr bool
 }
 
-func (t *http1Parser_ParseResponse_Test) args() *bpf.MsgEvent {
+func (t *http1Parser_ParseResponse_Test) args() []byte {
 	buf := bytes.NewBuffer(make([]byte, 0, 4096))
 	t.resp.Write(buf)
 
-	msg := &bpf.MsgEvent{}
-	msg.MsgSize = uint32(buf.Len())
-	if buf.Len() > len(msg.Msg) {
-		msg.MsgSize = uint32(len(msg.Msg))
-	}
-	copy(msg.GetBytes(), buf.Bytes())
 
-	return msg
+	len := buf.Len()
+	if len > 4096 {
+		len = 4096
+	}
+	return buf.Bytes()[:len]
 }
 
-func (t *http1Parser_ParseResponse_Test) want() []ResponseHeader {
-	return []ResponseHeader{
-		&HTTP1ResponseHeader{Response: t.resp},
-	}
+func (t *http1Parser_ParseResponse_Test) want() ResponseRecord {
+	return &HTTP1ResponseRecord{h1Resp: t.resp}
 }
 
-func (t *http1Parser_ParseResponse_Test) equal(got []ResponseHeader) bool {
-	if len(got) != 1 {
-		return false
-	}
-	gotResp, ok := got[0].(*HTTP1ResponseHeader)
+func (t *http1Parser_ParseResponse_Test) equal(got ResponseRecord) bool {
+	h1rr, ok := got.(*HTTP1ResponseRecord)
 	if !ok {
 		return false
 	}
 	wantBytes := make([]byte, 0, 4096)
 	t.resp.Write(bytes.NewBuffer(wantBytes))
 	gotBytes := make([]byte, 0, 4096)
-	gotResp.Response.Write(bytes.NewBuffer(gotBytes))
+	h1rr.h1Resp.Write(bytes.NewBuffer(gotBytes))
 
 	return bytes.Equal(wantBytes, gotBytes)
 }
@@ -317,7 +302,7 @@ func TestHTTP1Parser_ParseResponse(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			p := NewHTTP1Parser()
 
-			got, err := p.ParseResponse(tt.args())
+			got, err := p.ParseResponse(nil, tt.args())
 			if (err != nil) != tt.wantErr {
 				t.Errorf("HTTP1Parser.ParseResponse() error = %v, wantErr %v", err, tt.wantErr)
 				return

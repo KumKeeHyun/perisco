@@ -35,7 +35,7 @@ type UnknownParser struct {
 
 var _ ProtoParser = &UnknownParser{}
 
-func newUnknownParser(parsers []ProtoParser) *UnknownParser {
+func NewUnknownParser(parsers []ProtoParser) *UnknownParser {
 	return &UnknownParser{
 		parsers: parsers,
 	}
@@ -62,4 +62,14 @@ func (up *UnknownParser) ParseResponse(sockKey *bpf.SockKey, msg []byte) (Respon
 		}
 	}
 	return nil, ErrUnknownProtocolMsg
+}
+
+
+type ReqRespParser struct {
+	parsers map[bpf.ProtocolType]ProtoParser
+	breaker Breaker
+}
+
+func parseRequest(me *bpf.MsgEvent) {
+
 }

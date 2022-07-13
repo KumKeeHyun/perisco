@@ -41,16 +41,19 @@ func main() {
 	}
 	log.Printf("network filter: %v", config.CidrSlice())
 
-	h1Parser := protocols.NewHTTP1Parser()
-	// h2Parser := protocols.NewHTTP2Parser()
+	parser := protocols.NewUnknownParser([]protocols.ProtoParser{
+		protocols.NewHTTP1Parser(),
+		protocols.NewHTTP2Parser(),
+	})
 
 	go func() {
 		for {
 			select {
-			case dataEvent := <-recvCh:
+			case msgEvent := <-recvCh:
 				// rawLogging(dataEvent)
-				parseH1Req(dataEvent, h1Parser)
-				// parseH2Req(dataEvent, h2Parser)
+				if req, err := parser.ParseRequest(&msgEvent.SockKey, msgEvent.GetBytes()); err == nil {
+					log.Printf("%s\n%s\n", msgEvent.SockKey.String(), req.String())
+				}
 			case <-ctx.Done():
 				return
 			}
@@ -60,10 +63,10 @@ func main() {
 	go func() {
 		for {
 			select {
-			case dataEvent := <-sendCh:
-				// rawLogging(dataEvent)
-				parseH1Resp(dataEvent, h1Parser)
-				// parseH2Resp(dataEvent, h2Parser)
+			case msgEvent := <-sendCh:
+				if resp, err := parser.ParseRequest(&msgEvent.SockKey, msgEvent.GetBytes()); err == nil {
+					log.Printf("%s\n%s\n", msgEvent.SockKey.String(), resp.String())
+				}
 			case <-ctx.Done():
 				return
 			}
@@ -80,40 +83,4 @@ func rawLogging(dataEvent *bpf.MsgEvent) {
 		dataEvent.MsgSize,
 		dataEvent.Msg[:dataEvent.MsgSize],
 	)
-}
-
-func parseH1Req(msg *bpf.MsgEvent, parser *protocols.HTTP1Parser) {
-	req, err := parser.ParseRequest(nil, msg.GetBytes())
-	if err != nil {
-		return
-	}
-
-	log.Printf("%s\n%s\n", msg.SockKey.String(), req.String())
-}
-
-func parseH1Resp(msg *bpf.MsgEvent, parser *protocols.HTTP1Parser) {
-	resp, err := parser.ParseResponse(nil, msg.GetBytes())
-	if err != nil {
-		return
-	}
-
-	log.Printf("%s\n%s\n", msg.SockKey.String(), resp.String())
-}
-
-func parseH2Req(msg *bpf.MsgEvent, parser *protocols.HTTP2Parser) {
-	req, err := parser.ParseRequest(&msg.SockKey, msg.GetBytes())
-	if err != nil {
-		return
-	}
-
-	log.Printf("%s\n%s\n", msg.SockKey.String(), req.String())
-}
-
-func parseH2Resp(msg *bpf.MsgEvent, parser *protocols.HTTP2Parser) {
-	resp, err := parser.ParseResponse(&msg.SockKey, msg.GetBytes())
-	if err != nil {
-		return
-	}
-
-	log.Printf("%s\n%s\n", msg.SockKey.String(), resp.String())
 }

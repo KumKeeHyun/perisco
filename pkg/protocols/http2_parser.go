@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"fmt"
 	"io"
+	"strings"
 
 	"github.com/KumKeeHyun/perisco/perisco/bpf"
 	"golang.org/x/net/http2"
@@ -24,7 +25,13 @@ func (*HTTP2RequestRecord) RequestRecord() {}
 
 // String implements RequestRecord
 func (rr *HTTP2RequestRecord) String() string {
-	return fmt.Sprintf("%v\n", rr.headerFrames)
+	builder := strings.Builder{}
+
+	for _, hf := range rr.headerFrames {
+		builder.WriteString(fmt.Sprintf("%v\n", hf.Fields))
+	}
+
+	return builder.String()
 }
 
 type HTTP2ResponseRecord struct {
@@ -41,7 +48,13 @@ func (*HTTP2ResponseRecord) ResponseRecord() {}
 
 // String implements ResponseRecord
 func (rr *HTTP2ResponseRecord) String() string {
-	return fmt.Sprintf("%v\n", rr.headerFrames)
+	builder := strings.Builder{}
+
+	for _, hf := range rr.headerFrames {
+		builder.WriteString(fmt.Sprintf("%v\n", hf.Fields))
+	}
+
+	return builder.String()
 }
 
 type HTTP2Parser struct {

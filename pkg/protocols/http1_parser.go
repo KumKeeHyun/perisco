@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"net/http"
 
-	"github.com/KumKeeHyun/perisco/perisco/bpf"
+	"github.com/KumKeeHyun/perisco/pkg/ebpf/types"
 )
 
 type HTTP1RequestRecord struct {
@@ -16,7 +16,7 @@ type HTTP1RequestRecord struct {
 var _ RequestRecord = &HTTP1RequestRecord{}
 
 // ProtoType implements RequestRecord
-func (*HTTP1RequestRecord) ProtoType() bpf.ProtocolType { return bpf.HTTP1 }
+func (*HTTP1RequestRecord) ProtoType() types.ProtocolType { return types.HTTP1 }
 
 // RequestRecord implements RequestRecord
 func (*HTTP1RequestRecord) RequestRecord() {}
@@ -33,7 +33,6 @@ func (rr *HTTP1RequestRecord) String() string {
 	)
 }
 
-
 type HTTP1ResponseRecord struct {
 	h1Resp *http.Response
 }
@@ -41,7 +40,7 @@ type HTTP1ResponseRecord struct {
 var _ ResponseRecord = &HTTP1ResponseRecord{}
 
 // ProtoType implements ResponseRecord
-func (*HTTP1ResponseRecord) ProtoType() bpf.ProtocolType { return bpf.HTTP1 }
+func (*HTTP1ResponseRecord) ProtoType() types.ProtocolType { return types.HTTP1 }
 
 // ResponseRecord implements ResponseRecord
 func (*HTTP1ResponseRecord) ResponseRecord() {}
@@ -72,12 +71,12 @@ func NewHTTP1Parser() *HTTP1Parser {
 var _ ProtoParser = &HTTP1Parser{}
 
 // GetProtoType implements ProtoParser
-func (p *HTTP1Parser) GetProtoType() bpf.ProtocolType {
-	return bpf.HTTP1
+func (p *HTTP1Parser) GetProtoType() types.ProtocolType {
+	return types.HTTP1
 }
 
 // ParseRequest implements ProtoParser
-func (p *HTTP1Parser) ParseRequest(_ *bpf.SockKey, msg []byte) (RequestRecord, error) {
+func (p *HTTP1Parser) ParseRequest(_ *types.SockKey, msg []byte) (RequestRecord, error) {
 	r := p.reqReader
 	br := bytes.NewReader(msg)
 	r.Reset(br)
@@ -93,7 +92,7 @@ func (p *HTTP1Parser) ParseRequest(_ *bpf.SockKey, msg []byte) (RequestRecord, e
 	}
 
 	return &HTTP1RequestRecord{
-		h1Req:   req,
+		h1Req: req,
 	}, nil
 }
 
@@ -115,7 +114,7 @@ func validMethod(req *http.Request) bool {
 }
 
 // ParseResponse implements ProtoParser
-func (p *HTTP1Parser) ParseResponse(_ *bpf.SockKey, msg []byte) (ResponseRecord, error) {
+func (p *HTTP1Parser) ParseResponse(_ *types.SockKey, msg []byte) (ResponseRecord, error) {
 	r := p.respReader
 	br := bytes.NewReader(msg)
 	r.Reset(br)

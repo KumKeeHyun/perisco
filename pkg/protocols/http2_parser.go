@@ -6,7 +6,7 @@ import (
 	"io"
 	"strings"
 
-	"github.com/KumKeeHyun/perisco/perisco/bpf"
+	"github.com/KumKeeHyun/perisco/pkg/ebpf/types"
 	"golang.org/x/net/http2"
 	"golang.org/x/net/http2/hpack"
 )
@@ -18,7 +18,7 @@ type HTTP2RequestRecord struct {
 var _ RequestRecord = &HTTP2RequestRecord{}
 
 // ProtoType implements RequestRecord
-func (*HTTP2RequestRecord) ProtoType() bpf.ProtocolType { return bpf.HTTP2 }
+func (*HTTP2RequestRecord) ProtoType() types.ProtocolType { return types.HTTP2 }
 
 // RequestRecord implements RequestRecord
 func (*HTTP2RequestRecord) RequestRecord() {}
@@ -41,7 +41,7 @@ type HTTP2ResponseRecord struct {
 var _ ResponseRecord = &HTTP2ResponseRecord{}
 
 // ProtoType implements ResponseRecord
-func (*HTTP2ResponseRecord) ProtoType() bpf.ProtocolType { return bpf.HTTP2 }
+func (*HTTP2ResponseRecord) ProtoType() types.ProtocolType { return types.HTTP2 }
 
 // ResponseRecord implements ResponseRecord
 func (*HTTP2ResponseRecord) ResponseRecord() {}
@@ -58,25 +58,25 @@ func (rr *HTTP2ResponseRecord) String() string {
 }
 
 type HTTP2Parser struct {
-	reqDecMap  map[bpf.SockKey]*hpack.Decoder
-	respDecMap map[bpf.SockKey]*hpack.Decoder
+	reqDecMap  map[types.SockKey]*hpack.Decoder
+	respDecMap map[types.SockKey]*hpack.Decoder
 }
 
 func NewHTTP2Parser() *HTTP2Parser {
 	return &HTTP2Parser{
-		reqDecMap:  make(map[bpf.SockKey]*hpack.Decoder, 100),
-		respDecMap: make(map[bpf.SockKey]*hpack.Decoder, 100),
+		reqDecMap:  make(map[types.SockKey]*hpack.Decoder, 100),
+		respDecMap: make(map[types.SockKey]*hpack.Decoder, 100),
 	}
 }
 
 var _ ProtoParser = &HTTP2Parser{}
 
 // GetProtoType implements ProtoParser
-func (p *HTTP2Parser) GetProtoType() bpf.ProtocolType {
-	return bpf.HTTP2
+func (p *HTTP2Parser) GetProtoType() types.ProtocolType {
+	return types.HTTP2
 }
 
-func (p *HTTP2Parser) getReqDec(key *bpf.SockKey) *hpack.Decoder {
+func (p *HTTP2Parser) getReqDec(key *types.SockKey) *hpack.Decoder {
 	dec, exists := p.reqDecMap[*key]
 	if !exists {
 		dec = hpack.NewDecoder(4096, nil)
@@ -85,7 +85,7 @@ func (p *HTTP2Parser) getReqDec(key *bpf.SockKey) *hpack.Decoder {
 	return dec
 }
 
-func (p *HTTP2Parser) getRespDec(key *bpf.SockKey) *hpack.Decoder {
+func (p *HTTP2Parser) getRespDec(key *types.SockKey) *hpack.Decoder {
 	dec, exists := p.respDecMap[*key]
 	if !exists {
 		dec = hpack.NewDecoder(4096, nil)
@@ -95,7 +95,7 @@ func (p *HTTP2Parser) getRespDec(key *bpf.SockKey) *hpack.Decoder {
 }
 
 // ParseRequest implements ProtoParser
-func (p *HTTP2Parser) ParseRequest(sockKey *bpf.SockKey, msg []byte) (RequestRecord, error) {
+func (p *HTTP2Parser) ParseRequest(sockKey *types.SockKey, msg []byte) (RequestRecord, error) {
 	br := bytes.NewReader(msg)
 	skipPrefaceIfExists(br)
 
@@ -132,7 +132,7 @@ func skipPrefaceIfExists(r *bytes.Reader) {
 }
 
 // ParseResponse implements ProtoParser
-func (p *HTTP2Parser) ParseResponse(sockKey *bpf.SockKey, msg []byte) (ResponseRecord, error) {
+func (p *HTTP2Parser) ParseResponse(sockKey *types.SockKey, msg []byte) (ResponseRecord, error) {
 	br := bytes.NewReader(msg)
 	skipPrefaceIfExists(br)
 

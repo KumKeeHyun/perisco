@@ -5,18 +5,18 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/KumKeeHyun/perisco/perisco/bpf"
+	"github.com/KumKeeHyun/perisco/pkg/ebpf/types"
 	"golang.org/x/net/http2/hpack"
 )
 
 func TestHTTP2RequestRecord_ProtoType(t *testing.T) {
 	tests := []struct {
 		name string
-		want bpf.ProtocolType
+		want types.ProtocolType
 	}{
 		{
 			name: "HTTP2 Request Record Protocol Type",
-			want: bpf.HTTP2,
+			want: types.HTTP2,
 		},
 	}
 	for _, tt := range tests {
@@ -32,7 +32,7 @@ func TestHTTP2RequestRecord_ProtoType(t *testing.T) {
 func TestHTTP2ResponseRecord_ProtoType(t *testing.T) {
 	tests := []struct {
 		name string
-		want bpf.ProtocolType
+		want types.ProtocolType
 	}{
 		// TODO: Add test cases.
 	}
@@ -48,12 +48,12 @@ func TestHTTP2ResponseRecord_ProtoType(t *testing.T) {
 
 func TestHTTP2Parser_GetProtoType(t *testing.T) {
 	tests := []struct {
-		name   string
-		want   bpf.ProtocolType
+		name string
+		want types.ProtocolType
 	}{
 		{
 			name: "HTTP2 Parser Protocol Type",
-			want: bpf.HTTP2,
+			want: types.HTTP2,
 		},
 	}
 	for _, tt := range tests {
@@ -68,11 +68,11 @@ func TestHTTP2Parser_GetProtoType(t *testing.T) {
 
 func TestHTTP2Parser_getReqDec(t *testing.T) {
 	type fields struct {
-		reqDecMap  map[bpf.SockKey]*hpack.Decoder
-		respDecMap map[bpf.SockKey]*hpack.Decoder
+		reqDecMap  map[types.SockKey]*hpack.Decoder
+		respDecMap map[types.SockKey]*hpack.Decoder
 	}
 	type args struct {
-		key *bpf.SockKey
+		key *types.SockKey
 	}
 	tests := []struct {
 		name   string
@@ -97,11 +97,11 @@ func TestHTTP2Parser_getReqDec(t *testing.T) {
 
 func TestHTTP2Parser_getRespDec(t *testing.T) {
 	type fields struct {
-		reqDecMap  map[bpf.SockKey]*hpack.Decoder
-		respDecMap map[bpf.SockKey]*hpack.Decoder
+		reqDecMap  map[types.SockKey]*hpack.Decoder
+		respDecMap map[types.SockKey]*hpack.Decoder
 	}
 	type args struct {
-		key *bpf.SockKey
+		key *types.SockKey
 	}
 	tests := []struct {
 		name   string
@@ -126,11 +126,11 @@ func TestHTTP2Parser_getRespDec(t *testing.T) {
 
 func TestHTTP2Parser_ParseRequest(t *testing.T) {
 	type fields struct {
-		reqDecMap  map[bpf.SockKey]*hpack.Decoder
-		respDecMap map[bpf.SockKey]*hpack.Decoder
+		reqDecMap  map[types.SockKey]*hpack.Decoder
+		respDecMap map[types.SockKey]*hpack.Decoder
 	}
 	type args struct {
-		sockKey *bpf.SockKey
+		sockKey *types.SockKey
 		msg     []byte
 	}
 	tests := []struct {
@@ -179,11 +179,11 @@ func Test_skipPrefaceIfExists(t *testing.T) {
 
 func TestHTTP2Parser_ParseResponse(t *testing.T) {
 	type fields struct {
-		reqDecMap  map[bpf.SockKey]*hpack.Decoder
-		respDecMap map[bpf.SockKey]*hpack.Decoder
+		reqDecMap  map[types.SockKey]*hpack.Decoder
+		respDecMap map[types.SockKey]*hpack.Decoder
 	}
 	type args struct {
-		sockKey *bpf.SockKey
+		sockKey *types.SockKey
 		msg     []byte
 	}
 	tests := []struct {

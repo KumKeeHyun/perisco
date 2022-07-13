@@ -3,7 +3,7 @@ package protocols
 import (
 	"context"
 
-	"github.com/KumKeeHyun/perisco/perisco/bpf"
+	"github.com/KumKeeHyun/perisco/pkg/ebpf/types"
 )
 
 type Request struct {
@@ -17,28 +17,28 @@ type Response struct {
 }
 
 type ReqRespParser struct {
-	parsers map[bpf.ProtocolType]ProtoParser
+	parsers map[types.ProtocolType]ProtoParser
 	breaker Breaker
 
-	reqc chan *Request
+	reqc  chan *Request
 	respc chan *Response
 }
 
 func newReqRespParser(parsers []ProtoParser, breaker Breaker) *ReqRespParser {
 	parser := &ReqRespParser{
-		parsers: make(map[bpf.ProtocolType]ProtoParser, len(parsers)+1),
+		parsers: make(map[types.ProtocolType]ProtoParser, len(parsers)+1),
 		breaker: breaker,
 	}
 
 	for _, p := range parsers {
 		parser.parsers[p.GetProtoType()] = p
 	}
-	parser.parsers[bpf.PROTO_UNKNOWN] = NewUnknownParser(parsers)
+	parser.parsers[types.PROTO_UNKNOWN] = NewUnknownParser(parsers)
 
 	return parser
 }
 
-func (rrp *ReqRespParser) run(ctx context.Context, recv, sendc chan *bpf.MsgEvent) (chan *Request, chan *Response) {
+func (rrp *ReqRespParser) run(ctx context.Context, recv, sendc chan *types.MsgEvent) (chan *Request, chan *Response) {
 	reqc := make(chan *Request, 100)
 	respc := make(chan *Response, 100)
 
@@ -46,7 +46,7 @@ func (rrp *ReqRespParser) run(ctx context.Context, recv, sendc chan *bpf.MsgEven
 	rrp.respc = respc
 
 	go func() {
-		defer func ()  {
+		defer func() {
 			close(reqc)
 			close(respc)
 		}()
@@ -66,9 +66,9 @@ func (rrp *ReqRespParser) run(ctx context.Context, recv, sendc chan *bpf.MsgEven
 	return reqc, respc
 }
 
-func (rrp *ReqRespParser) tryParseRequest(me *bpf.MsgEvent) {
+func (rrp *ReqRespParser) tryParseRequest(me *types.MsgEvent) {
 	p := rrp.findParser(me)
-	rr, err := p.ParseRequest(&me.SockKey, me.GetBytes())
+	rr, err := p.ParseRequest(&me.SockKey, me.Bytes())
 	if err != nil {
 		rrp.breaker.Fail(me.SockKey)
 		return
@@ -80,21 +80,21 @@ func (rrp *ReqRespParser) tryParseRequest(me *bpf.MsgEvent) {
 	}
 }
 
-func (rrp *ReqRespParser) findParser(me *bpf.MsgEvent) ProtoParser {
+func (rrp *ReqRespParser) findParser(me *types.MsgEvent) ProtoParser {
 	if p, exists := rrp.parsers[me.Protocol]; exists {
 		return p
 	}
-	return rrp.parsers[bpf.PROTO_UNKNOWN]
+	return rrp.parsers[types.PROTO_UNKNOWN]
 }
 
-func (rrp *ReqRespParser) tryParseResponse(me *bpf.MsgEvent) {
-p := rrp.findParser(me)
-	rr, err := p.ParseResponse(&me.SockKey, me.GetBytes())
+func (rrp *ReqRespParser) tryParseResponse(me *types.MsgEvent) {
+	p := rrp.findParser(me)
+	rr, err := p.ParseResponse(&me.SockKey, me.Bytes())
 	if err != nil {
 		rrp.breaker.Fail(me.SockKey)
 		return
 	}
-	
+
 	rrp.breaker.Success(me.SockKey, p.GetProtoType())
 	rrp.respc <- &Response{
 		Record: rr,

@@ -8,16 +8,17 @@ import (
 	"runtime"
 	"sync"
 
+	"github.com/KumKeeHyun/perisco/pkg/ebpf/types"
 	"github.com/cilium/ebpf"
 	"github.com/cilium/ebpf/link"
 	"github.com/cilium/ebpf/ringbuf"
 )
 
 var msgEventPool = sync.Pool{
-	New: func() interface{} { return &MsgEvent{} },
+	New: func() interface{} { return &types.MsgEvent{} },
 }
 
-func LoadBpfProgram() (chan *MsgEvent, chan *MsgEvent, *ebpf.Map, func()) {
+func LoadBpfProgram() (chan *types.MsgEvent, chan *types.MsgEvent, *ebpf.Map, func()) {
 	objs := bpfObjects{}
 	if err := loadBpfObjects(&objs, nil); err != nil {
 		log.Fatalf("loading objects: %v", err)
@@ -53,7 +54,7 @@ func LoadBpfProgram() (chan *MsgEvent, chan *MsgEvent, *ebpf.Map, func()) {
 	if err != nil {
 		log.Fatalf("opening dataEvent ringbuf reader: %s", err)
 	}
-	recvCh := make(chan *MsgEvent)
+	recvCh := make(chan *types.MsgEvent)
 	go func() {
 		for {
 			record, err := recvRb.Read()
@@ -66,12 +67,12 @@ func LoadBpfProgram() (chan *MsgEvent, chan *MsgEvent, *ebpf.Map, func()) {
 				continue
 			}
 
-			msgEvent := msgEventPool.Get().(*MsgEvent)
+			msgEvent := msgEventPool.Get().(*types.MsgEvent)
 			if err := binary.Read(bytes.NewBuffer(record.RawSample), binary.LittleEndian, msgEvent); err != nil {
 				log.Printf("parsing closeEvent ringbuf event: %s", err)
 				continue
 			}
-			runtime.SetFinalizer(msgEvent, func (obj interface{})  {
+			runtime.SetFinalizer(msgEvent, func(obj interface{}) {
 				msgEventPool.Put(obj)
 			})
 
@@ -83,7 +84,7 @@ func LoadBpfProgram() (chan *MsgEvent, chan *MsgEvent, *ebpf.Map, func()) {
 	if err != nil {
 		log.Fatalf("opening dataEvent ringbuf reader: %s", err)
 	}
-	sendCh := make(chan *MsgEvent)
+	sendCh := make(chan *types.MsgEvent)
 	go func() {
 		for {
 			record, err := sendRb.Read()
@@ -96,12 +97,12 @@ func LoadBpfProgram() (chan *MsgEvent, chan *MsgEvent, *ebpf.Map, func()) {
 				continue
 			}
 
-			msgEvent := msgEventPool.Get().(*MsgEvent)
+			msgEvent := msgEventPool.Get().(*types.MsgEvent)
 			if err := binary.Read(bytes.NewBuffer(record.RawSample), binary.LittleEndian, msgEvent); err != nil {
 				log.Printf("parsing closeEvent ringbuf event: %s", err)
 				continue
 			}
-			runtime.SetFinalizer(msgEvent, func (obj interface{})  {
+			runtime.SetFinalizer(msgEvent, func(obj interface{}) {
 				msgEventPool.Put(obj)
 			})
 
@@ -117,7 +118,7 @@ func LoadBpfProgram() (chan *MsgEvent, chan *MsgEvent, *ebpf.Map, func()) {
 		fexitSockRecvmsg.Close()
 		fentrySockRecvmsg.Close()
 		fentryInetAccept.Close()
-		
+
 		objs.Close()
 	}
 }

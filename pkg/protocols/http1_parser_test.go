@@ -9,18 +9,18 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/KumKeeHyun/perisco/perisco/bpf"
+	"github.com/KumKeeHyun/perisco/pkg/ebpf/types"
 	"golang.org/x/net/http2"
 )
 
 func TestHTTP1RequestRecord_ProtoType(t *testing.T) {
 	tests := []struct {
-		name   string
-		want   bpf.ProtocolType
+		name string
+		want types.ProtocolType
 	}{
 		{
 			name: "HTTP1 Request Record Protocol Type",
-			want: bpf.HTTP1,
+			want: types.HTTP1,
 		},
 	}
 	for _, tt := range tests {
@@ -35,12 +35,12 @@ func TestHTTP1RequestRecord_ProtoType(t *testing.T) {
 
 func TestHTTP1ResponseRecord_ProtoType(t *testing.T) {
 	tests := []struct {
-		name   string
-		want   bpf.ProtocolType
+		name string
+		want types.ProtocolType
 	}{
 		{
 			name: "HTTP1 Response Record Protocol Type",
-			want: bpf.HTTP1,
+			want: types.HTTP1,
 		},
 	}
 	for _, tt := range tests {
@@ -56,11 +56,11 @@ func TestHTTP1ResponseRecord_ProtoType(t *testing.T) {
 func TestHTTP1Parser_GetProtoType(t *testing.T) {
 	tests := []struct {
 		name string
-		want bpf.ProtocolType
+		want types.ProtocolType
 	}{
 		{
 			name: "HTTP1 Parser Protocol Type",
-			want: bpf.HTTP1,
+			want: types.HTTP1,
 		},
 	}
 	for _, tt := range tests {

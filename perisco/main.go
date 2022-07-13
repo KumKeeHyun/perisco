@@ -51,7 +51,7 @@ func main() {
 			select {
 			case msgEvent := <-recvCh:
 				// rawLogging(dataEvent)
-				if req, err := parser.ParseRequest(&msgEvent.SockKey, msgEvent.GetBytes()); err == nil {
+				if req, err := parser.ParseRequest(&msgEvent.SockKey, msgEvent.Bytes()); err == nil {
 					log.Printf("%s\n%s\n", msgEvent.SockKey.String(), req.String())
 				}
 			case <-ctx.Done():
@@ -64,7 +64,7 @@ func main() {
 		for {
 			select {
 			case msgEvent := <-sendCh:
-				if resp, err := parser.ParseRequest(&msgEvent.SockKey, msgEvent.GetBytes()); err == nil {
+				if resp, err := parser.ParseRequest(&msgEvent.SockKey, msgEvent.Bytes()); err == nil {
 					log.Printf("%s\n%s\n", msgEvent.SockKey.String(), resp.String())
 				}
 			case <-ctx.Done():

@@ -73,7 +73,7 @@ var _ ProtoParser = &HTTP2Parser{}
 
 // GetProtoType implements ProtoParser
 func (p *HTTP2Parser) GetProtoType() bpf.ProtocolType {
-	return bpf.HTTP1
+	return bpf.HTTP2
 }
 
 func (p *HTTP2Parser) getReqDec(key *bpf.SockKey) *hpack.Decoder {

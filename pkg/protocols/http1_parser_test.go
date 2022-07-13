@@ -13,6 +13,46 @@ import (
 	"golang.org/x/net/http2"
 )
 
+func TestHTTP1RequestRecord_ProtoType(t *testing.T) {
+	tests := []struct {
+		name   string
+		want   bpf.ProtocolType
+	}{
+		{
+			name: "HTTP1 Request Record Protocol Type",
+			want: bpf.HTTP1,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			h := &HTTP1RequestRecord{}
+			if got := h.ProtoType(); !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("HTTP1RequestRecord.ProtoType() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+func TestHTTP1ResponseRecord_ProtoType(t *testing.T) {
+	tests := []struct {
+		name   string
+		want   bpf.ProtocolType
+	}{
+		{
+			name: "HTTP1 Response Record Protocol Type",
+			want: bpf.HTTP1,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			h := &HTTP1ResponseRecord{}
+			if got := h.ProtoType(); !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("HTTP1ResponseRecord.ProtoType() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
 func TestHTTP1Parser_GetProtoType(t *testing.T) {
 	tests := []struct {
 		name string
@@ -147,7 +187,7 @@ func TestHTTP1Parser_ParseRequest(t *testing.T) {
 	}
 }
 
-func Test_isValidMethod(t *testing.T) {
+func Test_validMethod(t *testing.T) {
 	type args struct {
 		req *http.Request
 	}
@@ -229,7 +269,6 @@ func (t *http1Parser_ParseResponse_Test) args() []byte {
 	buf := bytes.NewBuffer(make([]byte, 0, 4096))
 	t.resp.Write(buf)
 
-
 	len := buf.Len()
 	if len > 4096 {
 		len = 4096
@@ -255,7 +294,7 @@ func (t *http1Parser_ParseResponse_Test) equal(got ResponseRecord) bool {
 }
 
 func TestHTTP1Parser_ParseResponse(t *testing.T) {
-	tests := []http1Parser_ParseResponse_Test {
+	tests := []http1Parser_ParseResponse_Test{
 		{
 			name: "Short Header Short Body",
 			resp: func() *http.Response {
@@ -265,7 +304,7 @@ func TestHTTP1Parser_ParseResponse(t *testing.T) {
 				resp.Header = make(http.Header)
 				resp.Header.Add("User-Agent", "test-clinet/1.1")
 				resp.Body = io.NopCloser(bytes.NewReader([]byte(strings.Repeat("1234567890", 10))))
-				
+
 				return resp
 			}(),
 			wantErr: false,

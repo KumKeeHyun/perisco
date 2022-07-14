@@ -101,7 +101,7 @@ const (
 type Layer4 struct {
 	SourcePort      uint32
 	DestinationPort uint32
-	L4Type          int32
+	L4Type          Layer4Type
 }
 
 type FlowType int32

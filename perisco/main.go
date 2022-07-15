@@ -9,6 +9,7 @@ import (
 
 	"github.com/KumKeeHyun/perisco/perisco/bpf"
 	"github.com/KumKeeHyun/perisco/perisco/config"
+	"github.com/KumKeeHyun/perisco/pkg/ebpf/maps"
 	"github.com/KumKeeHyun/perisco/pkg/ebpf/types"
 	"github.com/KumKeeHyun/perisco/pkg/protocols"
 	"github.com/cilium/ebpf/rlimit"
@@ -34,7 +35,7 @@ func main() {
 	recvc, sendc, netFilterMap, clean := bpf.LoadBpfProgram()
 	defer clean()
 
-	nf := bpf.NewNetworkFilter(netFilterMap)
+	nf := maps.NewNetworkFilter(netFilterMap)
 
 	if err := nf.RegisterCIDRs(config.CidrSlice()); err != nil {
 		log.Fatal(err)
@@ -42,7 +43,7 @@ func main() {
 	log.Printf("network filter: %v", config.CidrSlice())
 
 	reqc, respc := protocols.RunParser(ctx, recvc, sendc)
-	go func () {
+	go func() {
 		for {
 			select {
 			case req := <-reqc:

@@ -1,23 +1,23 @@
-package ebpf
+package maps
 
 import (
 	"sync"
 
-	ciliumebpf "github.com/cilium/ebpf"
+	"github.com/cilium/ebpf"
 )
 
 type Map struct {
 	lock sync.Mutex
-	m *ciliumebpf.Map
+	m *ebpf.Map
 }
 
-func NewMap(m *ciliumebpf.Map) *Map {
+func NewMap(m *ebpf.Map) *Map {
 	return &Map{
 		m: m,
 	}
 }
 
-type MapOp func(*ciliumebpf.Map) error
+type MapOp func(*ebpf.Map) error
 
 func (m *Map) Exec(op MapOp) error {
 	m.lock.Lock()

@@ -1,9 +1,8 @@
-package bpf
+package maps
 
 import (
 	"fmt"
 
-	periscoebpf "github.com/KumKeeHyun/perisco/pkg/ebpf"
 	"github.com/KumKeeHyun/perisco/pkg/ebpf/types"
 	"github.com/cilium/ebpf"
 )
@@ -12,12 +11,12 @@ var NET_FILTER_KEY uint32 = 0
 
 func NewNetworkFilter(m *ebpf.Map) *NetworkFilter {
 	return &NetworkFilter{
-		m: periscoebpf.NewMap(m),
+		m: NewMap(m),
 	}
 }
 
 type NetworkFilter struct {
-	m *periscoebpf.Map
+	m *Map
 }
 
 func (nf *NetworkFilter) RegisterCIDRs(cidrs []string) error {

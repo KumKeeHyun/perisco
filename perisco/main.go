@@ -35,9 +35,8 @@ func main() {
 	defer clean()
 
 	nf := bpf.NewNetworkFilter(netFilterMap)
-	defer nf.Close()
 
-	if err := nf.Update(config.CidrSlice()); err != nil {
+	if err := nf.RegisterCIDRs(config.CidrSlice()); err != nil {
 		log.Fatal(err)
 	}
 	log.Printf("network filter: %v", config.CidrSlice())

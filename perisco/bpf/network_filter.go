@@ -1,72 +1,36 @@
 package bpf
 
 import (
-	"context"
 	"fmt"
-	"net"
 
+	periscoebpf "github.com/KumKeeHyun/perisco/pkg/ebpf"
 	"github.com/KumKeeHyun/perisco/pkg/ebpf/types"
 	"github.com/cilium/ebpf"
 )
 
-func NewNetworkFilter(m *ebpf.Map) *NetworkFilter {
-	ctx, cancel := context.WithCancel(context.Background())
-	cm := NewConcurrentMap(ctx, m)
+var NET_FILTER_KEY uint32 = 0
 
+func NewNetworkFilter(m *ebpf.Map) *NetworkFilter {
 	return &NetworkFilter{
-		cm:     cm,
-		ctx:    ctx,
-		cancel: cancel,
+		m: periscoebpf.NewMap(m),
 	}
 }
 
 type NetworkFilter struct {
-	cm *concurrentMap
-
-	ctx    context.Context
-	cancel context.CancelFunc
+	m *periscoebpf.Map
 }
 
-func (nf *NetworkFilter) Update(cidrs []string) error {
-	if len(cidrs) > types.MAX_NET_FILTER_SIZE {
-		return fmt.Errorf("network filter cannot contain cidrs more than %d", types.MAX_NET_FILTER_SIZE)
-	}
-	
-	ipNets := types.IpNetworks{
-		Size: uint32(len(cidrs)),
-	}
-	for i, cidr := range cidrs {
-		_, ipNet, err := net.ParseCIDR(cidr)
-		if err != nil {
-			return fmt.Errorf("failed to parse cidr: %s", err)
-		}
-		ipNets.Data[i] = ipNet2BpfIpNet(ipNet)
-	}
-
-	if err := nf.update(&ipNets); err != nil {
-		return fmt.Errorf("failed to update map: %s", err)
-	}
-	
-	return nil
-}
-
-func ipNet2BpfIpNet(ipNet *net.IPNet) (bpfIpNet types.IpNetwork) {
-	copy(bpfIpNet.IpAddr[:], ipNet.IP)
-	copy(bpfIpNet.IpMask[:], ipNet.Mask)
-	return 
-}
-
-func (nf *NetworkFilter) update(networks *types.IpNetworks) error {
-	err := nf.cm.Do(func(m *ebpf.Map) error {
-		return m.Update(&types.NET_FILTER_KEY, networks, ebpf.UpdateAny)
-	})
+func (nf *NetworkFilter) RegisterCIDRs(cidrs []string) error {
+	ins, err := types.ParseCIDRs(cidrs)
 	if err != nil {
 		return err
 	}
-	return nil
-}
 
-func (nf *NetworkFilter) Close() error {
-	nf.cancel()
-	return nf.ctx.Err()
+	err = nf.m.Exec(func(m *ebpf.Map) error {
+		return m.Update(&NET_FILTER_KEY, &ins, ebpf.UpdateAny)
+	})
+	if err != nil {
+		return fmt.Errorf("failed to update network filter map: %v", err)
+	}
+	return nil
 }

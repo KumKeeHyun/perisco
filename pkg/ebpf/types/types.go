@@ -66,10 +66,10 @@ const (
 	IPv6
 )
 
-var IpVersionName = map[IpVersion]string {
+var IpVersionName = map[IpVersion]string{
 	IP_UNKNOWN: "UNKNOWN",
-	IPv4: "IPv4",
-	IPv6: "IPv6",
+	IPv4:       "IPv4",
+	IPv6:       "IPv6",
 }
 
 func (i IpVersion) String() string {
@@ -185,11 +185,38 @@ type IpNetwork struct {
 	IpMask [16]byte
 }
 
-const MAX_NET_FILTER_SIZE = 5
+func ParseCIDR(cidr string) (in IpNetwork, err error) {
+	_, ipNet, err := net.ParseCIDR(cidr)
+	if err != nil {
+		return in, err
+	}
 
-var NET_FILTER_KEY uint32 = 0
+	copy(in.IpAddr[:], ipNet.IP)
+	copy(in.IpMask[:], ipNet.Mask)
+	return in, nil
+}
+
+const MAX_NET_FILTER_SIZE = 5
 
 type IpNetworks struct {
 	Data [MAX_NET_FILTER_SIZE]IpNetwork
 	Size uint32
+}
+
+func ParseCIDRs(cidrs []string) (IpNetworks, error) {
+	if len(cidrs) > MAX_NET_FILTER_SIZE {
+		return IpNetworks{}, fmt.Errorf("max network filter size is %d, got = %d",
+			MAX_NET_FILTER_SIZE, len(cidrs),
+		)
+	}
+
+	ins := IpNetworks{Size: uint32(len(cidrs))}
+	for i, cidr := range cidrs {
+		in, err := ParseCIDR(cidr)
+		if err != nil {
+			return IpNetworks{}, fmt.Errorf("failed to ParseCIDR: %v", err)
+		}
+		ins.Data[i] = in
+	}
+	return ins, nil
 }

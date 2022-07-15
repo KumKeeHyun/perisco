@@ -24,7 +24,6 @@ func (msg *MsgEvent) Bytes() []byte {
 	return msg.Msg[:len]
 }
 
-
 type SockKey struct {
 	Ip  Ip
 	L4  Layer4
@@ -32,11 +31,13 @@ type SockKey struct {
 }
 
 func (sk *SockKey) String() string {
-	return fmt.Sprintf("%s %d\t%s %d\t%d",
+	return fmt.Sprintf("%s:%d  %s:%d  %s/%s  pid:%d",
 		sk.Ip.GetSrcIp(),
 		sk.L4.SourcePort,
 		sk.Ip.GetDestIp(),
 		sk.L4.DestinationPort,
+		sk.Ip.IpVersion.String(),
+		sk.L4.L4Type.String(),
 		sk.Pid,
 	)
 }
@@ -57,7 +58,6 @@ type EndpointKey struct {
 	Pid       uint32
 }
 
-
 type IpVersion int32
 
 const (
@@ -65,6 +65,19 @@ const (
 	IPv4
 	IPv6
 )
+
+var IpVersionName = map[IpVersion]string {
+	IP_UNKNOWN: "UNKNOWN",
+	IPv4: "IPv4",
+	IPv6: "IPv6",
+}
+
+func (i IpVersion) String() string {
+	if name, exist := IpVersionName[i]; exist {
+		return name
+	}
+	return "UNKNOWN"
+}
 
 type Ip struct {
 	Source      [16]byte
@@ -97,6 +110,19 @@ const (
 	TCP
 	UDP
 )
+
+var Layer4TypeName = map[Layer4Type]string{
+	LAYER4_UNKNOWN: "UNKNOWN",
+	TCP:            "TCP",
+	UDP:            "UDP",
+}
+
+func (l Layer4Type) String() string {
+	if name, exist := Layer4TypeName[l]; exist {
+		return name
+	}
+	return "UNKNOWN"
+}
 
 type Layer4 struct {
 	SourcePort      uint32

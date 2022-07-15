@@ -72,7 +72,7 @@ func NewHTTP2Parser() *HTTP2Parser {
 var _ ProtoParser = &HTTP2Parser{}
 
 // GetProtoType implements ProtoParser
-func (p *HTTP2Parser) GetProtoType() types.ProtocolType {
+func (p *HTTP2Parser) ProtoType() types.ProtocolType {
 	return types.HTTP2
 }
 

@@ -46,7 +46,7 @@ func TestHTTP2ResponseRecord_ProtoType(t *testing.T) {
 	}
 }
 
-func TestHTTP2Parser_GetProtoType(t *testing.T) {
+func TestHTTP2Parser_ProtoType(t *testing.T) {
 	tests := []struct {
 		name string
 		want types.ProtocolType
@@ -59,7 +59,7 @@ func TestHTTP2Parser_GetProtoType(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			p := NewHTTP2Parser()
-			if got := p.GetProtoType(); !reflect.DeepEqual(got, tt.want) {
+			if got := p.ProtoType(); !reflect.DeepEqual(got, tt.want) {
 				t.Errorf("HTTP2Parser.GetProtoType() = %v, want %v", got, tt.want)
 			}
 		})

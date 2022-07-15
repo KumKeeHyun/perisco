@@ -31,7 +31,7 @@ func main() {
 		syscall.SIGTERM)
 	defer cancel()
 
-	recvCh, sendCh, netFilterMap, clean := bpf.LoadBpfProgram()
+	recvc, sendc, netFilterMap, clean := bpf.LoadBpfProgram()
 	defer clean()
 
 	nf := bpf.NewNetworkFilter(netFilterMap)
@@ -42,7 +42,21 @@ func main() {
 	}
 	log.Printf("network filter: %v", config.CidrSlice())
 
-	parser := protocols.NewUnknownParser([]protocols.ProtoParser{
+	reqc, respc := protocols.RunParser(ctx, recvc, sendc)
+	go func () {
+		for {
+			select {
+			case req := <-reqc:
+				log.Println(req)
+			case resp := <-respc:
+				log.Println(resp)
+			case <-ctx.Done():
+				return
+			}
+		}
+	}()
+
+	/* parser := protocols.NewUnknownParser([]protocols.ProtoParser{
 		protocols.NewHTTP1Parser(),
 		protocols.NewHTTP2Parser(),
 	})
@@ -72,7 +86,7 @@ func main() {
 				return
 			}
 		}
-	}()
+	}() */
 
 	<-ctx.Done()
 }

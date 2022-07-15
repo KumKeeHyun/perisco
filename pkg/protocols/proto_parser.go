@@ -24,7 +24,7 @@ type ResponseRecord interface {
 }
 
 type ProtoParser interface {
-	GetProtoType() types.ProtocolType
+	ProtoType() types.ProtocolType
 	ParseRequest(sockKey *types.SockKey, msg []byte) (RequestRecord, error)
 	ParseResponse(sockKey *types.SockKey, msg []byte) (ResponseRecord, error)
 }
@@ -42,7 +42,7 @@ func NewUnknownParser(parsers []ProtoParser) *UnknownParser {
 }
 
 // GetProtoType implements ProtoParser
-func (*UnknownParser) GetProtoType() types.ProtocolType { return types.PROTO_UNKNOWN }
+func (*UnknownParser) ProtoType() types.ProtocolType { return types.PROTO_UNKNOWN }
 
 // ParseRequest implements ProtoParser
 func (up *UnknownParser) ParseRequest(sockKey *types.SockKey, msg []byte) (RequestRecord, error) {

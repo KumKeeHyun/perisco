@@ -23,12 +23,11 @@ func (*HTTP1RequestRecord) RequestRecord() {}
 
 // String implements RequestRecord
 func (rr *HTTP1RequestRecord) String() string {
-	return fmt.Sprintf("%s %s %s %s %d\n%v\n",
+	return fmt.Sprintf("%s %s %s %s\n%v",
 		rr.h1Req.Proto,
 		rr.h1Req.Method,
 		rr.h1Req.RequestURI,
 		rr.h1Req.Host,
-		rr.h1Req.ContentLength,
 		rr.h1Req.Header,
 	)
 }
@@ -47,7 +46,7 @@ func (*HTTP1ResponseRecord) ResponseRecord() {}
 
 // String implements ResponseRecord
 func (rr *HTTP1ResponseRecord) String() string {
-	return fmt.Sprintf("%s %s\n%v\n",
+	return fmt.Sprintf("%s %s\n%v",
 		rr.h1Resp.Proto,
 		rr.h1Resp.Status,
 		rr.h1Resp.Header,
@@ -71,7 +70,7 @@ func NewHTTP1Parser() *HTTP1Parser {
 var _ ProtoParser = &HTTP1Parser{}
 
 // GetProtoType implements ProtoParser
-func (p *HTTP1Parser) GetProtoType() types.ProtocolType {
+func (p *HTTP1Parser) ProtoType() types.ProtocolType {
 	return types.HTTP1
 }
 

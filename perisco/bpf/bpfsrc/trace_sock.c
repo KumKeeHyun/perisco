@@ -1,4 +1,5 @@
-#include "../libbpf/vmlinux.h"
+#include "kernel_struct.h"
+
 #include "../libbpf/bpf_helpers.h"
 #include "../libbpf/bpf_tracing.h"
 #include "../libbpf/bpf_endian.h"

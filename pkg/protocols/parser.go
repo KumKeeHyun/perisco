@@ -39,12 +39,15 @@ type ReqRespParser struct {
 	donec  chan struct{}
 }
 
-func RunParser(ctx context.Context, recvc, sendc chan *types.MsgEvent) (chan *Request, chan *Response) {
+func RunParser(ctx context.Context, recvc, sendc chan *types.MsgEvent, breaker Breaker) (chan *Request, chan *Response) {
 	parsers := []ProtoParser{
 		NewHTTP1Parser(),
 		NewHTTP2Parser(),
 	}
-	rrp := newReqRespParser(parsers, &mockBreaker{})
+	if breaker == nil {
+		breaker = &mockBreaker{}
+	}
+	rrp := newReqRespParser(parsers, breaker)
 	return rrp.run(ctx, recvc, sendc)
 }
 
@@ -101,7 +104,7 @@ func (rrp *ReqRespParser) tryParseRequest(msg *types.MsgEvent) {
 		return
 	}
 
-	rrp.breaker.Success(msg.SockKey, p.ProtoType())
+	rrp.breaker.Success(msg.SockKey, rr.ProtoType())
 	rrp.reqc <- &Request{
 		SockKey: msg.SockKey,
 		Record:  rr,
@@ -127,7 +130,7 @@ func (rrp *ReqRespParser) tryParseResponse(msg *types.MsgEvent) {
 		return
 	}
 
-	rrp.breaker.Success(msg.SockKey, p.ProtoType())
+	rrp.breaker.Success(msg.SockKey, rr.ProtoType())
 	rrp.respc <- &Response{
 		SockKey: msg.SockKey,
 		Record:  rr,

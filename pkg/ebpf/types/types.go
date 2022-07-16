@@ -58,6 +58,14 @@ type EndpointKey struct {
 	Pid       uint32
 }
 
+func (ek *EndpointKey) String() string {
+	return fmt.Sprintf("%s:%d pid:%d",
+		ipString(ek.IpAddr, ek.IpVersion),
+		ek.Port,
+		ek.Pid,
+	)
+}
+
 type IpVersion int32
 
 const (
@@ -86,19 +94,18 @@ type Ip struct {
 }
 
 func (ip *Ip) GetSrcIp() string {
-	if ip.IpVersion == IPv4 {
-		return net.IP(ip.Source[:4]).String()
-	} else if ip.IpVersion == IPv6 {
-		return net.IP(ip.Source[:]).String()
-	}
-	return "unknown"
+	return ipString(ip.Source, ip.IpVersion)
 }
 
 func (ip *Ip) GetDestIp() string {
-	if ip.IpVersion == IPv4 {
-		return net.IP(ip.Destination[:4]).String()
-	} else if ip.IpVersion == IPv6 {
-		return net.IP(ip.Destination[:]).String()
+	return ipString(ip.Destination, ip.IpVersion)
+}
+
+func ipString (ip [16]byte, version IpVersion) string {
+	if version == IPv4 {
+		return net.IP(ip[:4]).String()
+	} else if version == IPv6 {
+		return net.IP(ip[:]).String()
 	}
 	return "unknown"
 }

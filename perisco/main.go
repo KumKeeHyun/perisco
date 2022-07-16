@@ -9,7 +9,6 @@ import (
 
 	"github.com/KumKeeHyun/perisco/perisco/bpf"
 	"github.com/KumKeeHyun/perisco/perisco/config"
-	"github.com/KumKeeHyun/perisco/pkg/ebpf/maps"
 	"github.com/KumKeeHyun/perisco/pkg/ebpf/types"
 	"github.com/KumKeeHyun/perisco/pkg/protocols"
 	"github.com/cilium/ebpf/rlimit"
@@ -32,17 +31,16 @@ func main() {
 		syscall.SIGTERM)
 	defer cancel()
 
-	recvc, sendc, netFilterMap, clean := bpf.LoadBpfProgram()
+	recvc, sendc, nf, pm, clean := bpf.LoadBpfProgram()
 	defer clean()
-
-	nf := maps.NewNetworkFilter(netFilterMap)
 
 	if err := nf.RegisterCIDRs(config.CidrSlice()); err != nil {
 		log.Fatal(err)
 	}
 	log.Printf("network filter: %v", config.CidrSlice())
 
-	reqc, respc := protocols.RunParser(ctx, recvc, sendc)
+	pd := protocols.NewProtoDetecter(pm)
+	reqc, respc := protocols.RunParser(ctx, recvc, sendc, pd)
 	go func() {
 		for {
 			select {
@@ -55,38 +53,6 @@ func main() {
 			}
 		}
 	}()
-
-	/* parser := protocols.NewUnknownParser([]protocols.ProtoParser{
-		protocols.NewHTTP1Parser(),
-		protocols.NewHTTP2Parser(),
-	})
-
-	go func() {
-		for {
-			select {
-			case msgEvent := <-recvCh:
-				// rawLogging(dataEvent)
-				if req, err := parser.ParseRequest(&msgEvent.SockKey, msgEvent.Bytes()); err == nil {
-					log.Printf("%s\n%s\n", msgEvent.SockKey.String(), req.String())
-				}
-			case <-ctx.Done():
-				return
-			}
-		}
-	}()
-
-	go func() {
-		for {
-			select {
-			case msgEvent := <-sendCh:
-				if resp, err := parser.ParseRequest(&msgEvent.SockKey, msgEvent.Bytes()); err == nil {
-					log.Printf("%s\n%s\n", msgEvent.SockKey.String(), resp.String())
-				}
-			case <-ctx.Done():
-				return
-			}
-		}
-	}() */
 
 	<-ctx.Done()
 }

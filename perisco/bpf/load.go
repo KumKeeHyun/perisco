@@ -8,8 +8,8 @@ import (
 	"runtime"
 	"sync"
 
+	"github.com/KumKeeHyun/perisco/pkg/ebpf/maps"
 	"github.com/KumKeeHyun/perisco/pkg/ebpf/types"
-	"github.com/cilium/ebpf"
 	"github.com/cilium/ebpf/link"
 	"github.com/cilium/ebpf/ringbuf"
 )
@@ -18,7 +18,7 @@ var msgEventPool = sync.Pool{
 	New: func() interface{} { return &types.MsgEvent{} },
 }
 
-func LoadBpfProgram() (chan *types.MsgEvent, chan *types.MsgEvent, *ebpf.Map, func()) {
+func LoadBpfProgram() (chan *types.MsgEvent, chan *types.MsgEvent, *maps.NetworkFilter, *maps.ProtocolMap, func()) {
 	objs := bpfObjects{}
 	if err := loadBpfObjects(&objs, nil); err != nil {
 		log.Fatalf("loading objects: %v", err)
@@ -110,15 +110,18 @@ func LoadBpfProgram() (chan *types.MsgEvent, chan *types.MsgEvent, *ebpf.Map, fu
 		}
 	}()
 
-	return recvCh, sendCh, objs.NetworkFilter, func() {
-		sendRb.Close()
-		recvRb.Close()
+	return recvCh, sendCh,
+		maps.NewNetworkFilterFromEBPF(objs.NetworkFilter),
+		maps.NewProtocolMapFromEBPF(objs.ProtocolMap),
+		func() {
+			sendRb.Close()
+			recvRb.Close()
 
-		fentrySockSendmsg.Close()
-		fexitSockRecvmsg.Close()
-		fentrySockRecvmsg.Close()
-		fentryInetAccept.Close()
+			fentrySockSendmsg.Close()
+			fexitSockRecvmsg.Close()
+			fentrySockRecvmsg.Close()
+			fentryInetAccept.Close()
 
-		objs.Close()
-	}
+			objs.Close()
+		}
 }

@@ -9,14 +9,18 @@ import (
 
 var NET_FILTER_KEY uint32 = 0
 
-func NewNetworkFilter(m *ebpf.Map) *NetworkFilter {
+func NewNetworkFilter(m Map) *NetworkFilter {
 	return &NetworkFilter{
-		m: NewMap(m),
+		m: m,
 	}
 }
 
+func NewNetworkFilterFromEBPF(m *ebpf.Map) *NetworkFilter {
+	return NewNetworkFilter(NewMap(m))
+}
+
 type NetworkFilter struct {
-	m *Map
+	m Map
 }
 
 func (nf *NetworkFilter) RegisterCIDRs(cidrs []string) error {

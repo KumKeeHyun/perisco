@@ -8,25 +8,27 @@ import (
 )
 
 type ProtocolMap struct {
-	m *Map
+	m Map
 }
 
-func NewProtocolMap(m *ebpf.Map) *ProtocolMap {
+func NewProtocolMap(m Map) *ProtocolMap {
 	return &ProtocolMap{
-		m: NewMap(m),
+		m: m,
 	}
 }
 
-func (pm *ProtocolMap) Detect(sk types.SockKey, proto types.ProtocolType) error {
+func NewProtocolMapFromEBPF(m *ebpf.Map) *ProtocolMap {
+	return NewProtocolMap(NewMap(m))
+}
+
+func (pm *ProtocolMap) Detect(ek types.EndpointKey, proto types.ProtocolType) error {
 	if proto == types.PROTO_UNKNOWN || proto == types.PROTO_SKIP {
 			return fmt.Errorf("cannot register unknown or skip manually")
 	}
-	ek := sk.ToEndpointKey()
 	return pm.registerProto(ek, proto)
 }
 
-func (pm *ProtocolMap) Skip(sk types.SockKey) error {
-	ek := sk.ToEndpointKey()
+func (pm *ProtocolMap) Skip(ek types.EndpointKey) error {
 	return pm.registerProto(ek, types.PROTO_SKIP)
 }
 

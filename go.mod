@@ -1,6 +1,6 @@
 module github.com/KumKeeHyun/perisco
 
-go 1.17
+go 1.18
 
 require (
 	github.com/cilium/ebpf v0.8.2-0.20220217141816-62da0a730ab7

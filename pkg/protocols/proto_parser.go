@@ -25,8 +25,8 @@ type ResponseRecord interface {
 
 type ProtoParser interface {
 	ProtoType() types.ProtocolType
-	ParseRequest(sockKey *types.SockKey, msg []byte) (RequestRecord, error)
-	ParseResponse(sockKey *types.SockKey, msg []byte) (ResponseRecord, error)
+	ParseRequest(sockKey *types.SockKey, msg []byte) ([]RequestRecord, error)
+	ParseResponse(sockKey *types.SockKey, msg []byte) ([]ResponseRecord, error)
 }
 
 type UnknownParser struct {
@@ -45,7 +45,7 @@ func NewUnknownParser(parsers []ProtoParser) *UnknownParser {
 func (*UnknownParser) ProtoType() types.ProtocolType { return types.PROTO_UNKNOWN }
 
 // ParseRequest implements ProtoParser
-func (up *UnknownParser) ParseRequest(sockKey *types.SockKey, msg []byte) (RequestRecord, error) {
+func (up *UnknownParser) ParseRequest(sockKey *types.SockKey, msg []byte) ([]RequestRecord, error) {
 	for _, p := range up.parsers {
 		if rr, err := p.ParseRequest(sockKey, msg); err == nil {
 			return rr, nil
@@ -55,7 +55,7 @@ func (up *UnknownParser) ParseRequest(sockKey *types.SockKey, msg []byte) (Reque
 }
 
 // ParseResponse implements ProtoParser
-func (up *UnknownParser) ParseResponse(sockKey *types.SockKey, msg []byte) (ResponseRecord, error) {
+func (up *UnknownParser) ParseResponse(sockKey *types.SockKey, msg []byte) ([]ResponseRecord, error) {
 	for _, p := range up.parsers {
 		if rr, err := p.ParseResponse(sockKey, msg); err == nil {
 			return rr, nil

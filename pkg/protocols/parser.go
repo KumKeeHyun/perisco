@@ -100,17 +100,20 @@ func (rrp *ReqRespParser) run(ctx context.Context, recvc, sendc chan *types.MsgE
 
 func (rrp *ReqRespParser) tryParseRequest(msg *types.MsgEvent) {
 	p := rrp.findParser(msg)
-	rr, err := p.ParseRequest(&msg.SockKey, msg.Bytes())
+	rrs, err := p.ParseRequest(&msg.SockKey, msg.Bytes())
 	if err != nil {
 		rrp.breaker.Fail(msg.SockKey)
 		return
 	}
 
-	rrp.breaker.Success(msg.SockKey, rr.ProtoType())
-	rrp.reqc <- &Request{
-		SockKey:   msg.SockKey,
-		Timestamp: msg.Timestamp,
-		Record:    rr,
+	rrp.breaker.Success(msg.SockKey, rrs[0].ProtoType())
+
+	for _, rr := range rrs {
+		rrp.reqc <- &Request{
+			SockKey:   msg.SockKey,
+			Timestamp: msg.Timestamp,
+			Record:    rr,
+		}
 	}
 }
 
@@ -127,18 +130,21 @@ func (rrp *ReqRespParser) tryParseResponse(msg *types.MsgEvent) {
 		return
 	}
 
-	rr, err := p.ParseResponse(&msg.SockKey, msg.Bytes())
+	rrs, err := p.ParseResponse(&msg.SockKey, msg.Bytes())
 	if err != nil {
 		rrp.breaker.Fail(msg.SockKey)
 		return
 	}
 
-	rrp.breaker.Success(msg.SockKey, rr.ProtoType())
-	rrp.respc <- &Response{
-		SockKey:   msg.SockKey,
-		Timestamp: msg.Timestamp,
-		Record:    rr,
+	rrp.breaker.Success(msg.SockKey, rrs[0].ProtoType())
+	for _, rr := range rrs {
+		rrp.respc <- &Response{
+			SockKey:   msg.SockKey,
+			Timestamp: msg.Timestamp,
+			Record:    rr,
+		}
 	}
+
 }
 
 func (rrp *ReqRespParser) Close() error {

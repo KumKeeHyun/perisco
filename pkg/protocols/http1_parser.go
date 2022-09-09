@@ -10,7 +10,7 @@ import (
 )
 
 type HTTP1RequestRecord struct {
-	h1Req *http.Request
+	H1Req *http.Request
 }
 
 var _ RequestRecord = &HTTP1RequestRecord{}
@@ -24,16 +24,16 @@ func (*HTTP1RequestRecord) RequestRecord() {}
 // String implements RequestRecord
 func (rr *HTTP1RequestRecord) String() string {
 	return fmt.Sprintf("%s %s %s %s\n%v",
-		rr.h1Req.Proto,
-		rr.h1Req.Method,
-		rr.h1Req.RequestURI,
-		rr.h1Req.Host,
-		rr.h1Req.Header,
+		rr.H1Req.Proto,
+		rr.H1Req.Method,
+		rr.H1Req.RequestURI,
+		rr.H1Req.Host,
+		rr.H1Req.Header,
 	)
 }
 
 type HTTP1ResponseRecord struct {
-	h1Resp *http.Response
+	H1Resp *http.Response
 }
 
 var _ ResponseRecord = &HTTP1ResponseRecord{}
@@ -47,9 +47,9 @@ func (*HTTP1ResponseRecord) ResponseRecord() {}
 // String implements ResponseRecord
 func (rr *HTTP1ResponseRecord) String() string {
 	return fmt.Sprintf("%s %s\n%v",
-		rr.h1Resp.Proto,
-		rr.h1Resp.Status,
-		rr.h1Resp.Header,
+		rr.H1Resp.Proto,
+		rr.H1Resp.Status,
+		rr.H1Resp.Header,
 	)
 }
 
@@ -75,7 +75,7 @@ func (p *HTTP1Parser) ProtoType() types.ProtocolType {
 }
 
 // ParseRequest implements ProtoParser
-func (p *HTTP1Parser) ParseRequest(_ *types.SockKey, msg []byte) (RequestRecord, error) {
+func (p *HTTP1Parser) ParseRequest(_ *types.SockKey, msg []byte) ([]RequestRecord, error) {
 	r := p.reqReader
 	br := bytes.NewReader(msg)
 	r.Reset(br)
@@ -90,9 +90,7 @@ func (p *HTTP1Parser) ParseRequest(_ *types.SockKey, msg []byte) (RequestRecord,
 		return nil, fmt.Errorf("invalid http method. got: %s", req.Method)
 	}
 
-	return &HTTP1RequestRecord{
-		h1Req: req,
-	}, nil
+	return []RequestRecord{&HTTP1RequestRecord{H1Req: req}}, nil
 }
 
 func validMethod(req *http.Request) bool {
@@ -113,7 +111,7 @@ func validMethod(req *http.Request) bool {
 }
 
 // ParseResponse implements ProtoParser
-func (p *HTTP1Parser) ParseResponse(_ *types.SockKey, msg []byte) (ResponseRecord, error) {
+func (p *HTTP1Parser) ParseResponse(_ *types.SockKey, msg []byte) ([]ResponseRecord, error) {
 	r := p.respReader
 	br := bytes.NewReader(msg)
 	r.Reset(br)
@@ -124,7 +122,5 @@ func (p *HTTP1Parser) ParseResponse(_ *types.SockKey, msg []byte) (ResponseRecor
 	}
 	resp.Body.Close()
 
-	return &HTTP1ResponseRecord{
-		h1Resp: resp,
-	}, nil
+	return []ResponseRecord{&HTTP1ResponseRecord{H1Resp: resp}}, nil
 }

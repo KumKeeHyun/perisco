@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"fmt"
 	"io"
-	"strings"
 
 	"github.com/KumKeeHyun/perisco/pkg/ebpf/types"
 	"golang.org/x/net/http2"
@@ -12,7 +11,7 @@ import (
 )
 
 type HTTP2RequestRecord struct {
-	headerFrames []*http2.MetaHeadersFrame
+	HeaderFrames *http2.MetaHeadersFrame
 }
 
 var _ RequestRecord = &HTTP2RequestRecord{}
@@ -25,17 +24,11 @@ func (*HTTP2RequestRecord) RequestRecord() {}
 
 // String implements RequestRecord
 func (rr *HTTP2RequestRecord) String() string {
-	builder := strings.Builder{}
-
-	for _, hf := range rr.headerFrames {
-		builder.WriteString(fmt.Sprintf("%v\n", hf.Fields))
-	}
-
-	return builder.String()
+	return fmt.Sprintf("%v\n", rr.HeaderFrames.Fields)
 }
 
 type HTTP2ResponseRecord struct {
-	headerFrames []*http2.MetaHeadersFrame
+	HeaderFrames *http2.MetaHeadersFrame
 }
 
 var _ ResponseRecord = &HTTP2ResponseRecord{}
@@ -48,13 +41,7 @@ func (*HTTP2ResponseRecord) ResponseRecord() {}
 
 // String implements ResponseRecord
 func (rr *HTTP2ResponseRecord) String() string {
-	builder := strings.Builder{}
-
-	for _, hf := range rr.headerFrames {
-		builder.WriteString(fmt.Sprintf("%v\n", hf.Fields))
-	}
-
-	return builder.String()
+	return fmt.Sprintf("%v\n", rr.HeaderFrames.Fields)
 }
 
 type HTTP2Parser struct {
@@ -95,16 +82,14 @@ func (p *HTTP2Parser) getRespDec(key *types.SockKey) *hpack.Decoder {
 }
 
 // ParseRequest implements ProtoParser
-func (p *HTTP2Parser) ParseRequest(sockKey *types.SockKey, msg []byte) (RequestRecord, error) {
+func (p *HTTP2Parser) ParseRequest(sockKey *types.SockKey, msg []byte) ([]RequestRecord, error) {
 	br := bytes.NewReader(msg)
 	skipPrefaceIfExists(br)
 
 	f := http2.NewFramer(io.Discard, br)
 	f.ReadMetaHeaders = p.getReqDec(sockKey)
 
-	rr := &HTTP2RequestRecord{
-		headerFrames: make([]*http2.MetaHeadersFrame, 0, 1),
-	}
+	rrs := make([]RequestRecord, 0, 1)
 	for {
 		fr, err := f.ReadFrame()
 		if err != nil {
@@ -114,13 +99,13 @@ func (p *HTTP2Parser) ParseRequest(sockKey *types.SockKey, msg []byte) (RequestR
 		if !ok {
 			continue
 		}
-		rr.headerFrames = append(rr.headerFrames, mh)
+		rrs = append(rrs, &HTTP2RequestRecord{mh})
 	}
 
-	if len(rr.headerFrames) == 0 {
+	if len(rrs) == 0 {
 		return nil, ErrNotExistsHeader
 	}
-	return rr, nil
+	return rrs, nil
 }
 
 func skipPrefaceIfExists(r *bytes.Reader) {
@@ -132,16 +117,14 @@ func skipPrefaceIfExists(r *bytes.Reader) {
 }
 
 // ParseResponse implements ProtoParser
-func (p *HTTP2Parser) ParseResponse(sockKey *types.SockKey, msg []byte) (ResponseRecord, error) {
+func (p *HTTP2Parser) ParseResponse(sockKey *types.SockKey, msg []byte) ([]ResponseRecord, error) {
 	br := bytes.NewReader(msg)
 	skipPrefaceIfExists(br)
 
 	f := http2.NewFramer(io.Discard, br)
 	f.ReadMetaHeaders = p.getRespDec(sockKey)
 
-	rr := &HTTP2ResponseRecord{
-		headerFrames: make([]*http2.MetaHeadersFrame, 0, 1),
-	}
+	rrs := make([]ResponseRecord, 0, 1)
 	for {
 		fr, err := f.ReadFrame()
 		if err != nil {
@@ -151,11 +134,11 @@ func (p *HTTP2Parser) ParseResponse(sockKey *types.SockKey, msg []byte) (Respons
 		if !ok {
 			continue
 		}
-		rr.headerFrames = append(rr.headerFrames, mh)
+		rrs = append(rrs, &HTTP2ResponseRecord{mh})
 	}
 
-	if len(rr.headerFrames) == 0 {
+	if len(rrs) == 0 {
 		return nil, ErrNotExistsHeader
 	}
-	return rr, nil
+	return rrs, nil
 }

@@ -91,7 +91,7 @@ func (t *http1Parser_ParseRequest_Test) args() []byte {
 }
 
 func (t *http1Parser_ParseRequest_Test) want() RequestRecord {
-	return &HTTP1RequestRecord{h1Req: t.req}
+	return &HTTP1RequestRecord{H1Req: t.req}
 }
 
 func (t *http1Parser_ParseRequest_Test) equal(got RequestRecord) bool {
@@ -102,7 +102,7 @@ func (t *http1Parser_ParseRequest_Test) equal(got RequestRecord) bool {
 	wantBytes := make([]byte, 0, 4096)
 	t.req.Write(bytes.NewBuffer(wantBytes))
 	gotBytes := make([]byte, 0, 4096)
-	h1rr.h1Req.Write(bytes.NewBuffer(gotBytes))
+	h1rr.H1Req.Write(bytes.NewBuffer(gotBytes))
 
 	return bytes.Equal(wantBytes, gotBytes)
 }
@@ -180,7 +180,7 @@ func TestHTTP1Parser_ParseRequest(t *testing.T) {
 			if tt.wantErr {
 				return
 			}
-			if !tt.equal(got) {
+			if !tt.equal(got[0]) {
 				t.Errorf("HTTP1Parser.ParseRequest() = %v, want %v", got, tt.want())
 			}
 		})
@@ -277,7 +277,7 @@ func (t *http1Parser_ParseResponse_Test) args() []byte {
 }
 
 func (t *http1Parser_ParseResponse_Test) want() ResponseRecord {
-	return &HTTP1ResponseRecord{h1Resp: t.resp}
+	return &HTTP1ResponseRecord{H1Resp: t.resp}
 }
 
 func (t *http1Parser_ParseResponse_Test) equal(got ResponseRecord) bool {
@@ -288,7 +288,7 @@ func (t *http1Parser_ParseResponse_Test) equal(got ResponseRecord) bool {
 	wantBytes := make([]byte, 0, 4096)
 	t.resp.Write(bytes.NewBuffer(wantBytes))
 	gotBytes := make([]byte, 0, 4096)
-	h1rr.h1Resp.Write(bytes.NewBuffer(gotBytes))
+	h1rr.H1Resp.Write(bytes.NewBuffer(gotBytes))
 
 	return bytes.Equal(wantBytes, gotBytes)
 }
@@ -349,7 +349,7 @@ func TestHTTP1Parser_ParseResponse(t *testing.T) {
 			if tt.wantErr {
 				return
 			}
-			if !tt.equal(got) {
+			if !tt.equal(got[0]) {
 				t.Errorf("HTTP1Parser.ParseResponse() = %v, want %v", got, tt.want())
 			}
 		})

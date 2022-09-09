@@ -9,8 +9,10 @@ import (
 )
 
 type Request struct {
-	SockKey types.SockKey
-	Record  RequestRecord
+	SockKey   types.SockKey
+	Timestamp uint64
+
+	Record RequestRecord
 }
 
 func (r *Request) String() string {
@@ -18,10 +20,10 @@ func (r *Request) String() string {
 }
 
 type Response struct {
-	SockKey types.SockKey
-	Record  ResponseRecord
+	SockKey   types.SockKey
+	Timestamp uint64
+	Record    ResponseRecord
 }
-
 
 func (r *Response) String() string {
 	return fmt.Sprintf("%s\n%s\n", r.SockKey.String(), r.Record.String())
@@ -106,8 +108,9 @@ func (rrp *ReqRespParser) tryParseRequest(msg *types.MsgEvent) {
 
 	rrp.breaker.Success(msg.SockKey, rr.ProtoType())
 	rrp.reqc <- &Request{
-		SockKey: msg.SockKey,
-		Record:  rr,
+		SockKey:   msg.SockKey,
+		Timestamp: msg.Timestamp,
+		Record:    rr,
 	}
 }
 
@@ -132,8 +135,9 @@ func (rrp *ReqRespParser) tryParseResponse(msg *types.MsgEvent) {
 
 	rrp.breaker.Success(msg.SockKey, rr.ProtoType())
 	rrp.respc <- &Response{
-		SockKey: msg.SockKey,
-		Record:  rr,
+		SockKey:   msg.SockKey,
+		Timestamp: msg.Timestamp,
+		Record:    rr,
 	}
 }
 

@@ -42,11 +42,20 @@ func (sk *SockKey) String() string {
 	)
 }
 
-func (sk *SockKey) ToEndpointKey() EndpointKey {
+func (sk *SockKey) ToServerEndpoint() EndpointKey {
 	return EndpointKey{
 		IpAddr:    sk.Ip.Source,
 		IpVersion: sk.Ip.IpVersion,
 		Port:      sk.L4.SourcePort,
+		Pid:       sk.Pid,
+	}
+}
+
+func (sk *SockKey) ToClinetEndpoint() EndpointKey {
+	return EndpointKey{
+		IpAddr:    sk.Ip.Destination,
+		IpVersion: sk.Ip.IpVersion,
+		Port:      sk.L4.DestinationPort,
 		Pid:       sk.Pid,
 	}
 }
@@ -101,7 +110,7 @@ func (ip *Ip) GetDestIp() string {
 	return ipString(ip.Destination, ip.IpVersion)
 }
 
-func ipString (ip [16]byte, version IpVersion) string {
+func ipString(ip [16]byte, version IpVersion) string {
 	if version == IPv4 {
 		return net.IP(ip[:4]).String()
 	} else if version == IPv6 {

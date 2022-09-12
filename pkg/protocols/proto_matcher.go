@@ -27,3 +27,14 @@ type ProtoMatcher interface {
 	MatchRequest(req *Request) *ProtoMessage
 	MatchResponse(resp *Response) *ProtoMessage
 }
+
+func NewProtoMatcherOf(proto types.ProtocolType) ProtoMatcher {
+	switch proto {
+	case types.HTTP1:
+		return NewHTTP1Matcher()
+	case types.HTTP2:
+		return NewHTTP2Matcher()
+	default:
+		return nil
+	}
+}

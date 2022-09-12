@@ -17,7 +17,7 @@ func Test_protoDetecter_Success(t *testing.T) {
 		want    types.ProtocolType
 	}{
 		{
-			name: "HTTP1",
+			name:    "HTTP1",
 			sockKey: types.SockKey{},
 			args: []types.ProtocolType{
 				types.HTTP1,
@@ -32,7 +32,7 @@ func Test_protoDetecter_Success(t *testing.T) {
 			for _, arg := range tt.args {
 				pd.Success(tt.sockKey, arg)
 			}
-			if pt, exists := pd.detected[tt.sockKey.ToEndpointKey()]; !exists || pt != tt.want {
+			if pt, exists := pd.detected[tt.sockKey.ToServerEndpoint()]; !exists || pt != tt.want {
 				t.Errorf("protoDetecter.detected[ek] = %v, want = %v", pt, tt.want)
 			}
 		})
@@ -46,13 +46,13 @@ func Test_protoDetecter_Fail(t *testing.T) {
 		sockKey types.SockKey
 	}
 	tests := []struct {
-		name    string
-		sockKey types.SockKey
-		exec func(pd *protoDetecter, sk types.SockKey)
+		name     string
+		sockKey  types.SockKey
+		exec     func(pd *protoDetecter, sk types.SockKey)
 		wantSkip bool
 	}{
 		{
-			name: "fail more than failureThreshold",
+			name:    "fail more than failureThreshold",
 			sockKey: types.SockKey{},
 			exec: func(pd *protoDetecter, sk types.SockKey) {
 				for i := 0; i < failureThreshold; i++ {
@@ -62,7 +62,7 @@ func Test_protoDetecter_Fail(t *testing.T) {
 			wantSkip: true,
 		},
 		{
-			name: "fail 5 times, success, fail more than failureThreshold",
+			name:    "fail 5 times, success, fail more than failureThreshold",
 			sockKey: types.SockKey{},
 			exec: func(pd *protoDetecter, sk types.SockKey) {
 				for i := 0; i < 5; i++ {
@@ -80,7 +80,7 @@ func Test_protoDetecter_Fail(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			pd := NewProtoDetecter(mockPm)
 			tt.exec(pd, tt.sockKey)
-			skipped := pd.alreadySkipped(tt.sockKey.ToEndpointKey())
+			skipped := pd.alreadySkipped(tt.sockKey.ToServerEndpoint())
 			if skipped != tt.wantSkip {
 				t.Errorf("got = %v, want = %v", skipped, tt.wantSkip)
 			}

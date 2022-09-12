@@ -48,7 +48,7 @@ var _ Breaker = &protoDetecter{}
 
 // Success implements Breaker
 func (pd *protoDetecter) Success(sockKey types.SockKey, protocol types.ProtocolType) {
-	ek := sockKey.ToEndpointKey()
+	ek := sockKey.ToServerEndpoint()
 	if pd.alreadyDetected(ek) {
 		return
 	}
@@ -75,7 +75,7 @@ const failureThreshold = 10
 
 // Fail implements Breaker
 func (pd *protoDetecter) Fail(sockKey types.SockKey) {
-	ek := sockKey.ToEndpointKey()
+	ek := sockKey.ToServerEndpoint()
 	if pd.alreadyDetected(ek) {
 		return
 	}

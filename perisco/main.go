@@ -41,13 +41,13 @@ func main() {
 
 	pd := protocols.NewProtoDetecter(pm)
 	reqc, respc := protocols.RunParser(ctx, recvc, sendc, pd)
+
+	msgc := protocols.RunMatcher(ctx, reqc, respc)
 	go func() {
 		for {
 			select {
-			case req := <-reqc:
-				log.Println(req)
-			case resp := <-respc:
-				log.Println(resp)
+			case msg := <-msgc:
+				log.Println(msg)
 			case <-ctx.Done():
 				return
 			}

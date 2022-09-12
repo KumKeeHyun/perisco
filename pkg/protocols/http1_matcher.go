@@ -21,18 +21,18 @@ func NewHTTP1Matcher() *HTTP1Matcher {
 var _ ProtoMatcher = &HTTP1Matcher{}
 
 // MatchRequest implements ProtoMatcher
-func (m *HTTP1Matcher) MatchRequest(req *Request) (*ProtoMessage, error) {
+func (m *HTTP1Matcher) MatchRequest(req *Request) *ProtoMessage {
 	resp := m.findResp(req)
 	if resp == nil {
 		m.reqQueue.PushBack(req)
-		return nil, nil
+		return nil
 	}
 	return &ProtoMessage{
 		SockKey: req.SockKey,
 		Time:    resp.Timestamp - req.Timestamp,
 		Req:     req.Record,
 		Resp:    resp.Record,
-	}, nil
+	}
 }
 
 func (m *HTTP1Matcher) findResp(req *Request) *Response {
@@ -45,18 +45,18 @@ func (m *HTTP1Matcher) findResp(req *Request) *Response {
 }
 
 // MatchResponse implements ProtoMatcher
-func (m *HTTP1Matcher) MatchResponse(resp *Response) (*ProtoMessage, error) {
+func (m *HTTP1Matcher) MatchResponse(resp *Response) *ProtoMessage {
 	req := m.findReq(resp)
 	if req == nil {
 		m.respQueue.PushBack(resp)
-		return nil, nil
+		return nil
 	}
 	return &ProtoMessage{
 		SockKey: resp.SockKey,
 		Time:    resp.Timestamp - req.Timestamp,
 		Req:     req.Record,
 		Resp:    resp.Record,
-	}, nil
+	}
 }
 
 func (m *HTTP1Matcher) findReq(resp *Response) *Request {

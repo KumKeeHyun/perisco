@@ -24,6 +24,6 @@ func (pm *ProtoMessage) String() string {
 }
 
 type ProtoMatcher interface {
-	MatchRequest(req *Request) (*ProtoMessage, error)
-	MatchResponse(resp *Response) (*ProtoMessage, error)
+	MatchRequest(req *Request) *ProtoMessage
+	MatchResponse(resp *Response) *ProtoMessage
 }

@@ -53,6 +53,14 @@ map[Accept-Ranges:[bytes] Content-Length:[102117] Content-Type:[image/jpeg] Date
 2022/09/12 07:13:34 127.0.0.1:8881  127.0.0.1:41114  IPv4/TCP  pid:63362 0 ms
 [header field ":authority" = "127.0.0.1:8881" header field ":method" = "GET" header field ":path" = "/pull" header field ":scheme" = "http" header field "accept-encoding" = "gzip" header field "user-agent" = "Go-http-client/2.0"]
 [header field ":status" = "200" header field "content-type" = "application/octet-stream" header field "date" = "Mon, 12 Sep 2022 07:13:34 GMT"]
+
+2022/09/12 07:16:31 127.0.0.1:8881  127.0.0.1:47192  IPv4/TCP  pid:63362 0 ms
+[header field ":authority" = "127.0.0.1:8881" header field ":method" = "GET" header field ":path" = "/redir" header field ":scheme" = "http" header field "accept-encoding" = "gzip" header field "user-agent" = "Go-http-client/2.0"]
+[header field ":status" = "302" header field "content-type" = "text/html; charset=utf-8" header field "location" = "/greet" header field "content-length" = "29" header field "date" = "Mon, 12 Sep 2022 07:16:31 GMT"]
+
+2022/09/12 07:16:31 127.0.0.1:8881  127.0.0.1:47192  IPv4/TCP  pid:63362 0 ms
+[header field ":authority" = "127.0.0.1:8881" header field ":method" = "GET" header field ":path" = "/greet" header field ":scheme" = "http" header field "referer" = "http://127.0.0.1:8881/redir" header field "accept-encoding" = "gzip" header field "user-agent" = "Go-http-client/2.0"]
+[header field ":status" = "200" header field "content-type" = "text/plain; charset=utf-8" header field "content-length" = "15" header field "date" = "Mon, 12 Sep 2022 07:16:31 GMT"]
 ```
 
 - grpc

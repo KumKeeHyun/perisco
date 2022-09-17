@@ -24,7 +24,7 @@ func (*HTTP2RequestRecord) RequestRecord() {}
 
 // String implements RequestRecord
 func (rr *HTTP2RequestRecord) String() string {
-	return fmt.Sprintf("%v\n", rr.HeaderFrames.Fields)
+	return fmt.Sprintf("%v", rr.HeaderFrames.Fields)
 }
 
 type HTTP2ResponseRecord struct {
@@ -41,7 +41,7 @@ func (*HTTP2ResponseRecord) ResponseRecord() {}
 
 // String implements ResponseRecord
 func (rr *HTTP2ResponseRecord) String() string {
-	return fmt.Sprintf("%v\n", rr.HeaderFrames.Fields)
+	return fmt.Sprintf("%v", rr.HeaderFrames.Fields)
 }
 
 type HTTP2Parser struct {

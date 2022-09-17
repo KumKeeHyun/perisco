@@ -18,4 +18,4 @@ clean:
 	rm -f $(TARGET)
 
 run: bin-only
-	sudo ./$(TARGET)
+	sudo ./$(TARGET) run

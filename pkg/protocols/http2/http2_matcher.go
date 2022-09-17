@@ -1,6 +1,10 @@
-package protocols
+package http2
 
-import "container/list"
+import (
+	"container/list"
+
+	"github.com/KumKeeHyun/perisco/pkg/protocols"
+)
 
 type HTTP2Matcher struct {
 	reqQueue  *list.List
@@ -14,16 +18,16 @@ func NewHTTP2Matcher() *HTTP2Matcher {
 	}
 }
 
-var _ ProtoMatcher = &HTTP2Matcher{}
+var _ protocols.ProtoMatcher = &HTTP2Matcher{}
 
 // MatchRequest implements ProtoMatcher
-func (m *HTTP2Matcher) MatchRequest(req *Request) *ProtoMessage {
+func (m *HTTP2Matcher) MatchRequest(req *protocols.Request) *protocols.ProtoMessage {
 	resp := m.findResp(req)
 	if resp == nil {
 		m.reqQueue.PushBack(req)
 		return nil
 	}
-	return &ProtoMessage{
+	return &protocols.ProtoMessage{
 		SockKey: req.SockKey,
 		Time:    resp.Timestamp - req.Timestamp,
 		Req:     req.Record,
@@ -31,27 +35,27 @@ func (m *HTTP2Matcher) MatchRequest(req *Request) *ProtoMessage {
 	}
 }
 
-func (m *HTTP2Matcher) findResp(req *Request) *Response {
+func (m *HTTP2Matcher) findResp(req *protocols.Request) *protocols.Response {
 	for e := m.respQueue.Front(); e != nil; e = e.Next() {
-		resp := e.Value.(*Response)
+		resp := e.Value.(*protocols.Response)
 		respSID := resp.Record.(*HTTP2ResponseRecord).HeaderFrames.StreamID
 		reqSID := req.Record.(*HTTP2RequestRecord).HeaderFrames.StreamID
 
 		if resp.SockKey == req.SockKey && respSID == reqSID {
-			return m.respQueue.Remove(e).(*Response)
+			return m.respQueue.Remove(e).(*protocols.Response)
 		}
 	}
 	return nil
 }
 
 // MatchResponse implements ProtoMatcher
-func (m *HTTP2Matcher) MatchResponse(resp *Response) *ProtoMessage {
+func (m *HTTP2Matcher) MatchResponse(resp *protocols.Response) *protocols.ProtoMessage {
 	req := m.findReq(resp)
 	if req == nil {
 		m.respQueue.PushBack(resp)
 		return nil
 	}
-	return &ProtoMessage{
+	return &protocols.ProtoMessage{
 		SockKey: resp.SockKey,
 		Time:    resp.Timestamp - req.Timestamp,
 		Req:     req.Record,
@@ -59,14 +63,14 @@ func (m *HTTP2Matcher) MatchResponse(resp *Response) *ProtoMessage {
 	}
 }
 
-func (m *HTTP2Matcher) findReq(resp *Response) *Request {
+func (m *HTTP2Matcher) findReq(resp *protocols.Response) *protocols.Request {
 	for e := m.reqQueue.Front(); e != nil; e = e.Next() {
-		req := e.Value.(*Request)
+		req := e.Value.(*protocols.Request)
 		reqSID := req.Record.(*HTTP2RequestRecord).HeaderFrames.StreamID
 		respSID := resp.Record.(*HTTP2ResponseRecord).HeaderFrames.StreamID
 
-		if e.Value.(*Request).SockKey == resp.SockKey && reqSID == respSID {
-			return m.reqQueue.Remove(e).(*Request)
+		if e.Value.(*protocols.Request).SockKey == resp.SockKey && reqSID == respSID {
+			return m.reqQueue.Remove(e).(*protocols.Request)
 		}
 	}
 	return nil

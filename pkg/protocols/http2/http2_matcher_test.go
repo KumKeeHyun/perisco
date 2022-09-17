@@ -1,4 +1,4 @@
-package protocols
+package http2
 
 import (
 	"container/list"
@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/KumKeeHyun/perisco/pkg/ebpf/types"
+	"github.com/KumKeeHyun/perisco/pkg/protocols"
 	"golang.org/x/net/http2"
 )
 
@@ -23,18 +24,18 @@ func TestHTTP2Matcher_MatchRequest(t *testing.T) {
 		respQueue *list.List
 	}
 	type args struct {
-		req *Request
+		req *protocols.Request
 	}
 	tests := []struct {
-		name    string
-		args    args
-		fields  fields
-		want    *ProtoMessage
+		name   string
+		args   args
+		fields fields
+		want   *protocols.ProtoMessage
 	}{
 		{
 			name: "Success to Find Response",
 			args: args{
-				req: &Request{
+				req: &protocols.Request{
 					SockKey: types.SockKey{Pid: 1},
 					Record: &HTTP2RequestRecord{
 						HeaderFrames: getHeaderFramWithStreamID(1),
@@ -45,7 +46,7 @@ func TestHTTP2Matcher_MatchRequest(t *testing.T) {
 				reqQueue: list.New(),
 				respQueue: func() *list.List {
 					l := list.New()
-					l.PushFront(&Response{
+					l.PushFront(&protocols.Response{
 						SockKey: types.SockKey{Pid: 1},
 						Record: &HTTP2ResponseRecord{
 							HeaderFrames: getHeaderFramWithStreamID(1),
@@ -54,7 +55,7 @@ func TestHTTP2Matcher_MatchRequest(t *testing.T) {
 					return l
 				}(),
 			},
-			want: &ProtoMessage{
+			want: &protocols.ProtoMessage{
 				SockKey: types.SockKey{Pid: 1},
 				Req: &HTTP2RequestRecord{
 					HeaderFrames: getHeaderFramWithStreamID(1),
@@ -67,7 +68,7 @@ func TestHTTP2Matcher_MatchRequest(t *testing.T) {
 		{
 			name: "Empty Response Queue",
 			args: args{
-				req: &Request{
+				req: &protocols.Request{
 					SockKey: types.SockKey{Pid: 1},
 					Record: &HTTP2RequestRecord{
 						HeaderFrames: getHeaderFramWithStreamID(1),
@@ -75,7 +76,7 @@ func TestHTTP2Matcher_MatchRequest(t *testing.T) {
 				},
 			},
 			fields: fields{
-				reqQueue: list.New(),
+				reqQueue:  list.New(),
 				respQueue: list.New(),
 			},
 			want: nil,
@@ -83,7 +84,7 @@ func TestHTTP2Matcher_MatchRequest(t *testing.T) {
 		{
 			name: "Fail to Find Response pid",
 			args: args{
-				req: &Request{
+				req: &protocols.Request{
 					SockKey: types.SockKey{Pid: 1},
 					Record: &HTTP2RequestRecord{
 						HeaderFrames: getHeaderFramWithStreamID(1),
@@ -94,7 +95,7 @@ func TestHTTP2Matcher_MatchRequest(t *testing.T) {
 				reqQueue: list.New(),
 				respQueue: func() *list.List {
 					l := list.New()
-					l.PushFront(&Response{
+					l.PushFront(&protocols.Response{
 						SockKey: types.SockKey{Pid: 2},
 						Record: &HTTP2ResponseRecord{
 							HeaderFrames: getHeaderFramWithStreamID(1),
@@ -108,7 +109,7 @@ func TestHTTP2Matcher_MatchRequest(t *testing.T) {
 		{
 			name: "Fail to Find Response streamID",
 			args: args{
-				req: &Request{
+				req: &protocols.Request{
 					SockKey: types.SockKey{Pid: 1},
 					Record: &HTTP2RequestRecord{
 						HeaderFrames: getHeaderFramWithStreamID(1),
@@ -119,7 +120,7 @@ func TestHTTP2Matcher_MatchRequest(t *testing.T) {
 				reqQueue: list.New(),
 				respQueue: func() *list.List {
 					l := list.New()
-					l.PushFront(&Response{
+					l.PushFront(&protocols.Response{
 						SockKey: types.SockKey{Pid: 1},
 						Record: &HTTP2ResponseRecord{
 							HeaderFrames: getHeaderFramWithStreamID(2),
@@ -151,13 +152,13 @@ func TestHTTP2Matcher_findResp(t *testing.T) {
 		respQueue *list.List
 	}
 	type args struct {
-		req *Request
+		req *protocols.Request
 	}
 	tests := []struct {
 		name   string
 		fields fields
 		args   args
-		want   *Response
+		want   *protocols.Response
 	}{
 		// TODO: Add test cases.
 	}
@@ -180,18 +181,18 @@ func TestHTTP2Matcher_MatchResponse(t *testing.T) {
 		respQueue *list.List
 	}
 	type args struct {
-		resp *Response
+		resp *protocols.Response
 	}
 	tests := []struct {
-		name    string
-		args    args
-		fields  fields
-		want    *ProtoMessage
+		name   string
+		args   args
+		fields fields
+		want   *protocols.ProtoMessage
 	}{
 		{
 			name: "Success to Find Response",
 			args: args{
-				resp: &Response{
+				resp: &protocols.Response{
 					SockKey: types.SockKey{Pid: 1},
 					Record: &HTTP2ResponseRecord{
 						HeaderFrames: getHeaderFramWithStreamID(1),
@@ -201,7 +202,7 @@ func TestHTTP2Matcher_MatchResponse(t *testing.T) {
 			fields: fields{
 				reqQueue: func() *list.List {
 					l := list.New()
-					l.PushFront(&Request{
+					l.PushFront(&protocols.Request{
 						SockKey: types.SockKey{Pid: 1},
 						Record: &HTTP2RequestRecord{
 							HeaderFrames: getHeaderFramWithStreamID(1),
@@ -211,7 +212,7 @@ func TestHTTP2Matcher_MatchResponse(t *testing.T) {
 				}(),
 				respQueue: list.New(),
 			},
-			want: &ProtoMessage{
+			want: &protocols.ProtoMessage{
 				SockKey: types.SockKey{Pid: 1},
 				Req: &HTTP2RequestRecord{
 					HeaderFrames: getHeaderFramWithStreamID(1),
@@ -224,7 +225,7 @@ func TestHTTP2Matcher_MatchResponse(t *testing.T) {
 		{
 			name: "Empty Response Queue",
 			args: args{
-				resp: &Response{
+				resp: &protocols.Response{
 					SockKey: types.SockKey{Pid: 1},
 					Record: &HTTP2ResponseRecord{
 						HeaderFrames: getHeaderFramWithStreamID(1),
@@ -232,7 +233,7 @@ func TestHTTP2Matcher_MatchResponse(t *testing.T) {
 				},
 			},
 			fields: fields{
-				reqQueue: list.New(),
+				reqQueue:  list.New(),
 				respQueue: list.New(),
 			},
 			want: nil,
@@ -240,7 +241,7 @@ func TestHTTP2Matcher_MatchResponse(t *testing.T) {
 		{
 			name: "Fail to Find Response pid",
 			args: args{
-				resp: &Response{
+				resp: &protocols.Response{
 					SockKey: types.SockKey{Pid: 1},
 					Record: &HTTP2ResponseRecord{
 						HeaderFrames: getHeaderFramWithStreamID(1),
@@ -250,7 +251,7 @@ func TestHTTP2Matcher_MatchResponse(t *testing.T) {
 			fields: fields{
 				reqQueue: func() *list.List {
 					l := list.New()
-					l.PushFront(&Request{
+					l.PushFront(&protocols.Request{
 						SockKey: types.SockKey{Pid: 2},
 						Record: &HTTP2RequestRecord{
 							HeaderFrames: getHeaderFramWithStreamID(1),
@@ -265,7 +266,7 @@ func TestHTTP2Matcher_MatchResponse(t *testing.T) {
 		{
 			name: "Fail to Find Response streamID",
 			args: args{
-				resp: &Response{
+				resp: &protocols.Response{
 					SockKey: types.SockKey{Pid: 1},
 					Record: &HTTP2ResponseRecord{
 						HeaderFrames: getHeaderFramWithStreamID(1),
@@ -275,7 +276,7 @@ func TestHTTP2Matcher_MatchResponse(t *testing.T) {
 			fields: fields{
 				reqQueue: func() *list.List {
 					l := list.New()
-					l.PushFront(&Request{
+					l.PushFront(&protocols.Request{
 						SockKey: types.SockKey{Pid: 1},
 						Record: &HTTP2RequestRecord{
 							HeaderFrames: getHeaderFramWithStreamID(2),
@@ -308,13 +309,13 @@ func TestHTTP2Matcher_findReq(t *testing.T) {
 		respQueue *list.List
 	}
 	type args struct {
-		resp *Response
+		resp *protocols.Response
 	}
 	tests := []struct {
 		name   string
 		fields fields
 		args   args
-		want   *Request
+		want   *protocols.Request
 	}{
 		// TODO: Add test cases.
 	}

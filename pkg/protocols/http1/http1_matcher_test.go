@@ -1,4 +1,4 @@
-package protocols
+package http1
 
 import (
 	"container/list"
@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/KumKeeHyun/perisco/pkg/ebpf/types"
+	"github.com/KumKeeHyun/perisco/pkg/protocols"
 )
 
 func TestHTTP1Matcher_MatchRequest(t *testing.T) {
@@ -14,33 +15,33 @@ func TestHTTP1Matcher_MatchRequest(t *testing.T) {
 		respQueue *list.List
 	}
 	type args struct {
-		req *Request
+		req *protocols.Request
 	}
 	tests := []struct {
 		name   string
 		args   args
 		fields fields
-		want   *ProtoMessage
+		want   *protocols.ProtoMessage
 	}{
 		{
 			name: "Success to Find Response",
 			args: args{
-				req: &Request{SockKey: types.SockKey{Pid: 1}},
+				req: &protocols.Request{SockKey: types.SockKey{Pid: 1}},
 			},
 			fields: fields{
 				reqQueue: list.New(),
 				respQueue: func() *list.List {
 					l := list.New()
-					l.PushFront(&Response{SockKey: types.SockKey{Pid: 1}})
+					l.PushFront(&protocols.Response{SockKey: types.SockKey{Pid: 1}})
 					return l
 				}(),
 			},
-			want: &ProtoMessage{SockKey: types.SockKey{Pid: 1}},
+			want: &protocols.ProtoMessage{SockKey: types.SockKey{Pid: 1}},
 		},
 		{
 			name: "Empty Response Queue",
 			args: args{
-				req: &Request{SockKey: types.SockKey{Pid: 1}},
+				req: &protocols.Request{SockKey: types.SockKey{Pid: 1}},
 			},
 			fields: fields{
 				reqQueue:  list.New(),
@@ -51,13 +52,13 @@ func TestHTTP1Matcher_MatchRequest(t *testing.T) {
 		{
 			name: "Fail to Find Response",
 			args: args{
-				req: &Request{SockKey: types.SockKey{Pid: 1}},
+				req: &protocols.Request{SockKey: types.SockKey{Pid: 1}},
 			},
 			fields: fields{
 				reqQueue: list.New(),
 				respQueue: func() *list.List {
 					l := list.New()
-					l.PushFront(&Response{SockKey: types.SockKey{Pid: 2}})
+					l.PushFront(&protocols.Response{SockKey: types.SockKey{Pid: 2}})
 					return l
 				}(),
 			},
@@ -84,13 +85,13 @@ func TestHTTP1Matcher_findResp(t *testing.T) {
 		respQueue *list.List
 	}
 	type args struct {
-		req *Request
+		req *protocols.Request
 	}
 	tests := []struct {
 		name   string
 		fields fields
 		args   args
-		want   *Response
+		want   *protocols.Response
 	}{
 		// TODO: Add test cases.
 	}
@@ -113,33 +114,33 @@ func TestHTTP1Matcher_MatchResponse(t *testing.T) {
 		respQueue *list.List
 	}
 	type args struct {
-		resp *Response
+		resp *protocols.Response
 	}
 	tests := []struct {
 		name   string
 		fields fields
 		args   args
-		want   *ProtoMessage
+		want   *protocols.ProtoMessage
 	}{
 		{
 			name: "Success to Find Request",
 			args: args{
-				resp: &Response{SockKey: types.SockKey{Pid: 1}},
+				resp: &protocols.Response{SockKey: types.SockKey{Pid: 1}},
 			},
 			fields: fields{
 				reqQueue: func() *list.List {
 					l := list.New()
-					l.PushFront(&Request{SockKey: types.SockKey{Pid: 1}})
+					l.PushFront(&protocols.Request{SockKey: types.SockKey{Pid: 1}})
 					return l
 				}(),
 				respQueue: list.New(),
 			},
-			want: &ProtoMessage{SockKey: types.SockKey{Pid: 1}},
+			want: &protocols.ProtoMessage{SockKey: types.SockKey{Pid: 1}},
 		},
 		{
 			name: "Empty Request Queue",
 			args: args{
-				resp: &Response{SockKey: types.SockKey{Pid: 1}},
+				resp: &protocols.Response{SockKey: types.SockKey{Pid: 1}},
 			},
 			fields: fields{
 				reqQueue:  list.New(),
@@ -150,12 +151,12 @@ func TestHTTP1Matcher_MatchResponse(t *testing.T) {
 		{
 			name: "Fail to Find Request",
 			args: args{
-				resp: &Response{SockKey: types.SockKey{Pid: 1}},
+				resp: &protocols.Response{SockKey: types.SockKey{Pid: 1}},
 			},
 			fields: fields{
 				reqQueue: func() *list.List {
 					l := list.New()
-					l.PushFront(&Request{SockKey: types.SockKey{Pid: 2}})
+					l.PushFront(&protocols.Request{SockKey: types.SockKey{Pid: 2}})
 					return l
 				}(),
 				respQueue: list.New(),
@@ -183,13 +184,13 @@ func TestHTTP1Matcher_findReq(t *testing.T) {
 		respQueue *list.List
 	}
 	type args struct {
-		resp *Response
+		resp *protocols.Response
 	}
 	tests := []struct {
 		name   string
 		fields fields
 		args   args
-		want   *Request
+		want   *protocols.Request
 	}{
 		// TODO: Add test cases.
 	}

@@ -1,4 +1,4 @@
-package protocols
+package http1
 
 import (
 	"bufio"
@@ -10,6 +10,7 @@ import (
 	"testing"
 
 	"github.com/KumKeeHyun/perisco/pkg/ebpf/types"
+	"github.com/KumKeeHyun/perisco/pkg/protocols"
 	"golang.org/x/net/http2"
 )
 
@@ -90,11 +91,11 @@ func (t *http1Parser_ParseRequest_Test) args() []byte {
 	return buf.Bytes()[:len]
 }
 
-func (t *http1Parser_ParseRequest_Test) want() RequestRecord {
+func (t *http1Parser_ParseRequest_Test) want() protocols.RequestRecord {
 	return &HTTP1RequestRecord{H1Req: t.req}
 }
 
-func (t *http1Parser_ParseRequest_Test) equal(got RequestRecord) bool {
+func (t *http1Parser_ParseRequest_Test) equal(got protocols.RequestRecord) bool {
 	h1rr, ok := got.(*HTTP1RequestRecord)
 	if !ok {
 		return false
@@ -276,11 +277,11 @@ func (t *http1Parser_ParseResponse_Test) args() []byte {
 	return buf.Bytes()[:len]
 }
 
-func (t *http1Parser_ParseResponse_Test) want() ResponseRecord {
+func (t *http1Parser_ParseResponse_Test) want() protocols.ResponseRecord {
 	return &HTTP1ResponseRecord{H1Resp: t.resp}
 }
 
-func (t *http1Parser_ParseResponse_Test) equal(got ResponseRecord) bool {
+func (t *http1Parser_ParseResponse_Test) equal(got protocols.ResponseRecord) bool {
 	h1rr, ok := got.(*HTTP1ResponseRecord)
 	if !ok {
 		return false

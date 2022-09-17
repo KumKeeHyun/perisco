@@ -1,4 +1,4 @@
-package protocols
+package http2
 
 import (
 	"bytes"
@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/KumKeeHyun/perisco/pkg/ebpf/types"
+	"github.com/KumKeeHyun/perisco/pkg/protocols"
 	"golang.org/x/net/http2/hpack"
 )
 
@@ -137,7 +138,7 @@ func TestHTTP2Parser_ParseRequest(t *testing.T) {
 		name    string
 		fields  fields
 		args    args
-		want    RequestRecord
+		want    protocols.RequestRecord
 		wantErr bool
 	}{
 		// TODO: Add test cases.
@@ -190,7 +191,7 @@ func TestHTTP2Parser_ParseResponse(t *testing.T) {
 		name    string
 		fields  fields
 		args    args
-		want    ResponseRecord
+		want    protocols.ResponseRecord
 		wantErr bool
 	}{
 		// TODO: Add test cases.

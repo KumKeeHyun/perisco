@@ -41,11 +41,7 @@ type ReqRespParser struct {
 	donec  chan struct{}
 }
 
-func RunParser(ctx context.Context, recvc, sendc chan *types.MsgEvent, breaker Breaker) (chan *Request, chan *Response) {
-	parsers := []ProtoParser{
-		NewHTTP1Parser(),
-		NewHTTP2Parser(),
-	}
+func RunParser(ctx context.Context, recvc, sendc chan *types.MsgEvent, parsers []ProtoParser, breaker Breaker) (chan *Request, chan *Response) {
 	if breaker == nil {
 		breaker = &mockBreaker{}
 	}

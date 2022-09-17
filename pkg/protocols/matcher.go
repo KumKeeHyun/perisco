@@ -8,7 +8,8 @@ import (
 )
 
 type ReqRespMatcher struct {
-	matchers map[types.EndpointKey]ProtoMatcher
+	matchers     map[types.EndpointKey]ProtoMatcher
+	newMatcherOf func(types.ProtocolType) ProtoMatcher
 
 	msgc chan *ProtoMessage
 
@@ -17,15 +18,16 @@ type ReqRespMatcher struct {
 	donec  chan struct{}
 }
 
-func RunMatcher(ctx context.Context, reqc chan *Request, respc chan *Response) chan *ProtoMessage {
-	rrm := newReqRespMatcher()
+func RunMatcher(ctx context.Context, reqc chan *Request, respc chan *Response, newMatcherOf func(types.ProtocolType) ProtoMatcher) chan *ProtoMessage {
+	rrm := newReqRespMatcher(newMatcherOf)
 	return rrm.run(ctx, reqc, respc)
 }
 
-func newReqRespMatcher() *ReqRespMatcher {
+func newReqRespMatcher(newMatcherOf func(types.ProtocolType) ProtoMatcher) *ReqRespMatcher {
 	return &ReqRespMatcher{
-		matchers: make(map[types.EndpointKey]ProtoMatcher),
-		donec:    make(chan struct{}),
+		matchers:     make(map[types.EndpointKey]ProtoMatcher),
+		newMatcherOf: newMatcherOf,
+		donec:        make(chan struct{}),
 	}
 }
 
@@ -61,7 +63,7 @@ func (rrm *ReqRespMatcher) tryMatchRequest(req *Request) {
 	ep := req.SockKey.ToServerEndpoint()
 	m, exists := rrm.matchers[ep]
 	if !exists {
-		if m = NewProtoMatcherOf(req.Record.ProtoType()); m == nil {
+		if m = rrm.newMatcherOf(req.Record.ProtoType()); m == nil {
 			return
 		}
 		rrm.matchers[ep] = m
@@ -77,7 +79,7 @@ func (rrm *ReqRespMatcher) tryMatchResponse(resp *Response) {
 	ep := resp.SockKey.ToServerEndpoint()
 	m, exists := rrm.matchers[ep]
 	if !exists {
-		if m = NewProtoMatcherOf(resp.Record.ProtoType()); m == nil {
+		if m = rrm.newMatcherOf(resp.Record.ProtoType()); m == nil {
 			return
 		}
 		rrm.matchers[ep] = m

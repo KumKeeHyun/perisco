@@ -1,10 +1,10 @@
-package protocols
+package http1
 
 import (
 	"container/list"
-)
 
-var ()
+	"github.com/KumKeeHyun/perisco/pkg/protocols"
+)
 
 type HTTP1Matcher struct {
 	reqQueue  *list.List
@@ -18,16 +18,16 @@ func NewHTTP1Matcher() *HTTP1Matcher {
 	}
 }
 
-var _ ProtoMatcher = &HTTP1Matcher{}
+var _ protocols.ProtoMatcher = &HTTP1Matcher{}
 
 // MatchRequest implements ProtoMatcher
-func (m *HTTP1Matcher) MatchRequest(req *Request) *ProtoMessage {
+func (m *HTTP1Matcher) MatchRequest(req *protocols.Request) *protocols.ProtoMessage {
 	resp := m.findResp(req)
 	if resp == nil {
 		m.reqQueue.PushBack(req)
 		return nil
 	}
-	return &ProtoMessage{
+	return &protocols.ProtoMessage{
 		SockKey: req.SockKey,
 		Time:    resp.Timestamp - req.Timestamp,
 		Req:     req.Record,
@@ -35,23 +35,23 @@ func (m *HTTP1Matcher) MatchRequest(req *Request) *ProtoMessage {
 	}
 }
 
-func (m *HTTP1Matcher) findResp(req *Request) *Response {
+func (m *HTTP1Matcher) findResp(req *protocols.Request) *protocols.Response {
 	for e := m.respQueue.Front(); e != nil; e = e.Next() {
-		if e.Value.(*Response).SockKey == req.SockKey {
-			return m.respQueue.Remove(e).(*Response)
+		if e.Value.(*protocols.Response).SockKey == req.SockKey {
+			return m.respQueue.Remove(e).(*protocols.Response)
 		}
 	}
 	return nil
 }
 
 // MatchResponse implements ProtoMatcher
-func (m *HTTP1Matcher) MatchResponse(resp *Response) *ProtoMessage {
+func (m *HTTP1Matcher) MatchResponse(resp *protocols.Response) *protocols.ProtoMessage {
 	req := m.findReq(resp)
 	if req == nil {
 		m.respQueue.PushBack(resp)
 		return nil
 	}
-	return &ProtoMessage{
+	return &protocols.ProtoMessage{
 		SockKey: resp.SockKey,
 		Time:    resp.Timestamp - req.Timestamp,
 		Req:     req.Record,
@@ -59,10 +59,10 @@ func (m *HTTP1Matcher) MatchResponse(resp *Response) *ProtoMessage {
 	}
 }
 
-func (m *HTTP1Matcher) findReq(resp *Response) *Request {
+func (m *HTTP1Matcher) findReq(resp *protocols.Response) *protocols.Request {
 	for e := m.reqQueue.Front(); e != nil; e = e.Next() {
-		if e.Value.(*Request).SockKey == resp.SockKey {
-			return m.reqQueue.Remove(e).(*Request)
+		if e.Value.(*protocols.Request).SockKey == resp.SockKey {
+			return m.reqQueue.Remove(e).(*protocols.Request)
 		}
 	}
 	return nil

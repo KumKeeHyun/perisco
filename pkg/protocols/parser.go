@@ -29,7 +29,7 @@ func (r *Response) String() string {
 	return fmt.Sprintf("%s\n%s\n", r.SockKey.String(), r.Record.String())
 }
 
-type ReqRespParser struct {
+type reqRespParser struct {
 	parsers map[types.ProtocolType]ProtoParser
 	breaker Breaker
 
@@ -41,41 +41,33 @@ type ReqRespParser struct {
 	donec  chan struct{}
 }
 
-func RunParser(ctx context.Context, recvc, sendc chan *types.MsgEvent, parsers []ProtoParser, breaker Breaker) (chan *Request, chan *Response) {
+func NewParser(parsers []ProtoParser, breaker Breaker) *reqRespParser {
+	pps := make(map[types.ProtocolType]ProtoParser, len(parsers)+1)
+	for _, p := range parsers {
+		pps[p.ProtoType()] = p
+	}
+	pps[types.PROTO_UNKNOWN] = NewUnknownParser(parsers)
+
 	if breaker == nil {
 		breaker = &mockBreaker{}
 	}
-	rrp := newReqRespParser(parsers, breaker)
-	return rrp.run(ctx, recvc, sendc)
-}
 
-func newReqRespParser(parsers []ProtoParser, breaker Breaker) *ReqRespParser {
-	parser := &ReqRespParser{
-		parsers: make(map[types.ProtocolType]ProtoParser, len(parsers)+1),
+	return &reqRespParser{
+		parsers: pps,
 		breaker: breaker,
-		donec:   make(chan struct{}),
 	}
-
-	for _, p := range parsers {
-		parser.parsers[p.ProtoType()] = p
-	}
-	parser.parsers[types.PROTO_UNKNOWN] = NewUnknownParser(parsers)
-
-	return parser
 }
 
-func (rrp *ReqRespParser) run(ctx context.Context, recvc, sendc chan *types.MsgEvent) (chan *Request, chan *Response) {
-	reqc := make(chan *Request, 100)
-	respc := make(chan *Response, 100)
-
-	rrp.reqc = reqc
-	rrp.respc = respc
+func (rrp *reqRespParser) Run(ctx context.Context, recvc, sendc chan *types.MsgEvent) (chan *Request, chan *Response) {
+	rrp.reqc = make(chan *Request, 100)
+	rrp.respc = make(chan *Response, 100)
 
 	rrp.ctx, rrp.cancel = context.WithCancel(ctx)
+	rrp.donec = make(chan struct{})
 	go func() {
 		defer func() {
-			close(reqc)
-			close(respc)
+			close(rrp.reqc)
+			close(rrp.respc)
 			close(rrp.donec)
 		}()
 
@@ -91,10 +83,10 @@ func (rrp *ReqRespParser) run(ctx context.Context, recvc, sendc chan *types.MsgE
 		}
 	}()
 
-	return reqc, respc
+	return rrp.reqc, rrp.respc
 }
 
-func (rrp *ReqRespParser) tryParseRequest(msg *types.MsgEvent) {
+func (rrp *reqRespParser) tryParseRequest(msg *types.MsgEvent) {
 	p := rrp.findParser(msg)
 	rrs, err := p.ParseRequest(&msg.SockKey, msg.Bytes())
 	if err != nil {
@@ -113,14 +105,14 @@ func (rrp *ReqRespParser) tryParseRequest(msg *types.MsgEvent) {
 	}
 }
 
-func (rrp *ReqRespParser) findParser(msg *types.MsgEvent) ProtoParser {
+func (rrp *reqRespParser) findParser(msg *types.MsgEvent) ProtoParser {
 	if p, exists := rrp.parsers[msg.Protocol]; exists {
 		return p
 	}
 	return nil
 }
 
-func (rrp *ReqRespParser) tryParseResponse(msg *types.MsgEvent) {
+func (rrp *reqRespParser) tryParseResponse(msg *types.MsgEvent) {
 	p := rrp.findParser(msg)
 	if p == nil {
 		return
@@ -143,7 +135,7 @@ func (rrp *ReqRespParser) tryParseResponse(msg *types.MsgEvent) {
 
 }
 
-func (rrp *ReqRespParser) Close() error {
+func (rrp *reqRespParser) Close() error {
 	if rrp.cancel != nil {
 		rrp.cancel()
 	}

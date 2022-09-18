@@ -18,7 +18,8 @@ import (
 )
 
 const (
-	keyCidrs = "cidrs"
+	keyCidrs  = "cidrs"
+	keyProtos = "protos"
 )
 
 func New(vp *viper.Viper) *cobra.Command {
@@ -32,6 +33,7 @@ func New(vp *viper.Viper) *cobra.Command {
 
 	flags := cmd.Flags()
 	flags.String(keyCidrs, "0.0.0.0/0", "List of cidr to monitor sevices")
+	flags.String(keyProtos, "HTTP/1,HTTP/2", "List of protocols to monitor services")
 	vp.BindPFlags(flags)
 
 	return cmd
@@ -52,31 +54,22 @@ func runPerisco(vp *viper.Viper) error {
 	recvc, sendc, nf, pm, clean := bpf.LoadBpfProgram()
 	defer clean()
 
-	cidrs := splitCidrs(vp.GetString(keyCidrs))
+	cidrs := splitToSlice(vp.GetString(keyCidrs))
 	if err := nf.RegisterCIDRs(cidrs); err != nil {
 		log.Fatal(err)
 	}
 	log.Printf("cidrs : %v", cidrs)
 
 	pd := protocols.NewProtoDetecter(pm)
-	reqc, respc := protocols.RunParser(ctx, recvc, sendc,
-		[]protocols.ProtoParser{
-			http1.NewHTTP1Parser(),
-			http2.NewHTTP2Parser(),
-		},
-		pd)
-	msgc := protocols.RunMatcher(ctx, reqc, respc,
-		func(proto types.ProtocolType) protocols.ProtoMatcher {
-			switch proto {
-			case types.HTTP1:
-				return http1.NewHTTP1Matcher()
-			case types.HTTP2:
-				return http2.NewHTTP2Matcher()
-			default:
-				return nil
-			}
-		})
-
+	parser := protocols.NewParser(
+		supportedProtoParsers(vp.GetString(keyProtos)),
+		pd,
+	)
+	reqc, respc := parser.Run(ctx, recvc, sendc)
+	
+	matcher := protocols.NewMatcher(supportedProtoMatchers(vp.GetString(keyProtos)))
+	msgc := matcher.Run(ctx, reqc, respc)
+	
 	return func() error {
 		for {
 			select {
@@ -89,7 +82,58 @@ func runPerisco(vp *viper.Viper) error {
 	}()
 }
 
-func splitCidrs(cidrs string) []string {
-	return strings.Split(strings.ReplaceAll(cidrs, " ", ""), ",")
+func splitToSlice(str string) []string {
+	return strings.Split(strings.ReplaceAll(str, " ", ""), ",")
 }
 
+func supportedProtoParsers(protosStr string) (parsers []protocols.ProtoParser) {
+	for _, protoStr := range splitToSlice(protosStr) {
+		pt := types.ProtoTypeOf(protoStr)
+		if pt != types.PROTO_UNKNOWN {
+			parsers = append(parsers, protoParserOf(pt))
+			log.Printf("parser support %s\n", pt)
+		}
+
+	}
+	return
+}
+
+func protoParserOf(pt types.ProtocolType) protocols.ProtoParser {
+	switch pt {
+	case types.HTTP1:
+		return http1.NewHTTP1Parser()
+	case types.HTTP2:
+		return http2.NewHTTP2Parser()
+	default:
+		return nil
+	}
+}
+
+func supportedProtoMatchers(protosStr string) func(types.ProtocolType) protocols.ProtoMatcher {
+	support := make(map[types.ProtocolType]struct{})
+	for _, protoStr := range splitToSlice(protosStr) {
+		pt := types.ProtoTypeOf(protoStr)
+		if pt != types.PROTO_UNKNOWN {
+			support[pt] = struct{}{}
+			log.Printf("matcher support %s\n", pt)
+		}
+	}
+
+	return func(pt types.ProtocolType) protocols.ProtoMatcher {
+		if _, exists := support[pt]; exists {
+			return protoMatcherOf(pt)
+		}
+		return nil
+	}
+}
+
+func protoMatcherOf(pt types.ProtocolType) protocols.ProtoMatcher {
+	switch pt {
+	case types.HTTP1:
+		return http1.NewHTTP1Matcher()
+	case types.HTTP2:
+		return http2.NewHTTP2Matcher()
+	default:
+		return nil
+	}
+}

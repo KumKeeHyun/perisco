@@ -7,9 +7,9 @@ import (
 	"github.com/KumKeeHyun/perisco/pkg/ebpf/types"
 )
 
-type ReqRespMatcher struct {
+type reqRespMatcher struct {
 	matchers     map[types.EndpointKey]ProtoMatcher
-	newMatcherOf func(types.ProtocolType) ProtoMatcher
+	protoMatcherOf func(types.ProtocolType) ProtoMatcher
 
 	msgc chan *ProtoMessage
 
@@ -18,27 +18,21 @@ type ReqRespMatcher struct {
 	donec  chan struct{}
 }
 
-func RunMatcher(ctx context.Context, reqc chan *Request, respc chan *Response, newMatcherOf func(types.ProtocolType) ProtoMatcher) chan *ProtoMessage {
-	rrm := newReqRespMatcher(newMatcherOf)
-	return rrm.run(ctx, reqc, respc)
-}
-
-func newReqRespMatcher(newMatcherOf func(types.ProtocolType) ProtoMatcher) *ReqRespMatcher {
-	return &ReqRespMatcher{
+func NewMatcher(protoMatcherOf func(types.ProtocolType) ProtoMatcher) *reqRespMatcher {
+	return &reqRespMatcher{
 		matchers:     make(map[types.EndpointKey]ProtoMatcher),
-		newMatcherOf: newMatcherOf,
-		donec:        make(chan struct{}),
+		protoMatcherOf: protoMatcherOf,
 	}
 }
 
-func (rrm *ReqRespMatcher) run(ctx context.Context, reqc chan *Request, respc chan *Response) chan *ProtoMessage {
-	msgc := make(chan *ProtoMessage, 100)
-	rrm.msgc = msgc
+func (rrm *reqRespMatcher) Run(ctx context.Context, reqc chan *Request, respc chan *Response) chan *ProtoMessage {
+	rrm.msgc = make(chan *ProtoMessage, 100)
 
 	rrm.ctx, rrm.cancel = context.WithCancel(ctx)
+	rrm.donec = make(chan struct{})
 	go func() {
 		defer func() {
-			close(msgc)
+			close(rrm.msgc)
 			close(rrm.donec)
 		}()
 
@@ -56,14 +50,14 @@ func (rrm *ReqRespMatcher) run(ctx context.Context, reqc chan *Request, respc ch
 		}
 	}()
 
-	return msgc
+	return rrm.msgc
 }
 
-func (rrm *ReqRespMatcher) tryMatchRequest(req *Request) {
+func (rrm *reqRespMatcher) tryMatchRequest(req *Request) {
 	ep := req.SockKey.ToServerEndpoint()
 	m, exists := rrm.matchers[ep]
 	if !exists {
-		if m = rrm.newMatcherOf(req.Record.ProtoType()); m == nil {
+		if m = rrm.protoMatcherOf(req.Record.ProtoType()); m == nil {
 			return
 		}
 		rrm.matchers[ep] = m
@@ -75,11 +69,11 @@ func (rrm *ReqRespMatcher) tryMatchRequest(req *Request) {
 	}
 }
 
-func (rrm *ReqRespMatcher) tryMatchResponse(resp *Response) {
+func (rrm *reqRespMatcher) tryMatchResponse(resp *Response) {
 	ep := resp.SockKey.ToServerEndpoint()
 	m, exists := rrm.matchers[ep]
 	if !exists {
-		if m = rrm.newMatcherOf(resp.Record.ProtoType()); m == nil {
+		if m = rrm.protoMatcherOf(resp.Record.ProtoType()); m == nil {
 			return
 		}
 		rrm.matchers[ep] = m

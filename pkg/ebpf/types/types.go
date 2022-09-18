@@ -185,7 +185,7 @@ const (
 
 var ProtocolTypeName = map[ProtocolType]string{
 	PROTO_UNKNOWN: "UNKNOWN",
-	HTTP1:         "HTTP/1.1",
+	HTTP1:         "HTTP/1",
 	HTTP2:         "HTTP/2",
 }
 
@@ -196,6 +196,26 @@ func (p ProtocolType) String() string {
 	return "UNKNOWN"
 }
 
+func ProtoTypeOf(protoStr string) ProtocolType {
+	for pt, str := range ProtocolTypeName {
+		if str == protoStr {
+			return pt
+		}
+	}
+	return PROTO_UNKNOWN
+}
+
+func ProtoTypesOf(ps []string) ([]ProtocolType, error) {
+	res := make([]ProtocolType, 0, len(ps))
+	for _, p := range ps {
+		pt := ProtoTypeOf(p)
+		if pt == PROTO_UNKNOWN {
+			return nil, fmt.Errorf("ProtoTypesOf: unknown protocol type %s", p)
+		}
+		res = append(res, pt)
+	}
+	return res, nil
+}
 type IpNetwork struct {
 	IpAddr [16]byte
 	IpMask [16]byte

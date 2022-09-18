@@ -9,6 +9,7 @@ import (
 
 	"github.com/KumKeeHyun/perisco/perisco/bpf"
 	"github.com/KumKeeHyun/perisco/pkg/ebpf/types"
+	"github.com/KumKeeHyun/perisco/pkg/logger"
 	"github.com/KumKeeHyun/perisco/pkg/protocols"
 	"github.com/KumKeeHyun/perisco/pkg/protocols/http1"
 	"github.com/KumKeeHyun/perisco/pkg/protocols/http2"
@@ -51,6 +52,12 @@ func runPerisco(vp *viper.Viper) error {
 	)
 	defer cancel()
 
+	protos, err := types.ProtoTypesOf(splitToSlice(vp.GetString(keyProtos)))
+	if err != nil {
+		log.Fatal(err)
+	}
+	logger.DefualtLogger.Infof("enabled protocols %v", protos)
+
 	recvc, sendc, nf, pm, clean := bpf.LoadBpfProgram()
 	defer clean()
 
@@ -58,18 +65,21 @@ func runPerisco(vp *viper.Viper) error {
 	if err := nf.RegisterCIDRs(cidrs); err != nil {
 		log.Fatal(err)
 	}
-	log.Printf("cidrs : %v", cidrs)
+	logger.DefualtLogger.Infof("network filter will only tract %v", cidrs)
 
-	pd := protocols.NewProtoDetecter(pm)
 	parser := protocols.NewParser(
-		supportedProtoParsers(vp.GetString(keyProtos)),
-		pd,
+		supportedProtoParsers(protos),
+		pm,
+		logger.DefualtLogger.Named("parser"),
 	)
 	reqc, respc := parser.Run(ctx, recvc, sendc)
-	
-	matcher := protocols.NewMatcher(supportedProtoMatchers(vp.GetString(keyProtos)))
+
+	matcher := protocols.NewMatcher(
+		supportedProtoMatchers(protos),
+		logger.DefualtLogger.Named("matcher"),
+	)
 	msgc := matcher.Run(ctx, reqc, respc)
-	
+
 	return func() error {
 		for {
 			select {
@@ -86,12 +96,10 @@ func splitToSlice(str string) []string {
 	return strings.Split(strings.ReplaceAll(str, " ", ""), ",")
 }
 
-func supportedProtoParsers(protosStr string) (parsers []protocols.ProtoParser) {
-	for _, protoStr := range splitToSlice(protosStr) {
-		pt := types.ProtoTypeOf(protoStr)
-		if pt != types.PROTO_UNKNOWN {
-			parsers = append(parsers, protoParserOf(pt))
-			log.Printf("parser support %s\n", pt)
+func supportedProtoParsers(protos []types.ProtocolType) (parsers []protocols.ProtoParser) {
+	for _, proto := range protos {
+		if proto != types.PROTO_UNKNOWN {
+			parsers = append(parsers, protoParserOf(proto))
 		}
 
 	}
@@ -109,13 +117,11 @@ func protoParserOf(pt types.ProtocolType) protocols.ProtoParser {
 	}
 }
 
-func supportedProtoMatchers(protosStr string) func(types.ProtocolType) protocols.ProtoMatcher {
+func supportedProtoMatchers(protos []types.ProtocolType) func(types.ProtocolType) protocols.ProtoMatcher {
 	support := make(map[types.ProtocolType]struct{})
-	for _, protoStr := range splitToSlice(protosStr) {
-		pt := types.ProtoTypeOf(protoStr)
-		if pt != types.PROTO_UNKNOWN {
-			support[pt] = struct{}{}
-			log.Printf("matcher support %s\n", pt)
+	for _, proto := range protos {
+		if proto != types.PROTO_UNKNOWN {
+			support[proto] = struct{}{}
 		}
 	}
 

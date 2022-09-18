@@ -5,6 +5,7 @@ import (
 
 	"github.com/KumKeeHyun/perisco/pkg/ebpf/maps"
 	"github.com/KumKeeHyun/perisco/pkg/ebpf/types"
+	"go.uber.org/zap"
 )
 
 func Test_protoDetecter_Success(t *testing.T) {
@@ -28,7 +29,7 @@ func Test_protoDetecter_Success(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			pd := NewProtoDetecter(mockPm)
+			pd := NewProtoDetecter(mockPm, zap.NewNop().Sugar())
 			for _, arg := range tt.args {
 				pd.Success(tt.sockKey, arg)
 			}
@@ -78,7 +79,7 @@ func Test_protoDetecter_Fail(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			pd := NewProtoDetecter(mockPm)
+			pd := NewProtoDetecter(mockPm, zap.NewNop().Sugar())
 			tt.exec(pd, tt.sockKey)
 			skipped := pd.alreadySkipped(tt.sockKey.ToServerEndpoint())
 			if skipped != tt.wantSkip {

@@ -5,6 +5,7 @@ import (
 	"log"
 
 	"github.com/KumKeeHyun/perisco/pkg/ebpf/types"
+	"go.uber.org/zap"
 )
 
 type reqRespMatcher struct {
@@ -16,12 +17,15 @@ type reqRespMatcher struct {
 	ctx    context.Context
 	cancel context.CancelFunc
 	donec  chan struct{}
+
+	log *zap.SugaredLogger
 }
 
-func NewMatcher(protoMatcherOf func(types.ProtocolType) ProtoMatcher) *reqRespMatcher {
+func NewMatcher(protoMatcherOf func(types.ProtocolType) ProtoMatcher, log *zap.SugaredLogger) *reqRespMatcher {
 	return &reqRespMatcher{
 		matchers:     make(map[types.EndpointKey]ProtoMatcher),
 		protoMatcherOf: protoMatcherOf,
+		log: log,
 	}
 }
 

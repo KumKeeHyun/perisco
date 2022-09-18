@@ -5,6 +5,7 @@ import (
 
 	"github.com/KumKeeHyun/perisco/pkg/ebpf/maps"
 	"github.com/KumKeeHyun/perisco/pkg/ebpf/types"
+	"go.uber.org/zap"
 )
 
 type Breaker interface {
@@ -30,17 +31,21 @@ type protoDetecter struct {
 		skipped bool
 		cnt     int
 	}
+
 	pm *maps.ProtocolMap
+
+	log *zap.SugaredLogger
 }
 
-func NewProtoDetecter(pm *maps.ProtocolMap) *protoDetecter {
+func NewProtoDetecter(pm *maps.ProtocolMap, log *zap.SugaredLogger) *protoDetecter {
 	return &protoDetecter{
 		detected: make(map[types.EndpointKey]types.ProtocolType, 50),
 		failed: make(map[types.EndpointKey]struct {
 			skipped bool
 			cnt     int
 		}, 50),
-		pm: pm,
+		pm:  pm,
+		log: log,
 	}
 }
 

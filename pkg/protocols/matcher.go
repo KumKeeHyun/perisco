@@ -2,14 +2,13 @@ package protocols
 
 import (
 	"context"
-	"log"
 
 	"github.com/KumKeeHyun/perisco/pkg/ebpf/types"
 	"go.uber.org/zap"
 )
 
 type reqRespMatcher struct {
-	matchers     map[types.EndpointKey]ProtoMatcher
+	matchers       map[types.EndpointKey]ProtoMatcher
 	protoMatcherOf func(types.ProtocolType) ProtoMatcher
 
 	msgc chan *ProtoMessage
@@ -23,9 +22,9 @@ type reqRespMatcher struct {
 
 func NewMatcher(protoMatcherOf func(types.ProtocolType) ProtoMatcher, log *zap.SugaredLogger) *reqRespMatcher {
 	return &reqRespMatcher{
-		matchers:     make(map[types.EndpointKey]ProtoMatcher),
+		matchers:       make(map[types.EndpointKey]ProtoMatcher),
 		protoMatcherOf: protoMatcherOf,
-		log: log,
+		log:            log,
 	}
 }
 
@@ -65,7 +64,7 @@ func (rrm *reqRespMatcher) tryMatchRequest(req *Request) {
 			return
 		}
 		rrm.matchers[ep] = m
-		log.Printf("new proto matcher of %s for %s", req.Record.ProtoType(), ep.String())
+		rrm.log.Infof("new proto matcher of %s for %s", req.Record.ProtoType(), ep.String())
 	}
 
 	if msg := m.MatchRequest(req); msg != nil {
@@ -81,7 +80,7 @@ func (rrm *reqRespMatcher) tryMatchResponse(resp *Response) {
 			return
 		}
 		rrm.matchers[ep] = m
-		log.Printf("new proto matcher of %s for %s", resp.Record.ProtoType(), ep.String())
+		rrm.log.Infof("new proto matcher of %s for %s", resp.Record.ProtoType(), ep.String())
 	}
 
 	if msg := m.MatchResponse(resp); msg != nil {

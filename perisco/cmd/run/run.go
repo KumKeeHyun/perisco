@@ -2,7 +2,6 @@ package run
 
 import (
 	"context"
-	"log"
 	"os/signal"
 	"strings"
 	"syscall"
@@ -41,6 +40,8 @@ func New(vp *viper.Viper) *cobra.Command {
 }
 
 func runPerisco(vp *viper.Viper) error {
+	log := logger.DefualtLogger.Named("perisco")
+
 	if err := rlimit.RemoveMemlock(); err != nil {
 		log.Fatal(err)
 	}
@@ -56,7 +57,7 @@ func runPerisco(vp *viper.Viper) error {
 	if err != nil {
 		log.Fatal(err)
 	}
-	logger.DefualtLogger.Infof("enabled protocols %v", protos)
+	log.Infof("enabled protocols %v", protos)
 
 	recvc, sendc, nf, pm, clean := bpf.LoadBpfProgram()
 	defer clean()
@@ -65,18 +66,18 @@ func runPerisco(vp *viper.Viper) error {
 	if err := nf.RegisterCIDRs(cidrs); err != nil {
 		log.Fatal(err)
 	}
-	logger.DefualtLogger.Infof("network filter will only tract %v", cidrs)
+	log.Infof("network filter will only tract %v", cidrs)
 
 	parser := protocols.NewParser(
 		supportedProtoParsers(protos),
 		pm,
-		logger.DefualtLogger.Named("parser"),
+		log.Named("parser"),
 	)
 	reqc, respc := parser.Run(ctx, recvc, sendc)
 
 	matcher := protocols.NewMatcher(
 		supportedProtoMatchers(protos),
-		logger.DefualtLogger.Named("matcher"),
+		log.Named("matcher"),
 	)
 	msgc := matcher.Run(ctx, reqc, respc)
 
@@ -84,7 +85,7 @@ func runPerisco(vp *viper.Viper) error {
 		for {
 			select {
 			case msg := <-msgc:
-				log.Println(msg)
+				log.Infof("\n%v", msg)
 			case <-ctx.Done():
 				return ctx.Err()
 			}

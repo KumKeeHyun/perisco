@@ -66,7 +66,9 @@ func (pd *protoDetecter) Success(sockKey types.SockKey, protocol types.ProtocolT
 	pd.detected[ek] = protocol
 	delete(pd.failed, ek)
 
-	log.Printf("detected %s in endpoint(%s)\n", protocol.String(), ek.String())
+	
+
+	pd.log.Infof("detected %s in endpoint %s", protocol.String(), ek.String())
 }
 
 func (pd *protoDetecter) alreadyDetected(ek types.EndpointKey) bool {
@@ -108,7 +110,7 @@ func (pd *protoDetecter) Fail(sockKey types.SockKey) {
 			failed.skipped = false
 		}
 
-		log.Printf("start to skip endpoint(%s)\n", ek.String())
+		pd.log.Infof("start to skip endpoint%s", ek.String())
 	}
 	pd.failed[ek] = failed
 }

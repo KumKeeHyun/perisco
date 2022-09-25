@@ -20,8 +20,8 @@ var _ protocols.ProtoRequest = &HTTP1Request{}
 // ProtoType implements ProtoRequest
 func (*HTTP1Request) ProtoType() types.ProtocolType { return types.HTTP1 }
 
-// RequestRecord implements ProtoRequest
-func (r *HTTP1Request) RequestRecord() *pb.Request {
+// Protobuf implements ProtoRequest
+func (r *HTTP1Request) Protobuf() *pb.Request {
 	return &pb.Request{
 		Record: &pb.Request_Http{
 			Http: &pb.HTTPRequest{
@@ -64,8 +64,8 @@ var _ protocols.ProtoResponse = &HTTP1Response{}
 // ProtoType implements ProtoResponse
 func (*HTTP1Response) ProtoType() types.ProtocolType { return types.HTTP1 }
 
-// ResponseRecord implements ProtoResponse
-func (r *HTTP1Response) ResponseRecord() *pb.Response {
+// Protobuf implements ProtoResponse
+func (r *HTTP1Response) Protobuf() *pb.Response {
 	return &pb.Response{
 		Record: &pb.Response_Http{
 			Http: &pb.HTTPResponse{

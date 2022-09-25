@@ -22,8 +22,8 @@ var _ protocols.ProtoRequest = &HTTP2Request{}
 // ProtoType implements ProtoRequest
 func (*HTTP2Request) ProtoType() types.ProtocolType { return types.HTTP2 }
 
-// RequestRecord implements ProtoRequest
-func (r *HTTP2Request) RequestRecord() *pb.Request {
+// Protobuf implements ProtoRequest
+func (r *HTTP2Request) Protobuf() *pb.Request {
 	return &pb.Request{
 		Record: &pb.Request_Http{
 			Http: &pb.HTTPRequest{
@@ -60,8 +60,8 @@ var _ protocols.ProtoResponse = &HTTP2Response{}
 // ProtoType implements ProtoResponse
 func (*HTTP2Response) ProtoType() types.ProtocolType { return types.HTTP2 }
 
-// ResponseRecord implements ProtoResponse
-func (r *HTTP2Response) ResponseRecord() *pb.Response {
+// Protobuf implements ProtoResponse
+func (r *HTTP2Response) Protobuf() *pb.Response {
 	code, _ := strconv.Atoi(r.Record.PseudoValue("status"))
 	
 	return &pb.Response{

@@ -3,6 +3,8 @@ package types
 import (
 	"fmt"
 	"net"
+
+	pb "github.com/KumKeeHyun/perisco/api/v1/perisco"
 )
 
 const MAX_MSG_SIZE = 4096
@@ -119,6 +121,22 @@ func ipString(ip [16]byte, version IpVersion) string {
 	return "unknown"
 }
 
+func (ip *Ip) Protobuf() *pb.IP {
+	res := &pb.IP{
+		Client: ip.GetSrcIp(),
+		Server: ip.GetDestIp(),
+	}
+	switch ip.IpVersion {
+	case IPv4: 
+		res.IpVersion = pb.IPVersion_IPv4
+	case IPv6: 
+		res.IpVersion = pb.IPVersion_IPv6
+	default: 
+		res.IpVersion = pb.IPVersion_IP_UNKNOWN
+	}
+	return res
+}
+
 type Layer4Type int32
 
 const (
@@ -144,6 +162,28 @@ type Layer4 struct {
 	SourcePort      uint32
 	DestinationPort uint32
 	L4Type          Layer4Type
+}
+
+func (l4 *Layer4) Protobuf() *pb.Layer4 {
+	res := &pb.Layer4{}
+	switch l4.L4Type {
+	case TCP:
+		res.Protocol = &pb.Layer4_TCP{
+			TCP: &pb.TCP{
+				ClientPort: l4.SourcePort,
+				ServerPort: l4.DestinationPort,
+			},
+		}
+	case UDP:
+		res.Protocol = &pb.Layer4_UDP{
+			UDP: &pb.UDP{
+				ClientPort: l4.SourcePort,
+				ServerPort: l4.DestinationPort,
+			},
+		}
+	default:
+	}
+	return res
 }
 
 type FlowType int32

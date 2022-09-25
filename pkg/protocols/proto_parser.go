@@ -15,13 +15,13 @@ var (
 
 type ProtoRequest interface {
 	ProtoType() types.ProtocolType
-	RequestRecord() *pb.Request
+	Protobuf() *pb.Request
 	String() string
 }
 
 type ProtoResponse interface {
 	ProtoType() types.ProtocolType
-	ResponseRecord() *pb.Response
+	Protobuf() *pb.Response
 	String() string
 }
 

@@ -10,6 +10,7 @@ import (
 
 	"github.com/KumKeeHyun/perisco/pkg/ebpf/maps"
 	"github.com/KumKeeHyun/perisco/pkg/ebpf/types"
+	"github.com/KumKeeHyun/perisco/pkg/host"
 	"github.com/cilium/ebpf/link"
 	"github.com/cilium/ebpf/ringbuf"
 )
@@ -72,6 +73,7 @@ func LoadBpfProgram() (chan *types.MsgEvent, chan *types.MsgEvent, *maps.Network
 				log.Printf("parsing closeEvent ringbuf event: %s", err)
 				continue
 			}
+			msgEvent.Timestamp += host.BootTime()
 			runtime.SetFinalizer(msgEvent, func(obj interface{}) {
 				msgEventPool.Put(obj)
 			})
@@ -102,6 +104,7 @@ func LoadBpfProgram() (chan *types.MsgEvent, chan *types.MsgEvent, *maps.Network
 				log.Printf("parsing closeEvent ringbuf event: %s", err)
 				continue
 			}
+			msgEvent.Timestamp += host.BootTime()
 			runtime.SetFinalizer(msgEvent, func(obj interface{}) {
 				msgEventPool.Put(obj)
 			})

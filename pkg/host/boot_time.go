@@ -14,7 +14,7 @@ func init() {
 	if err != nil {
 		panic(err)
 	}
-	bootTime := time.Now().Add(-time.Second * time.Duration(uptime)).UnixNano()
+	bootTime = uint64(time.Now().Add(-time.Second * time.Duration(uptime)).UnixNano())
 	logger.DefualtLogger.Named("bootTime").Infof("system boot time is %v", time.Unix(0, int64(bootTime)))
 }
 

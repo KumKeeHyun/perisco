@@ -57,10 +57,10 @@ func TestHTTP2Matcher_MatchRequest(t *testing.T) {
 			},
 			want: &protocols.ProtoMessage{
 				SockKey: types.SockKey{Pid: 1},
-				Req: &HTTP2Request{
+				ReqRecord: &HTTP2Request{
 					Record: getHeaderFramWithStreamID(1),
 				},
-				Resp: &HTTP2Response{
+				RespRecord: &HTTP2Response{
 					Record: getHeaderFramWithStreamID(1),
 				},
 			},
@@ -214,10 +214,10 @@ func TestHTTP2Matcher_MatchResponse(t *testing.T) {
 			},
 			want: &protocols.ProtoMessage{
 				SockKey: types.SockKey{Pid: 1},
-				Req: &HTTP2Request{
+				ReqRecord: &HTTP2Request{
 					Record: getHeaderFramWithStreamID(1),
 				},
-				Resp: &HTTP2Response{
+				RespRecord: &HTTP2Response{
 					Record: getHeaderFramWithStreamID(1),
 				},
 			},

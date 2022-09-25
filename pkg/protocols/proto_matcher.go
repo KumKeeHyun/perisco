@@ -8,19 +8,21 @@ import (
 )
 
 type ProtoMessage struct {
-	SockKey types.SockKey
-	Time    uint64
-	Req     ProtoRequest
-	Resp    ProtoResponse
+	SockKey     types.SockKey
+	Timestamp   uint64
+	LatencyNano uint64
+	ReqRecord   ProtoRequest
+	RespRecord  ProtoResponse
 }
 
 func (pm *ProtoMessage) String() string {
-	timeMilli := int64(pm.Time) / (int64(time.Millisecond) / int64(time.Nanosecond))
-	return fmt.Sprintf("%s %d ms\n%s\n%s\n",
+	timeMilli := int64(pm.LatencyNano) / (int64(time.Millisecond) / int64(time.Nanosecond))
+	return fmt.Sprintf("%s %d ms  %v\n%s\n%s\n",
 		pm.SockKey.String(),
 		timeMilli,
-		pm.Req,
-		pm.Resp)
+		time.Unix(0, int64(pm.Timestamp)),
+		pm.ReqRecord,
+		pm.RespRecord)
 }
 
 type ProtoMatcher interface {

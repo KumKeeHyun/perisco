@@ -28,10 +28,11 @@ func (m *HTTP1Matcher) MatchRequest(req *protocols.Request) *protocols.ProtoMess
 		return nil
 	}
 	return &protocols.ProtoMessage{
-		SockKey: req.SockKey,
-		Time:    resp.Timestamp - req.Timestamp,
-		Req:     req.Record,
-		Resp:    resp.Record,
+		SockKey:     req.SockKey,
+		Timestamp:   req.Timestamp,
+		LatencyNano: resp.Timestamp - req.Timestamp,
+		ReqRecord:   req.Record,
+		RespRecord:  resp.Record,
 	}
 }
 
@@ -52,10 +53,11 @@ func (m *HTTP1Matcher) MatchResponse(resp *protocols.Response) *protocols.ProtoM
 		return nil
 	}
 	return &protocols.ProtoMessage{
-		SockKey: resp.SockKey,
-		Time:    resp.Timestamp - req.Timestamp,
-		Req:     req.Record,
-		Resp:    resp.Record,
+		SockKey:     resp.SockKey,
+		Timestamp:   req.Timestamp,
+		LatencyNano: resp.Timestamp - req.Timestamp,
+		ReqRecord:   req.Record,
+		RespRecord:  resp.Record,
 	}
 }
 

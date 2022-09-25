@@ -12,8 +12,7 @@ import (
 type Request struct {
 	SockKey   types.SockKey
 	Timestamp uint64
-
-	Record ProtoRequest
+	Record    ProtoRequest
 }
 
 func (r *Request) String() string {

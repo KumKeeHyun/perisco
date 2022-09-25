@@ -37,8 +37,8 @@ func TestHTTP2Matcher_MatchRequest(t *testing.T) {
 			args: args{
 				req: &protocols.Request{
 					SockKey: types.SockKey{Pid: 1},
-					Record: &HTTP2RequestRecord{
-						HeaderFrames: getHeaderFramWithStreamID(1),
+					Record: &HTTP2Request{
+						Record: getHeaderFramWithStreamID(1),
 					},
 				},
 			},
@@ -48,8 +48,8 @@ func TestHTTP2Matcher_MatchRequest(t *testing.T) {
 					l := list.New()
 					l.PushFront(&protocols.Response{
 						SockKey: types.SockKey{Pid: 1},
-						Record: &HTTP2ResponseRecord{
-							HeaderFrames: getHeaderFramWithStreamID(1),
+						Record: &HTTP2Response{
+							Record: getHeaderFramWithStreamID(1),
 						},
 					})
 					return l
@@ -57,11 +57,11 @@ func TestHTTP2Matcher_MatchRequest(t *testing.T) {
 			},
 			want: &protocols.ProtoMessage{
 				SockKey: types.SockKey{Pid: 1},
-				Req: &HTTP2RequestRecord{
-					HeaderFrames: getHeaderFramWithStreamID(1),
+				Req: &HTTP2Request{
+					Record: getHeaderFramWithStreamID(1),
 				},
-				Resp: &HTTP2ResponseRecord{
-					HeaderFrames: getHeaderFramWithStreamID(1),
+				Resp: &HTTP2Response{
+					Record: getHeaderFramWithStreamID(1),
 				},
 			},
 		},
@@ -70,8 +70,8 @@ func TestHTTP2Matcher_MatchRequest(t *testing.T) {
 			args: args{
 				req: &protocols.Request{
 					SockKey: types.SockKey{Pid: 1},
-					Record: &HTTP2RequestRecord{
-						HeaderFrames: getHeaderFramWithStreamID(1),
+					Record: &HTTP2Request{
+						Record: getHeaderFramWithStreamID(1),
 					},
 				},
 			},
@@ -86,8 +86,8 @@ func TestHTTP2Matcher_MatchRequest(t *testing.T) {
 			args: args{
 				req: &protocols.Request{
 					SockKey: types.SockKey{Pid: 1},
-					Record: &HTTP2RequestRecord{
-						HeaderFrames: getHeaderFramWithStreamID(1),
+					Record: &HTTP2Request{
+						Record: getHeaderFramWithStreamID(1),
 					},
 				},
 			},
@@ -97,8 +97,8 @@ func TestHTTP2Matcher_MatchRequest(t *testing.T) {
 					l := list.New()
 					l.PushFront(&protocols.Response{
 						SockKey: types.SockKey{Pid: 2},
-						Record: &HTTP2ResponseRecord{
-							HeaderFrames: getHeaderFramWithStreamID(1),
+						Record: &HTTP2Response{
+							Record: getHeaderFramWithStreamID(1),
 						},
 					})
 					return l
@@ -111,8 +111,8 @@ func TestHTTP2Matcher_MatchRequest(t *testing.T) {
 			args: args{
 				req: &protocols.Request{
 					SockKey: types.SockKey{Pid: 1},
-					Record: &HTTP2RequestRecord{
-						HeaderFrames: getHeaderFramWithStreamID(1),
+					Record: &HTTP2Request{
+						Record: getHeaderFramWithStreamID(1),
 					},
 				},
 			},
@@ -122,8 +122,8 @@ func TestHTTP2Matcher_MatchRequest(t *testing.T) {
 					l := list.New()
 					l.PushFront(&protocols.Response{
 						SockKey: types.SockKey{Pid: 1},
-						Record: &HTTP2ResponseRecord{
-							HeaderFrames: getHeaderFramWithStreamID(2),
+						Record: &HTTP2Response{
+							Record: getHeaderFramWithStreamID(2),
 						},
 					})
 					return l
@@ -194,8 +194,8 @@ func TestHTTP2Matcher_MatchResponse(t *testing.T) {
 			args: args{
 				resp: &protocols.Response{
 					SockKey: types.SockKey{Pid: 1},
-					Record: &HTTP2ResponseRecord{
-						HeaderFrames: getHeaderFramWithStreamID(1),
+					Record: &HTTP2Response{
+						Record: getHeaderFramWithStreamID(1),
 					},
 				},
 			},
@@ -204,8 +204,8 @@ func TestHTTP2Matcher_MatchResponse(t *testing.T) {
 					l := list.New()
 					l.PushFront(&protocols.Request{
 						SockKey: types.SockKey{Pid: 1},
-						Record: &HTTP2RequestRecord{
-							HeaderFrames: getHeaderFramWithStreamID(1),
+						Record: &HTTP2Request{
+							Record: getHeaderFramWithStreamID(1),
 						},
 					})
 					return l
@@ -214,11 +214,11 @@ func TestHTTP2Matcher_MatchResponse(t *testing.T) {
 			},
 			want: &protocols.ProtoMessage{
 				SockKey: types.SockKey{Pid: 1},
-				Req: &HTTP2RequestRecord{
-					HeaderFrames: getHeaderFramWithStreamID(1),
+				Req: &HTTP2Request{
+					Record: getHeaderFramWithStreamID(1),
 				},
-				Resp: &HTTP2ResponseRecord{
-					HeaderFrames: getHeaderFramWithStreamID(1),
+				Resp: &HTTP2Response{
+					Record: getHeaderFramWithStreamID(1),
 				},
 			},
 		},
@@ -227,8 +227,8 @@ func TestHTTP2Matcher_MatchResponse(t *testing.T) {
 			args: args{
 				resp: &protocols.Response{
 					SockKey: types.SockKey{Pid: 1},
-					Record: &HTTP2ResponseRecord{
-						HeaderFrames: getHeaderFramWithStreamID(1),
+					Record: &HTTP2Response{
+						Record: getHeaderFramWithStreamID(1),
 					},
 				},
 			},
@@ -243,8 +243,8 @@ func TestHTTP2Matcher_MatchResponse(t *testing.T) {
 			args: args{
 				resp: &protocols.Response{
 					SockKey: types.SockKey{Pid: 1},
-					Record: &HTTP2ResponseRecord{
-						HeaderFrames: getHeaderFramWithStreamID(1),
+					Record: &HTTP2Response{
+						Record: getHeaderFramWithStreamID(1),
 					},
 				},
 			},
@@ -253,8 +253,8 @@ func TestHTTP2Matcher_MatchResponse(t *testing.T) {
 					l := list.New()
 					l.PushFront(&protocols.Request{
 						SockKey: types.SockKey{Pid: 2},
-						Record: &HTTP2RequestRecord{
-							HeaderFrames: getHeaderFramWithStreamID(1),
+						Record: &HTTP2Request{
+							Record: getHeaderFramWithStreamID(1),
 						},
 					})
 					return l
@@ -268,8 +268,8 @@ func TestHTTP2Matcher_MatchResponse(t *testing.T) {
 			args: args{
 				resp: &protocols.Response{
 					SockKey: types.SockKey{Pid: 1},
-					Record: &HTTP2ResponseRecord{
-						HeaderFrames: getHeaderFramWithStreamID(1),
+					Record: &HTTP2Response{
+						Record: getHeaderFramWithStreamID(1),
 					},
 				},
 			},
@@ -278,8 +278,8 @@ func TestHTTP2Matcher_MatchResponse(t *testing.T) {
 					l := list.New()
 					l.PushFront(&protocols.Request{
 						SockKey: types.SockKey{Pid: 1},
-						Record: &HTTP2RequestRecord{
-							HeaderFrames: getHeaderFramWithStreamID(2),
+						Record: &HTTP2Request{
+							Record: getHeaderFramWithStreamID(2),
 						},
 					})
 					return l

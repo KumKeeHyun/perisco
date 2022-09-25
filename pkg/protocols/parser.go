@@ -13,7 +13,7 @@ type Request struct {
 	SockKey   types.SockKey
 	Timestamp uint64
 
-	Record RequestRecord
+	Record ProtoRequest
 }
 
 func (r *Request) String() string {
@@ -23,7 +23,7 @@ func (r *Request) String() string {
 type Response struct {
 	SockKey   types.SockKey
 	Timestamp uint64
-	Record    ResponseRecord
+	Record    ProtoResponse
 }
 
 func (r *Response) String() string {

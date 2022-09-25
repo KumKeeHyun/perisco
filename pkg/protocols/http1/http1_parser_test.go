@@ -26,7 +26,7 @@ func TestHTTP1RequestRecord_ProtoType(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			h := &HTTP1RequestRecord{}
+			h := &HTTP1Request{}
 			if got := h.ProtoType(); !reflect.DeepEqual(got, tt.want) {
 				t.Errorf("HTTP1RequestRecord.ProtoType() = %v, want %v", got, tt.want)
 			}
@@ -46,7 +46,7 @@ func TestHTTP1ResponseRecord_ProtoType(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			h := &HTTP1ResponseRecord{}
+			h := &HTTP1Response{}
 			if got := h.ProtoType(); !reflect.DeepEqual(got, tt.want) {
 				t.Errorf("HTTP1ResponseRecord.ProtoType() = %v, want %v", got, tt.want)
 			}
@@ -91,19 +91,19 @@ func (t *http1Parser_ParseRequest_Test) args() []byte {
 	return buf.Bytes()[:len]
 }
 
-func (t *http1Parser_ParseRequest_Test) want() protocols.RequestRecord {
-	return &HTTP1RequestRecord{H1Req: t.req}
+func (t *http1Parser_ParseRequest_Test) want() protocols.ProtoRequest {
+	return &HTTP1Request{Record: t.req}
 }
 
-func (t *http1Parser_ParseRequest_Test) equal(got protocols.RequestRecord) bool {
-	h1rr, ok := got.(*HTTP1RequestRecord)
+func (t *http1Parser_ParseRequest_Test) equal(got protocols.ProtoRequest) bool {
+	h1rr, ok := got.(*HTTP1Request)
 	if !ok {
 		return false
 	}
 	wantBytes := make([]byte, 0, 4096)
 	t.req.Write(bytes.NewBuffer(wantBytes))
 	gotBytes := make([]byte, 0, 4096)
-	h1rr.H1Req.Write(bytes.NewBuffer(gotBytes))
+	h1rr.Record.Write(bytes.NewBuffer(gotBytes))
 
 	return bytes.Equal(wantBytes, gotBytes)
 }
@@ -277,19 +277,19 @@ func (t *http1Parser_ParseResponse_Test) args() []byte {
 	return buf.Bytes()[:len]
 }
 
-func (t *http1Parser_ParseResponse_Test) want() protocols.ResponseRecord {
-	return &HTTP1ResponseRecord{H1Resp: t.resp}
+func (t *http1Parser_ParseResponse_Test) want() protocols.ProtoResponse {
+	return &HTTP1Response{Record: t.resp}
 }
 
-func (t *http1Parser_ParseResponse_Test) equal(got protocols.ResponseRecord) bool {
-	h1rr, ok := got.(*HTTP1ResponseRecord)
+func (t *http1Parser_ParseResponse_Test) equal(got protocols.ProtoResponse) bool {
+	h1rr, ok := got.(*HTTP1Response)
 	if !ok {
 		return false
 	}
 	wantBytes := make([]byte, 0, 4096)
 	t.resp.Write(bytes.NewBuffer(wantBytes))
 	gotBytes := make([]byte, 0, 4096)
-	h1rr.H1Resp.Write(bytes.NewBuffer(gotBytes))
+	h1rr.Record.Write(bytes.NewBuffer(gotBytes))
 
 	return bytes.Equal(wantBytes, gotBytes)
 }

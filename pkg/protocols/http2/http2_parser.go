@@ -4,45 +4,80 @@ import (
 	"bytes"
 	"fmt"
 	"io"
+	"strconv"
 
+	pb "github.com/KumKeeHyun/perisco/api/v1/perisco"
 	"github.com/KumKeeHyun/perisco/pkg/ebpf/types"
 	"github.com/KumKeeHyun/perisco/pkg/protocols"
 	"golang.org/x/net/http2"
 	"golang.org/x/net/http2/hpack"
 )
 
-type HTTP2RequestRecord struct {
-	HeaderFrames *http2.MetaHeadersFrame
+type HTTP2Request struct {
+	Record *http2.MetaHeadersFrame
 }
 
-var _ protocols.RequestRecord = &HTTP2RequestRecord{}
+var _ protocols.ProtoRequest = &HTTP2Request{}
 
-// ProtoType implements RequestRecord
-func (*HTTP2RequestRecord) ProtoType() types.ProtocolType { return types.HTTP2 }
+// ProtoType implements ProtoRequest
+func (*HTTP2Request) ProtoType() types.ProtocolType { return types.HTTP2 }
 
-// RequestRecord implements RequestRecord
-func (*HTTP2RequestRecord) RequestRecord() {}
-
-// String implements RequestRecord
-func (rr *HTTP2RequestRecord) String() string {
-	return fmt.Sprintf("%v", rr.HeaderFrames.Fields)
+// RequestRecord implements ProtoRequest
+func (r *HTTP2Request) RequestRecord() *pb.Request {
+	return &pb.Request{
+		Record: &pb.Request_Http{
+			Http: &pb.HTTPRequest{
+				Protocol: r.Record.PseudoValue("scheme"),
+				Method: r.Record.PseudoValue("method"),
+				Url: r.Record.PseudoValue("path"),
+				Headers: toProtobufHeader(r.Record),
+			},
+		},
+	}
 }
 
-type HTTP2ResponseRecord struct {
-	HeaderFrames *http2.MetaHeadersFrame
+func toProtobufHeader(hf *http2.MetaHeadersFrame) []*pb.HTTPHeader {
+	fields := hf.RegularFields()
+	res := make([]*pb.HTTPHeader, 0, len(fields)) 
+
+	for _, f := range fields {
+		res = append(res, &pb.HTTPHeader{Key: f.Name, Value: f.Value})
+	}
+	return res
 }
 
-var _ protocols.ResponseRecord = &HTTP2ResponseRecord{}
+// String implements ProtoRequest
+func (rr *HTTP2Request) String() string {
+	return fmt.Sprintf("%v", rr.Record.Fields)
+}
 
-// ProtoType implements ResponseRecord
-func (*HTTP2ResponseRecord) ProtoType() types.ProtocolType { return types.HTTP2 }
+type HTTP2Response struct {
+	Record *http2.MetaHeadersFrame
+}
 
-// ResponseRecord implements ResponseRecord
-func (*HTTP2ResponseRecord) ResponseRecord() {}
+var _ protocols.ProtoResponse = &HTTP2Response{}
 
-// String implements ResponseRecord
-func (rr *HTTP2ResponseRecord) String() string {
-	return fmt.Sprintf("%v", rr.HeaderFrames.Fields)
+// ProtoType implements ProtoResponse
+func (*HTTP2Response) ProtoType() types.ProtocolType { return types.HTTP2 }
+
+// ResponseRecord implements ProtoResponse
+func (r *HTTP2Response) ResponseRecord() *pb.Response {
+	code, _ := strconv.Atoi(r.Record.PseudoValue("status"))
+	
+	return &pb.Response{
+		Record: &pb.Response_Http{
+			Http: &pb.HTTPResponse{
+				Protocol: r.Record.PseudoValue("scheme"),
+				Code: uint32(code),
+				Headers: toProtobufHeader(r.Record),
+			},
+		},
+	}
+}
+
+// String implements ProtoResponse
+func (rr *HTTP2Response) String() string {
+	return fmt.Sprintf("%v", rr.Record.Fields)
 }
 
 type HTTP2Parser struct {
@@ -83,14 +118,14 @@ func (p *HTTP2Parser) getRespDec(key *types.SockKey) *hpack.Decoder {
 }
 
 // ParseRequest implements ProtoParser
-func (p *HTTP2Parser) ParseRequest(sockKey *types.SockKey, msg []byte) ([]protocols.RequestRecord, error) {
+func (p *HTTP2Parser) ParseRequest(sockKey *types.SockKey, msg []byte) ([]protocols.ProtoRequest, error) {
 	br := bytes.NewReader(msg)
 	skipPrefaceIfExists(br)
 
 	f := http2.NewFramer(io.Discard, br)
 	f.ReadMetaHeaders = p.getReqDec(sockKey)
 
-	rrs := make([]protocols.RequestRecord, 0, 1)
+	rrs := make([]protocols.ProtoRequest, 0, 1)
 	for {
 		fr, err := f.ReadFrame()
 		if err != nil {
@@ -100,7 +135,7 @@ func (p *HTTP2Parser) ParseRequest(sockKey *types.SockKey, msg []byte) ([]protoc
 		if !ok {
 			continue
 		}
-		rrs = append(rrs, &HTTP2RequestRecord{mh})
+		rrs = append(rrs, &HTTP2Request{mh})
 	}
 
 	if len(rrs) == 0 {
@@ -118,14 +153,14 @@ func skipPrefaceIfExists(r *bytes.Reader) {
 }
 
 // ParseResponse implements ProtoParser
-func (p *HTTP2Parser) ParseResponse(sockKey *types.SockKey, msg []byte) ([]protocols.ResponseRecord, error) {
+func (p *HTTP2Parser) ParseResponse(sockKey *types.SockKey, msg []byte) ([]protocols.ProtoResponse, error) {
 	br := bytes.NewReader(msg)
 	skipPrefaceIfExists(br)
 
 	f := http2.NewFramer(io.Discard, br)
 	f.ReadMetaHeaders = p.getRespDec(sockKey)
 
-	rrs := make([]protocols.ResponseRecord, 0, 1)
+	rrs := make([]protocols.ProtoResponse, 0, 1)
 	for {
 		fr, err := f.ReadFrame()
 		if err != nil {
@@ -135,7 +170,7 @@ func (p *HTTP2Parser) ParseResponse(sockKey *types.SockKey, msg []byte) ([]proto
 		if !ok {
 			continue
 		}
-		rrs = append(rrs, &HTTP2ResponseRecord{mh})
+		rrs = append(rrs, &HTTP2Response{mh})
 	}
 
 	if len(rrs) == 0 {

@@ -10,8 +10,8 @@ import (
 type ProtoMessage struct {
 	SockKey types.SockKey
 	Time    uint64
-	Req     RequestRecord
-	Resp    ResponseRecord
+	Req     ProtoRequest
+	Resp    ProtoResponse
 }
 
 func (pm *ProtoMessage) String() string {

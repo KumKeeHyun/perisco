@@ -38,8 +38,8 @@ func (m *HTTP2Matcher) MatchRequest(req *protocols.Request) *protocols.ProtoMess
 func (m *HTTP2Matcher) findResp(req *protocols.Request) *protocols.Response {
 	for e := m.respQueue.Front(); e != nil; e = e.Next() {
 		resp := e.Value.(*protocols.Response)
-		respSID := resp.Record.(*HTTP2ResponseRecord).HeaderFrames.StreamID
-		reqSID := req.Record.(*HTTP2RequestRecord).HeaderFrames.StreamID
+		respSID := resp.Record.(*HTTP2Response).Record.StreamID
+		reqSID := req.Record.(*HTTP2Request).Record.StreamID
 
 		if resp.SockKey == req.SockKey && respSID == reqSID {
 			return m.respQueue.Remove(e).(*protocols.Response)
@@ -66,8 +66,8 @@ func (m *HTTP2Matcher) MatchResponse(resp *protocols.Response) *protocols.ProtoM
 func (m *HTTP2Matcher) findReq(resp *protocols.Response) *protocols.Request {
 	for e := m.reqQueue.Front(); e != nil; e = e.Next() {
 		req := e.Value.(*protocols.Request)
-		reqSID := req.Record.(*HTTP2RequestRecord).HeaderFrames.StreamID
-		respSID := resp.Record.(*HTTP2ResponseRecord).HeaderFrames.StreamID
+		reqSID := req.Record.(*HTTP2Request).Record.StreamID
+		respSID := resp.Record.(*HTTP2Response).Record.StreamID
 
 		if e.Value.(*protocols.Request).SockKey == resp.SockKey && reqSID == respSID {
 			return m.reqQueue.Remove(e).(*protocols.Request)

@@ -22,7 +22,7 @@ func TestHTTP2RequestRecord_ProtoType(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			h := &HTTP2RequestRecord{}
+			h := &HTTP2Request{}
 			if got := h.ProtoType(); !reflect.DeepEqual(got, tt.want) {
 				t.Errorf("HTTP2RequestRecord.ProtoType() = %v, want %v", got, tt.want)
 			}
@@ -39,7 +39,7 @@ func TestHTTP2ResponseRecord_ProtoType(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			h := &HTTP2ResponseRecord{}
+			h := &HTTP2Response{}
 			if got := h.ProtoType(); !reflect.DeepEqual(got, tt.want) {
 				t.Errorf("HTTP2ResponseRecord.ProtoType() = %v, want %v", got, tt.want)
 			}
@@ -138,7 +138,7 @@ func TestHTTP2Parser_ParseRequest(t *testing.T) {
 		name    string
 		fields  fields
 		args    args
-		want    protocols.RequestRecord
+		want    protocols.ProtoRequest
 		wantErr bool
 	}{
 		// TODO: Add test cases.
@@ -191,7 +191,7 @@ func TestHTTP2Parser_ParseResponse(t *testing.T) {
 		name    string
 		fields  fields
 		args    args
-		want    protocols.ResponseRecord
+		want    protocols.ProtoResponse
 		wantErr bool
 	}{
 		// TODO: Add test cases.

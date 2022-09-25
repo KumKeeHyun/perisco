@@ -45,21 +45,34 @@ message UDP {
 
 message Layer7 {
     uint64 latency_ns = 1;
-    // L7 field. This field is set if and only if FlowType is L7.
+    
+    Request request = 2;
+    Response response = 3;
+}
+
+message Request {
     oneof record {
-        HTTP http = 100;
+        HTTPRequest http = 1;
     }
 }
 
-message HTTP {
-    string protocol = 1;
+message Response {
+    oneof record {
+        HTTPResponse http = 1;
+    }
+}
 
+message HTTPRequest {
+    string protocol = 1;
     string method = 2;
     string url = 3;
-    repeated HTTPHeader client_headers = 4;
-    
+    repeated HTTPHeader headers = 4;
+}
+
+message HTTPResponse {
+    string protocol = 1;
     uint32 code = 5;
-    repeated HTTPHeader server_headers = 7;
+    repeated HTTPHeader headers = 7;
 }
 
 message HTTPHeader {

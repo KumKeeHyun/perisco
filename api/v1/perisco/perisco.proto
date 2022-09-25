@@ -1,0 +1,68 @@
+syntax = "proto3";
+
+import "google/protobuf/timestamp.proto";
+
+package perisco;
+
+option go_package = "github.com/KumKeeHyun/perisco/api/v1/perisco";
+
+message ProtoMessage {
+    google.protobuf.Timestamp ts = 1;
+    uint32 pid = 2;
+    IP ip = 3;
+    Layer4 l4 = 4;
+    Layer7 l7 = 5;
+}
+
+message IP {
+    string client = 1;
+    string server = 2;
+    IPVersion ipVersion = 3;
+}
+
+enum IPVersion {
+    IP_UNKNOWN = 0;
+    IPv4 = 1;
+    IPv6 = 2;
+}
+
+message Layer4 {
+    oneof protocol {
+        TCP TCP = 1;
+        UDP UDP = 2;
+    }
+}
+
+message TCP {
+    uint32 client_port = 1;
+    uint32 server_port = 2;
+}
+
+message UDP {
+    uint32 client_port = 1;
+    uint32 server_port = 2;
+}
+
+message Layer7 {
+    uint64 latency_ns = 1;
+    // L7 field. This field is set if and only if FlowType is L7.
+    oneof record {
+        HTTP http = 100;
+    }
+}
+
+message HTTP {
+    string protocol = 1;
+
+    string method = 2;
+    string url = 3;
+    repeated HTTPHeader client_headers = 4;
+    
+    uint32 code = 5;
+    repeated HTTPHeader server_headers = 7;
+}
+
+message HTTPHeader {
+    string key = 1;
+    string value = 2;
+}

@@ -4,6 +4,7 @@ echo ${PROTOC_VERSION}
 curl -Lo protoc.zip "https://github.com/protocolbuffers/protobuf/releases/latest/download/protoc-${PROTOC_VERSION}-linux-x86_64.zip"
 sudo unzip -q protoc.zip bin/protoc -d /usr/local
 sudo chmod a+x /usr/local/bin/protoc
+sudo unzip -o protoc.zip -d /usr/local 'include/*'
 rm -rf protoc.zip
 
 go install google.golang.org/protobuf/cmd/protoc-gen-go@v1.28

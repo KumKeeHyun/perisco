@@ -1,8 +1,6 @@
 package protocols
 
 import (
-	"log"
-
 	"github.com/KumKeeHyun/perisco/pkg/ebpf/maps"
 	"github.com/KumKeeHyun/perisco/pkg/ebpf/types"
 	"go.uber.org/zap"
@@ -59,16 +57,13 @@ func (pd *protoDetecter) Success(sockKey types.SockKey, protocol types.ProtocolT
 	}
 
 	if err := pd.pm.Detect(ek, protocol); err != nil {
-		// TODO: logging warning
-		log.Println(err)
+		pd.log.Warnf("failed to update protocol map: detected %s in endpoint %s", protocol, &ek)
 		return
 	}
 	pd.detected[ek] = protocol
 	delete(pd.failed, ek)
 
-	
-
-	pd.log.Infof("detected %s in endpoint %s", protocol.String(), ek.String())
+	pd.log.Infof("detected %s in endpoint %s", protocol, &ek)
 }
 
 func (pd *protoDetecter) alreadyDetected(ek types.EndpointKey) bool {
@@ -105,12 +100,11 @@ func (pd *protoDetecter) Fail(sockKey types.SockKey) {
 	if failed.cnt >= failureThreshold {
 		failed.skipped = true
 		if err := pd.pm.Skip(ek); err != nil {
-			// TODO: logging warning
-			log.Println(err)
+			pd.log.Warnf("failed to update protocol map: started to skip endpoint %s", &ek)
 			failed.skipped = false
 		}
 
-		pd.log.Infof("start to skip endpoint%s", ek.String())
+		pd.log.Infof("start to skip endpoint%s", &ek)
 	}
 	pd.failed[ek] = failed
 }

@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/KumKeeHyun/perisco/pkg/ebpf/maps"
 	"github.com/KumKeeHyun/perisco/pkg/ebpf/types"
 	"go.uber.org/zap"
 )
@@ -45,18 +44,15 @@ type reqRespParser struct {
 	log *zap.SugaredLogger
 }
 
-func NewParser(parsers []ProtoParser, pm *maps.ProtocolMap, log *zap.SugaredLogger) *reqRespParser {
+func NewParser(parsers []ProtoParser, breaker Breaker, log *zap.SugaredLogger) *reqRespParser {
 	pps := make(map[types.ProtocolType]ProtoParser, len(parsers)+1)
 	for _, p := range parsers {
 		pps[p.ProtoType()] = p
 	}
 	pps[types.PROTO_UNKNOWN] = NewUnknownParser(parsers)
 
-	var breaker Breaker
-	if pm == nil {
+	if breaker == nil {
 		breaker = &mockBreaker{}
-	} else {
-		breaker = NewProtoDetecter(pm, log.Named("protoDetecter"))
 	}
 
 	return &reqRespParser{

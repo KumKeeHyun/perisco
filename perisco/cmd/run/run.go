@@ -68,9 +68,10 @@ func runPerisco(vp *viper.Viper) error {
 	}
 	log.Infof("network filter will only tract %v", cidrs)
 
+	breaker := protocols.NewProtoDetecter(pm, log.Named("breaker"))
 	parser := protocols.NewParser(
 		supportedProtoParsers(protos),
-		pm,
+		breaker,
 		log.Named("parser"),
 	)
 	reqc, respc := parser.Run(ctx, recvc, sendc)

@@ -27,7 +27,7 @@ func (r *HTTP2Request) Protobuf() *pb.Request {
 	return &pb.Request{
 		Record: &pb.Request_Http{
 			Http: &pb.HTTPRequest{
-				Protocol: r.Record.PseudoValue("scheme"),
+				Protocol: "HTTP/2.0",
 				Method: r.Record.PseudoValue("method"),
 				Url: r.Record.PseudoValue("path"),
 				Headers: toProtobufHeader(r.Record),

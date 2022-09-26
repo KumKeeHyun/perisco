@@ -123,8 +123,8 @@ func ipString(ip [16]byte, version IpVersion) string {
 
 func (ip *Ip) Protobuf() *pb.IP {
 	res := &pb.IP{
-		Client: ip.GetSrcIp(),
-		Server: ip.GetDestIp(),
+		Client: ip.GetDestIp(),
+		Server: ip.GetSrcIp(),
 	}
 	switch ip.IpVersion {
 	case IPv4: 
@@ -170,15 +170,15 @@ func (l4 *Layer4) Protobuf() *pb.Layer4 {
 	case TCP:
 		res.Protocol = &pb.Layer4_TCP{
 			TCP: &pb.TCP{
-				ClientPort: l4.SourcePort,
-				ServerPort: l4.DestinationPort,
+				ClientPort: l4.DestinationPort,
+				ServerPort: l4.SourcePort,
 			},
 		}
 	case UDP:
 		res.Protocol = &pb.Layer4_UDP{
 			UDP: &pb.UDP{
-				ClientPort: l4.SourcePort,
-				ServerPort: l4.DestinationPort,
+				ClientPort: l4.DestinationPort,
+				ServerPort: l4.SourcePort,
 			},
 		}
 	default:

@@ -3,6 +3,7 @@ package perisco
 import (
 	"context"
 	"errors"
+	"fmt"
 
 	"github.com/KumKeeHyun/perisco/pkg/ebpf/types"
 	"github.com/KumKeeHyun/perisco/pkg/perisco/protocols"
@@ -23,22 +24,27 @@ type reqRespParser struct {
 	log *zap.SugaredLogger
 }
 
-func NewParser(parsers []protocols.ProtoParser, breaker Breaker, log *zap.SugaredLogger) *reqRespParser {
-	pps := make(map[types.ProtocolType]protocols.ProtoParser, len(parsers)+1)
-	for _, p := range parsers {
-		pps[p.ProtoType()] = p
+func NewParser(options ...ParserOption) (*reqRespParser, error) {
+	opts, err := newParserOptions(options...)
+	if err != nil {
+		return nil, err
 	}
-	pps[types.PROTO_UNKNOWN] = protocols.NewUnknownParser(parsers)
+	
+	if len(opts.parsers) == 0 {
+		return nil, fmt.Errorf("failed to contruct parser: empty ProtoParsers")
+	}
 
-	if breaker == nil {
-		breaker = &mockBreaker{}
+	parsers := make(map[types.ProtocolType]protocols.ProtoParser, len(opts.parsers)+1)
+	for _, parser := range opts.parsers {
+		parsers[parser.ProtoType()] = parser
 	}
+	parsers[types.PROTO_UNKNOWN] = protocols.NewUnknownParser(opts.parsers)
 
 	return &reqRespParser{
-		parsers: pps,
-		breaker: breaker,
-		log:     log,
-	}
+		parsers: parsers,
+		breaker: opts.breaker,
+		log:     opts.log,
+	}, nil
 }
 
 func (rrp *reqRespParser) Run(ctx context.Context, recvc, sendc chan *types.MsgEvent) (chan *protocols.Request, chan *protocols.Response) {

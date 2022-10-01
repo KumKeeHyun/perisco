@@ -71,17 +71,23 @@ func runPerisco(vp *viper.Viper) error {
 	log.Infof("network filter will only tract %v", cidrs)
 
 	breaker := perisco.NewProtoDetecter(pm, log.Named("breaker"))
-	parser := perisco.NewParser(
-		supportedProtoParsers(protos),
-		breaker,
-		log.Named("parser"),
+	parser, err := perisco.NewParser(
+		perisco.ParserWithProtocols(protos),
+		perisco.ParserWithBreaker(breaker),
+		perisco.ParserWithLogger(log.Named("parser")),
 	)
+	if err != nil {
+		log.Fatal(err)
+	}
 	reqc, respc := parser.Run(ctx, recvc, sendc)
 
-	matcher := perisco.NewMatcher(
-		supportedProtoMatchers(protos),
-		log.Named("matcher"),
+	matcher, err := perisco.NewMatcher(
+		perisco.MatcherWithProtocols(protos),
+		perisco.MatcherWithLogger(log.Named("matcher")),
 	)
+	if err != nil {
+		log.Fatal(err)
+	}
 	msgc := matcher.Run(ctx, reqc, respc)
 
 	// exporter, _ := stdout.New(stdout.WithPretty())

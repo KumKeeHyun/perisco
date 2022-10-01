@@ -22,12 +22,16 @@ type reqRespMatcher struct {
 	log *zap.SugaredLogger
 }
 
-func NewMatcher(protoMatcherOf func(types.ProtocolType) protocols.ProtoMatcher, log *zap.SugaredLogger) *reqRespMatcher {
+func NewMatcher(options ...MatcherOption) (*reqRespMatcher, error) {
+	opts, err := newMatcherOptions(options...)
+	if err != nil {
+		return nil, err
+	}
 	return &reqRespMatcher{
 		matchers:       make(map[types.EndpointKey]protocols.ProtoMatcher),
-		protoMatcherOf: protoMatcherOf,
-		log:            log,
-	}
+		protoMatcherOf: opts.protoMatcherOf,
+		log:            opts.log,
+	}, nil
 }
 
 func (rrm *reqRespMatcher) Run(ctx context.Context, reqc chan *protocols.Request, respc chan *protocols.Response) chan *pb.ProtoMessage {

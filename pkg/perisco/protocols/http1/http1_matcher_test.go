@@ -7,7 +7,7 @@ import (
 	"testing"
 
 	"github.com/KumKeeHyun/perisco/pkg/ebpf/types"
-	"github.com/KumKeeHyun/perisco/pkg/protocols"
+	"github.com/KumKeeHyun/perisco/pkg/perisco/protocols"
 )
 
 func TestHTTP1Matcher_MatchRequest(t *testing.T) {
@@ -29,7 +29,7 @@ func TestHTTP1Matcher_MatchRequest(t *testing.T) {
 			args: args{
 				req: &protocols.Request{
 					SockKey: types.SockKey{Pid: 1},
-					Record: &HTTP1Request{&http.Request{}},
+					Record:  &HTTP1Request{&http.Request{}},
 				},
 			},
 			fields: fields{
@@ -38,7 +38,7 @@ func TestHTTP1Matcher_MatchRequest(t *testing.T) {
 					l := list.New()
 					l.PushFront(&protocols.Response{
 						SockKey: types.SockKey{Pid: 1},
-						Record: &HTTP1Response{&http.Response{}},
+						Record:  &HTTP1Response{&http.Response{}},
 					})
 					return l
 				}(),
@@ -50,7 +50,7 @@ func TestHTTP1Matcher_MatchRequest(t *testing.T) {
 			args: args{
 				req: &protocols.Request{
 					SockKey: types.SockKey{Pid: 1},
-					Record: &HTTP1Request{&http.Request{}},
+					Record:  &HTTP1Request{&http.Request{}},
 				},
 			},
 			fields: fields{
@@ -64,7 +64,7 @@ func TestHTTP1Matcher_MatchRequest(t *testing.T) {
 			args: args{
 				req: &protocols.Request{
 					SockKey: types.SockKey{Pid: 1},
-					Record: &HTTP1Request{&http.Request{}},
+					Record:  &HTTP1Request{&http.Request{}},
 				},
 			},
 			fields: fields{
@@ -73,7 +73,7 @@ func TestHTTP1Matcher_MatchRequest(t *testing.T) {
 					l := list.New()
 					l.PushFront(&protocols.Response{
 						SockKey: types.SockKey{Pid: 2},
-						Record: &HTTP1Response{&http.Response{}},
+						Record:  &HTTP1Response{&http.Response{}},
 					})
 					return l
 				}(),

@@ -8,7 +8,7 @@ import (
 
 	pb "github.com/KumKeeHyun/perisco/api/v1/perisco"
 	"github.com/KumKeeHyun/perisco/pkg/ebpf/types"
-	"github.com/KumKeeHyun/perisco/pkg/protocols"
+	"github.com/KumKeeHyun/perisco/pkg/perisco/protocols"
 )
 
 type HTTP1Request struct {

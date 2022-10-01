@@ -1,31 +1,20 @@
-package protocols
+package perisco
 
 import (
 	"context"
 	"errors"
 
 	"github.com/KumKeeHyun/perisco/pkg/ebpf/types"
+	"github.com/KumKeeHyun/perisco/pkg/perisco/protocols"
 	"go.uber.org/zap"
 )
 
-type Request struct {
-	Timestamp uint64
-	SockKey   types.SockKey
-	Record    ProtoRequest
-}
-
-type Response struct {
-	Timestamp uint64
-	SockKey   types.SockKey
-	Record    ProtoResponse
-}
-
 type reqRespParser struct {
-	parsers map[types.ProtocolType]ProtoParser
+	parsers map[types.ProtocolType]protocols.ProtoParser
 	breaker Breaker
 
-	reqc  chan *Request
-	respc chan *Response
+	reqc  chan *protocols.Request
+	respc chan *protocols.Response
 
 	ctx    context.Context
 	cancel context.CancelFunc
@@ -34,12 +23,12 @@ type reqRespParser struct {
 	log *zap.SugaredLogger
 }
 
-func NewParser(parsers []ProtoParser, breaker Breaker, log *zap.SugaredLogger) *reqRespParser {
-	pps := make(map[types.ProtocolType]ProtoParser, len(parsers)+1)
+func NewParser(parsers []protocols.ProtoParser, breaker Breaker, log *zap.SugaredLogger) *reqRespParser {
+	pps := make(map[types.ProtocolType]protocols.ProtoParser, len(parsers)+1)
 	for _, p := range parsers {
 		pps[p.ProtoType()] = p
 	}
-	pps[types.PROTO_UNKNOWN] = NewUnknownParser(parsers)
+	pps[types.PROTO_UNKNOWN] = protocols.NewUnknownParser(parsers)
 
 	if breaker == nil {
 		breaker = &mockBreaker{}
@@ -52,9 +41,9 @@ func NewParser(parsers []ProtoParser, breaker Breaker, log *zap.SugaredLogger) *
 	}
 }
 
-func (rrp *reqRespParser) Run(ctx context.Context, recvc, sendc chan *types.MsgEvent) (chan *Request, chan *Response) {
-	rrp.reqc = make(chan *Request, 100)
-	rrp.respc = make(chan *Response, 100)
+func (rrp *reqRespParser) Run(ctx context.Context, recvc, sendc chan *types.MsgEvent) (chan *protocols.Request, chan *protocols.Response) {
+	rrp.reqc = make(chan *protocols.Request, 100)
+	rrp.respc = make(chan *protocols.Response, 100)
 
 	rrp.ctx, rrp.cancel = context.WithCancel(ctx)
 	rrp.donec = make(chan struct{})
@@ -91,7 +80,7 @@ func (rrp *reqRespParser) tryParseRequest(msg *types.MsgEvent) {
 	rrp.breaker.Success(msg.SockKey, rrs[0].ProtoType())
 
 	for _, rr := range rrs {
-		rrp.reqc <- &Request{
+		rrp.reqc <- &protocols.Request{
 			SockKey:   msg.SockKey,
 			Timestamp: msg.Timestamp,
 			Record:    rr,
@@ -99,7 +88,7 @@ func (rrp *reqRespParser) tryParseRequest(msg *types.MsgEvent) {
 	}
 }
 
-func (rrp *reqRespParser) findParser(msg *types.MsgEvent) ProtoParser {
+func (rrp *reqRespParser) findParser(msg *types.MsgEvent) protocols.ProtoParser {
 	if p, exists := rrp.parsers[msg.Protocol]; exists {
 		return p
 	}
@@ -120,7 +109,7 @@ func (rrp *reqRespParser) tryParseResponse(msg *types.MsgEvent) {
 
 	rrp.breaker.Success(msg.SockKey, rrs[0].ProtoType())
 	for _, rr := range rrs {
-		rrp.respc <- &Response{
+		rrp.respc <- &protocols.Response{
 			SockKey:   msg.SockKey,
 			Timestamp: msg.Timestamp,
 			Record:    rr,

@@ -4,8 +4,21 @@ import (
 	"time"
 
 	pb "github.com/KumKeeHyun/perisco/api/v1/perisco"
+	"github.com/KumKeeHyun/perisco/pkg/ebpf/types"
 	tspb "google.golang.org/protobuf/types/known/timestamppb"
 )
+
+type Request struct {
+	Timestamp uint64
+	SockKey   types.SockKey
+	Record    ProtoRequest
+}
+
+type Response struct {
+	Timestamp uint64
+	SockKey   types.SockKey
+	Record    ProtoResponse
+}
 
 func ProtoMessage(req *Request, resp *Response) *pb.ProtoMessage {
 	return &pb.ProtoMessage{

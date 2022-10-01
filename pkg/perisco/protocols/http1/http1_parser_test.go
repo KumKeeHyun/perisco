@@ -10,7 +10,7 @@ import (
 	"testing"
 
 	"github.com/KumKeeHyun/perisco/pkg/ebpf/types"
-	"github.com/KumKeeHyun/perisco/pkg/protocols"
+	"github.com/KumKeeHyun/perisco/pkg/perisco/protocols"
 	"golang.org/x/net/http2"
 )
 

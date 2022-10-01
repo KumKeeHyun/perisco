@@ -1,4 +1,4 @@
-package protocols
+package perisco
 
 import (
 	"testing"

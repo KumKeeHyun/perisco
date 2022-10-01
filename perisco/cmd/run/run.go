@@ -10,9 +10,10 @@ import (
 	"github.com/KumKeeHyun/perisco/pkg/ebpf/types"
 	"github.com/KumKeeHyun/perisco/pkg/exporters/stdout"
 	"github.com/KumKeeHyun/perisco/pkg/logger"
-	"github.com/KumKeeHyun/perisco/pkg/protocols"
-	"github.com/KumKeeHyun/perisco/pkg/protocols/http1"
-	"github.com/KumKeeHyun/perisco/pkg/protocols/http2"
+	"github.com/KumKeeHyun/perisco/pkg/perisco"
+	"github.com/KumKeeHyun/perisco/pkg/perisco/protocols"
+	"github.com/KumKeeHyun/perisco/pkg/perisco/protocols/http1"
+	"github.com/KumKeeHyun/perisco/pkg/perisco/protocols/http2"
 	"github.com/cilium/ebpf/rlimit"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
@@ -69,15 +70,15 @@ func runPerisco(vp *viper.Viper) error {
 	}
 	log.Infof("network filter will only tract %v", cidrs)
 
-	breaker := protocols.NewProtoDetecter(pm, log.Named("breaker"))
-	parser := protocols.NewParser(
+	breaker := perisco.NewProtoDetecter(pm, log.Named("breaker"))
+	parser := perisco.NewParser(
 		supportedProtoParsers(protos),
 		breaker,
 		log.Named("parser"),
 	)
 	reqc, respc := parser.Run(ctx, recvc, sendc)
 
-	matcher := protocols.NewMatcher(
+	matcher := perisco.NewMatcher(
 		supportedProtoMatchers(protos),
 		log.Named("matcher"),
 	)

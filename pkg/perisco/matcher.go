@@ -1,16 +1,17 @@
-package protocols
+package perisco
 
 import (
 	"context"
 
 	pb "github.com/KumKeeHyun/perisco/api/v1/perisco"
 	"github.com/KumKeeHyun/perisco/pkg/ebpf/types"
+	"github.com/KumKeeHyun/perisco/pkg/perisco/protocols"
 	"go.uber.org/zap"
 )
 
 type reqRespMatcher struct {
-	matchers       map[types.EndpointKey]ProtoMatcher
-	protoMatcherOf func(types.ProtocolType) ProtoMatcher
+	matchers       map[types.EndpointKey]protocols.ProtoMatcher
+	protoMatcherOf func(types.ProtocolType) protocols.ProtoMatcher
 
 	msgc chan *pb.ProtoMessage
 
@@ -21,15 +22,15 @@ type reqRespMatcher struct {
 	log *zap.SugaredLogger
 }
 
-func NewMatcher(protoMatcherOf func(types.ProtocolType) ProtoMatcher, log *zap.SugaredLogger) *reqRespMatcher {
+func NewMatcher(protoMatcherOf func(types.ProtocolType) protocols.ProtoMatcher, log *zap.SugaredLogger) *reqRespMatcher {
 	return &reqRespMatcher{
-		matchers:       make(map[types.EndpointKey]ProtoMatcher),
+		matchers:       make(map[types.EndpointKey]protocols.ProtoMatcher),
 		protoMatcherOf: protoMatcherOf,
 		log:            log,
 	}
 }
 
-func (rrm *reqRespMatcher) Run(ctx context.Context, reqc chan *Request, respc chan *Response) chan *pb.ProtoMessage {
+func (rrm *reqRespMatcher) Run(ctx context.Context, reqc chan *protocols.Request, respc chan *protocols.Response) chan *pb.ProtoMessage {
 	rrm.msgc = make(chan *pb.ProtoMessage, 100)
 
 	rrm.ctx, rrm.cancel = context.WithCancel(ctx)
@@ -55,7 +56,7 @@ func (rrm *reqRespMatcher) Run(ctx context.Context, reqc chan *Request, respc ch
 	return rrm.msgc
 }
 
-func (rrm *reqRespMatcher) tryMatchRequest(req *Request) {
+func (rrm *reqRespMatcher) tryMatchRequest(req *protocols.Request) {
 	ep := req.SockKey.ToServerEndpoint()
 	m, exists := rrm.matchers[ep]
 	if !exists {
@@ -71,7 +72,7 @@ func (rrm *reqRespMatcher) tryMatchRequest(req *Request) {
 	}
 }
 
-func (rrm *reqRespMatcher) tryMatchResponse(resp *Response) {
+func (rrm *reqRespMatcher) tryMatchResponse(resp *protocols.Response) {
 	ep := resp.SockKey.ToServerEndpoint()
 	m, exists := rrm.matchers[ep]
 	if !exists {

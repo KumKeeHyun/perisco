@@ -3,6 +3,7 @@ package protocols
 import (
 	"context"
 
+	pb "github.com/KumKeeHyun/perisco/api/v1/perisco"
 	"github.com/KumKeeHyun/perisco/pkg/ebpf/types"
 	"go.uber.org/zap"
 )
@@ -11,7 +12,7 @@ type reqRespMatcher struct {
 	matchers       map[types.EndpointKey]ProtoMatcher
 	protoMatcherOf func(types.ProtocolType) ProtoMatcher
 
-	msgc chan *ProtoMessage
+	msgc chan *pb.ProtoMessage
 
 	ctx    context.Context
 	cancel context.CancelFunc
@@ -28,8 +29,8 @@ func NewMatcher(protoMatcherOf func(types.ProtocolType) ProtoMatcher, log *zap.S
 	}
 }
 
-func (rrm *reqRespMatcher) Run(ctx context.Context, reqc chan *Request, respc chan *Response) chan *ProtoMessage {
-	rrm.msgc = make(chan *ProtoMessage, 100)
+func (rrm *reqRespMatcher) Run(ctx context.Context, reqc chan *Request, respc chan *Response) chan *pb.ProtoMessage {
+	rrm.msgc = make(chan *pb.ProtoMessage, 100)
 
 	rrm.ctx, rrm.cancel = context.WithCancel(ctx)
 	rrm.donec = make(chan struct{})
@@ -42,10 +43,8 @@ func (rrm *reqRespMatcher) Run(ctx context.Context, reqc chan *Request, respc ch
 		for {
 			select {
 			case req := <-reqc:
-				// log.Println(req)
 				rrm.tryMatchRequest(req)
 			case resp := <-respc:
-				// log.Println(resp)
 				rrm.tryMatchResponse(resp)
 			case <-rrm.ctx.Done():
 				return

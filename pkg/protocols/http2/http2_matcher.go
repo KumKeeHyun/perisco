@@ -3,6 +3,7 @@ package http2
 import (
 	"container/list"
 
+	pb "github.com/KumKeeHyun/perisco/api/v1/perisco"
 	"github.com/KumKeeHyun/perisco/pkg/protocols"
 )
 
@@ -21,18 +22,14 @@ func NewHTTP2Matcher() *HTTP2Matcher {
 var _ protocols.ProtoMatcher = &HTTP2Matcher{}
 
 // MatchRequest implements ProtoMatcher
-func (m *HTTP2Matcher) MatchRequest(req *protocols.Request) *protocols.ProtoMessage {
+func (m *HTTP2Matcher) MatchRequest(req *protocols.Request) *pb.ProtoMessage {
 	resp := m.findResp(req)
 	if resp == nil {
 		m.reqQueue.PushBack(req)
 		return nil
 	}
-	return &protocols.ProtoMessage{
-		SockKey:     req.SockKey,
-		LatencyNano: resp.Timestamp - req.Timestamp,
-		ReqRecord:   req.Record,
-		RespRecord:  resp.Record,
-	}
+
+	return protocols.ProtoMessage(req, resp)
 }
 
 func (m *HTTP2Matcher) findResp(req *protocols.Request) *protocols.Response {
@@ -49,18 +46,14 @@ func (m *HTTP2Matcher) findResp(req *protocols.Request) *protocols.Response {
 }
 
 // MatchResponse implements ProtoMatcher
-func (m *HTTP2Matcher) MatchResponse(resp *protocols.Response) *protocols.ProtoMessage {
+func (m *HTTP2Matcher) MatchResponse(resp *protocols.Response) *pb.ProtoMessage {
 	req := m.findReq(resp)
 	if req == nil {
 		m.respQueue.PushBack(resp)
 		return nil
 	}
-	return &protocols.ProtoMessage{
-		SockKey:     resp.SockKey,
-		LatencyNano: resp.Timestamp - req.Timestamp,
-		ReqRecord:   req.Record,
-		RespRecord:  resp.Record,
-	}
+
+	return protocols.ProtoMessage(req, resp)
 }
 
 func (m *HTTP2Matcher) findReq(resp *protocols.Response) *protocols.Request {

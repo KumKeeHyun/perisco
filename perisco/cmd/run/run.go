@@ -8,6 +8,7 @@ import (
 
 	"github.com/KumKeeHyun/perisco/perisco/bpf"
 	"github.com/KumKeeHyun/perisco/pkg/ebpf/types"
+	"github.com/KumKeeHyun/perisco/pkg/exporters/stdout"
 	"github.com/KumKeeHyun/perisco/pkg/logger"
 	"github.com/KumKeeHyun/perisco/pkg/protocols"
 	"github.com/KumKeeHyun/perisco/pkg/protocols/http1"
@@ -82,11 +83,12 @@ func runPerisco(vp *viper.Viper) error {
 	)
 	msgc := matcher.Run(ctx, reqc, respc)
 
+	exporter := stdout.New()
+	go exporter.Export(ctx, msgc)
+
 	return func() error {
 		for {
 			select {
-			case msg := <-msgc:
-				log.Infof("\n%v", msg)
 			case <-ctx.Done():
 				return ctx.Err()
 			}

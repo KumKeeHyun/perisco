@@ -16,13 +16,11 @@ var (
 type ProtoRequest interface {
 	ProtoType() types.ProtocolType
 	Protobuf() *pb.Request
-	String() string
 }
 
 type ProtoResponse interface {
 	ProtoType() types.ProtocolType
 	Protobuf() *pb.Response
-	String() string
 }
 
 type ProtoParser interface {

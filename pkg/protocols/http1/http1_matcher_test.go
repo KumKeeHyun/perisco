@@ -2,6 +2,7 @@ package http1
 
 import (
 	"container/list"
+	"net/http"
 	"reflect"
 	"testing"
 
@@ -21,48 +22,63 @@ func TestHTTP1Matcher_MatchRequest(t *testing.T) {
 		name   string
 		args   args
 		fields fields
-		want   *protocols.ProtoMessage
+		want   bool
 	}{
 		{
 			name: "Success to Find Response",
 			args: args{
-				req: &protocols.Request{SockKey: types.SockKey{Pid: 1}},
+				req: &protocols.Request{
+					SockKey: types.SockKey{Pid: 1},
+					Record: &HTTP1Request{&http.Request{}},
+				},
 			},
 			fields: fields{
 				reqQueue: list.New(),
 				respQueue: func() *list.List {
 					l := list.New()
-					l.PushFront(&protocols.Response{SockKey: types.SockKey{Pid: 1}})
+					l.PushFront(&protocols.Response{
+						SockKey: types.SockKey{Pid: 1},
+						Record: &HTTP1Response{&http.Response{}},
+					})
 					return l
 				}(),
 			},
-			want: &protocols.ProtoMessage{SockKey: types.SockKey{Pid: 1}},
+			want: true,
 		},
 		{
 			name: "Empty Response Queue",
 			args: args{
-				req: &protocols.Request{SockKey: types.SockKey{Pid: 1}},
+				req: &protocols.Request{
+					SockKey: types.SockKey{Pid: 1},
+					Record: &HTTP1Request{&http.Request{}},
+				},
 			},
 			fields: fields{
 				reqQueue:  list.New(),
 				respQueue: list.New(),
 			},
-			want: nil,
+			want: false,
 		},
 		{
 			name: "Fail to Find Response",
 			args: args{
-				req: &protocols.Request{SockKey: types.SockKey{Pid: 1}},
+				req: &protocols.Request{
+					SockKey: types.SockKey{Pid: 1},
+					Record: &HTTP1Request{&http.Request{}},
+				},
 			},
 			fields: fields{
 				reqQueue: list.New(),
 				respQueue: func() *list.List {
 					l := list.New()
-					l.PushFront(&protocols.Response{SockKey: types.SockKey{Pid: 2}})
+					l.PushFront(&protocols.Response{
+						SockKey: types.SockKey{Pid: 2},
+						Record: &HTTP1Response{&http.Response{}},
+					})
 					return l
 				}(),
 			},
-			want: nil,
+			want: false,
 		},
 	}
 	for _, tt := range tests {
@@ -72,7 +88,7 @@ func TestHTTP1Matcher_MatchRequest(t *testing.T) {
 				respQueue: tt.fields.respQueue,
 			}
 			got := m.MatchRequest(tt.args.req)
-			if !reflect.DeepEqual(got, tt.want) {
+			if (got != nil) != tt.want {
 				t.Errorf("HTTP1Matcher.MatchRequest() = %v, want %v", got, tt.want)
 			}
 		})
@@ -120,48 +136,63 @@ func TestHTTP1Matcher_MatchResponse(t *testing.T) {
 		name   string
 		fields fields
 		args   args
-		want   *protocols.ProtoMessage
+		want   bool
 	}{
 		{
 			name: "Success to Find Request",
 			args: args{
-				resp: &protocols.Response{SockKey: types.SockKey{Pid: 1}},
+				resp: &protocols.Response{
+					SockKey: types.SockKey{Pid: 1},
+					Record:  &HTTP1Response{&http.Response{}},
+				},
 			},
 			fields: fields{
 				reqQueue: func() *list.List {
 					l := list.New()
-					l.PushFront(&protocols.Request{SockKey: types.SockKey{Pid: 1}})
+					l.PushFront(&protocols.Request{
+						SockKey: types.SockKey{Pid: 1},
+						Record:  &HTTP1Request{&http.Request{}},
+					})
 					return l
 				}(),
 				respQueue: list.New(),
 			},
-			want: &protocols.ProtoMessage{SockKey: types.SockKey{Pid: 1}},
+			want: true,
 		},
 		{
 			name: "Empty Request Queue",
 			args: args{
-				resp: &protocols.Response{SockKey: types.SockKey{Pid: 1}},
+				resp: &protocols.Response{
+					SockKey: types.SockKey{Pid: 1},
+					Record:  &HTTP1Response{&http.Response{}},
+				},
 			},
 			fields: fields{
 				reqQueue:  list.New(),
 				respQueue: list.New(),
 			},
-			want: nil,
+			want: false,
 		},
 		{
 			name: "Fail to Find Request",
 			args: args{
-				resp: &protocols.Response{SockKey: types.SockKey{Pid: 1}},
+				resp: &protocols.Response{
+					SockKey: types.SockKey{Pid: 1},
+					Record:  &HTTP1Response{&http.Response{}},
+				},
 			},
 			fields: fields{
 				reqQueue: func() *list.List {
 					l := list.New()
-					l.PushFront(&protocols.Request{SockKey: types.SockKey{Pid: 2}})
+					l.PushFront(&protocols.Request{
+						SockKey: types.SockKey{Pid: 2},
+						Record:  &HTTP1Request{&http.Request{}},
+					})
 					return l
 				}(),
 				respQueue: list.New(),
 			},
-			want: nil,
+			want: false,
 		},
 	}
 	for _, tt := range tests {
@@ -171,7 +202,7 @@ func TestHTTP1Matcher_MatchResponse(t *testing.T) {
 				respQueue: tt.fields.respQueue,
 			}
 			got := m.MatchResponse(tt.args.resp)
-			if !reflect.DeepEqual(got, tt.want) {
+			if (got != nil) != tt.want {
 				t.Errorf("HTTP1Matcher.MatchResponse() = %v, want %v", got, tt.want)
 			}
 		})

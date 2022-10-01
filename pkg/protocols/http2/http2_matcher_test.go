@@ -30,7 +30,7 @@ func TestHTTP2Matcher_MatchRequest(t *testing.T) {
 		name   string
 		args   args
 		fields fields
-		want   *protocols.ProtoMessage
+		want   bool
 	}{
 		{
 			name: "Success to Find Response",
@@ -55,15 +55,7 @@ func TestHTTP2Matcher_MatchRequest(t *testing.T) {
 					return l
 				}(),
 			},
-			want: &protocols.ProtoMessage{
-				SockKey: types.SockKey{Pid: 1},
-				ReqRecord: &HTTP2Request{
-					Record: getHeaderFramWithStreamID(1),
-				},
-				RespRecord: &HTTP2Response{
-					Record: getHeaderFramWithStreamID(1),
-				},
-			},
+			want: true,
 		},
 		{
 			name: "Empty Response Queue",
@@ -79,7 +71,7 @@ func TestHTTP2Matcher_MatchRequest(t *testing.T) {
 				reqQueue:  list.New(),
 				respQueue: list.New(),
 			},
-			want: nil,
+			want: false,
 		},
 		{
 			name: "Fail to Find Response pid",
@@ -104,7 +96,7 @@ func TestHTTP2Matcher_MatchRequest(t *testing.T) {
 					return l
 				}(),
 			},
-			want: nil,
+			want: false,
 		},
 		{
 			name: "Fail to Find Response streamID",
@@ -129,7 +121,7 @@ func TestHTTP2Matcher_MatchRequest(t *testing.T) {
 					return l
 				}(),
 			},
-			want: nil,
+			want: false,
 		},
 	}
 	for _, tt := range tests {
@@ -139,7 +131,7 @@ func TestHTTP2Matcher_MatchRequest(t *testing.T) {
 				respQueue: tt.fields.respQueue,
 			}
 			got := m.MatchRequest(tt.args.req)
-			if !reflect.DeepEqual(got, tt.want) {
+			if (got != nil) != tt.want {
 				t.Errorf("HTTP2Matcher.MatchRequest() = %v, want %v", got, tt.want)
 			}
 		})
@@ -187,7 +179,7 @@ func TestHTTP2Matcher_MatchResponse(t *testing.T) {
 		name   string
 		args   args
 		fields fields
-		want   *protocols.ProtoMessage
+		want   bool
 	}{
 		{
 			name: "Success to Find Response",
@@ -212,15 +204,7 @@ func TestHTTP2Matcher_MatchResponse(t *testing.T) {
 				}(),
 				respQueue: list.New(),
 			},
-			want: &protocols.ProtoMessage{
-				SockKey: types.SockKey{Pid: 1},
-				ReqRecord: &HTTP2Request{
-					Record: getHeaderFramWithStreamID(1),
-				},
-				RespRecord: &HTTP2Response{
-					Record: getHeaderFramWithStreamID(1),
-				},
-			},
+			want: true,
 		},
 		{
 			name: "Empty Response Queue",
@@ -236,7 +220,7 @@ func TestHTTP2Matcher_MatchResponse(t *testing.T) {
 				reqQueue:  list.New(),
 				respQueue: list.New(),
 			},
-			want: nil,
+			want: false,
 		},
 		{
 			name: "Fail to Find Response pid",
@@ -261,7 +245,7 @@ func TestHTTP2Matcher_MatchResponse(t *testing.T) {
 				}(),
 				respQueue: list.New(),
 			},
-			want: nil,
+			want: false,
 		},
 		{
 			name: "Fail to Find Response streamID",
@@ -286,7 +270,7 @@ func TestHTTP2Matcher_MatchResponse(t *testing.T) {
 				}(),
 				respQueue: list.New(),
 			},
-			want: nil,
+			want: false,
 		},
 	}
 	for _, tt := range tests {
@@ -296,7 +280,7 @@ func TestHTTP2Matcher_MatchResponse(t *testing.T) {
 				respQueue: tt.fields.respQueue,
 			}
 			got := m.MatchResponse(tt.args.resp)
-			if !reflect.DeepEqual(got, tt.want) {
+			if (got != nil) != tt.want {
 				t.Errorf("HTTP2Matcher.MatchResponse() = %v, want %v", got, tt.want)
 			}
 		})

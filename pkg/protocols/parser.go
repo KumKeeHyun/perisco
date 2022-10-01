@@ -3,30 +3,21 @@ package protocols
 import (
 	"context"
 	"errors"
-	"fmt"
 
 	"github.com/KumKeeHyun/perisco/pkg/ebpf/types"
 	"go.uber.org/zap"
 )
 
 type Request struct {
-	SockKey   types.SockKey
 	Timestamp uint64
+	SockKey   types.SockKey
 	Record    ProtoRequest
 }
 
-func (r *Request) String() string {
-	return fmt.Sprintf("%s\n%s\n", r.SockKey.String(), r.Record.String())
-}
-
 type Response struct {
-	SockKey   types.SockKey
 	Timestamp uint64
+	SockKey   types.SockKey
 	Record    ProtoResponse
-}
-
-func (r *Response) String() string {
-	return fmt.Sprintf("%s\n%s\n", r.SockKey.String(), r.Record.String())
 }
 
 type reqRespParser struct {

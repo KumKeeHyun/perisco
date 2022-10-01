@@ -35,6 +35,9 @@ func (r *HTTP1Request) Protobuf() *pb.Request {
 }
 
 func toProtobufHeader(header http.Header) []*pb.HTTPHeader {
+	if header == nil {
+		return nil
+	}
 	res := make([]*pb.HTTPHeader, 0, len(header))
 	for k, vs := range header {
 		for _, v := range vs {
@@ -42,17 +45,6 @@ func toProtobufHeader(header http.Header) []*pb.HTTPHeader {
 		}
 	}
 	return res
-}
-
-// String implements ProtoRequest
-func (rr *HTTP1Request) String() string {
-	return fmt.Sprintf("%s %s %s %s\n%v",
-		rr.Record.Proto,
-		rr.Record.Method,
-		rr.Record.RequestURI,
-		rr.Record.Host,
-		rr.Record.Header,
-	)
 }
 
 type HTTP1Response struct {
@@ -75,15 +67,6 @@ func (r *HTTP1Response) Protobuf() *pb.Response {
 			},
 		},
 	}
-}
-
-// String implements ProtoResponse
-func (rr *HTTP1Response) String() string {
-	return fmt.Sprintf("%s %s\n%v",
-		rr.Record.Proto,
-		rr.Record.Status,
-		rr.Record.Header,
-	)
 }
 
 const h1ReaderBufSize = 4096

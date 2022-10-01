@@ -11,9 +11,6 @@ import (
 	"github.com/KumKeeHyun/perisco/pkg/exporters/stdout"
 	"github.com/KumKeeHyun/perisco/pkg/logger"
 	"github.com/KumKeeHyun/perisco/pkg/perisco"
-	"github.com/KumKeeHyun/perisco/pkg/perisco/protocols"
-	"github.com/KumKeeHyun/perisco/pkg/perisco/protocols/http1"
-	"github.com/KumKeeHyun/perisco/pkg/perisco/protocols/http2"
 	"github.com/cilium/ebpf/rlimit"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
@@ -106,52 +103,4 @@ func runPerisco(vp *viper.Viper) error {
 
 func splitToSlice(str string) []string {
 	return strings.Split(strings.ReplaceAll(str, " ", ""), ",")
-}
-
-func supportedProtoParsers(protos []types.ProtocolType) (parsers []protocols.ProtoParser) {
-	for _, proto := range protos {
-		if proto != types.PROTO_UNKNOWN {
-			parsers = append(parsers, protoParserOf(proto))
-		}
-
-	}
-	return
-}
-
-func protoParserOf(pt types.ProtocolType) protocols.ProtoParser {
-	switch pt {
-	case types.HTTP1:
-		return http1.NewHTTP1Parser()
-	case types.HTTP2:
-		return http2.NewHTTP2Parser()
-	default:
-		return nil
-	}
-}
-
-func supportedProtoMatchers(protos []types.ProtocolType) func(types.ProtocolType) protocols.ProtoMatcher {
-	support := make(map[types.ProtocolType]struct{})
-	for _, proto := range protos {
-		if proto != types.PROTO_UNKNOWN {
-			support[proto] = struct{}{}
-		}
-	}
-
-	return func(pt types.ProtocolType) protocols.ProtoMatcher {
-		if _, exists := support[pt]; exists {
-			return protoMatcherOf(pt)
-		}
-		return nil
-	}
-}
-
-func protoMatcherOf(pt types.ProtocolType) protocols.ProtoMatcher {
-	switch pt {
-	case types.HTTP1:
-		return http1.NewHTTP1Matcher()
-	case types.HTTP2:
-		return http2.NewHTTP2Matcher()
-	default:
-		return nil
-	}
 }

@@ -83,7 +83,8 @@ func runPerisco(vp *viper.Viper) error {
 	)
 	msgc := matcher.Run(ctx, reqc, respc)
 
-	exporter := stdout.New()
+	// exporter, _ := stdout.New(stdout.WithPretty())
+	exporter, _ := stdout.New()
 	go exporter.Export(ctx, msgc)
 
 	return func() error {

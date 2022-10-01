@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
-	"os"
 
 	pb "github.com/KumKeeHyun/perisco/api/v1/perisco"
 )
@@ -17,13 +16,20 @@ type Exporter struct {
 	donec  chan struct{}
 }
 
-func New() *Exporter {
-	encoder := json.NewEncoder(os.Stdout)
-	encoder.SetIndent("", "  ")
+func New(options ...Option) (*Exporter, error) {
+	opts, err := newOptions(options...)
+	if err != nil {
+		return nil, err
+	}
+
+	encoder := json.NewEncoder(opts.Writer)
+	if opts.Pretty {
+		encoder.SetIndent("", "  ")
+	}
 
 	return &Exporter{
 		encoder: *encoder,
-	}
+	}, nil
 }
 
 func (e *Exporter) Export(ctx context.Context, msgc chan *pb.ProtoMessage) {

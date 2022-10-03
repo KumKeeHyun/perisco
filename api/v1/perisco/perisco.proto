@@ -79,3 +79,38 @@ message HTTPHeader {
     string key = 1;
     string value = 2;
 }
+
+message ProtoMessageInK8S {
+    google.protobuf.Timestamp ts = 1;
+    
+    uint32 pid = 2;
+    IP ip = 3;
+    Layer4 l4 = 4;
+    
+    Layer7 l7 = 5;
+
+    Endpoint client = 6;
+    Endpoint server = 7;
+
+    Service client_service = 8;
+    Service server_service = 9;
+}
+
+message Endpoint {
+    uint32 ID = 1;
+    uint32 identity = 2;
+    string namespace = 3;
+    repeated string labels = 4;
+    string pod_name = 5;
+    repeated Workload workloads = 6;
+}
+
+message Workload {
+    string name = 1;
+    string kind = 2;
+}
+
+message Service {
+    string name = 1;
+    string namespace = 2;
+}

@@ -3,7 +3,7 @@ STRIP ?= llvm-strip-14
 CFLAGS := -O2 -g -Wall -Werror $(CFLAGS)
 
 # path where go.mod is located
-REPODIR := $(realpath ../..)
+REPODIR := $(shell git rev-parse --show-toplevel)
 
 # podman if installed, otherwise docker
 CONTAINER_ENGINE ?= $(if $(shell command -v podman), podman, docker)

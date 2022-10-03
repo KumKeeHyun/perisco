@@ -1,0 +1,19 @@
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: perisco
+spec:
+  selector:
+    matchLabels:
+      name: perisco
+  template:
+    metadata:
+      labels:
+        name: perisco
+    spec:
+      containers:
+      - name: perisco
+        image: kbzjung359/perisco:0.0.1
+        securityContext:
+          privileged: true
+          runAsUser: 0

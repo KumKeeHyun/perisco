@@ -6,7 +6,7 @@ eBPF based, L7 protocols monitoring solution in k8s.
 
 Persico captures unencrypted L4 packets of host using eBPF. The packets are parsed into L7 protocol(HTTP, gRPC)'s header and then served in various path(file, elasticsearch, kafka etc.).
 
-Perisco use [cilium/ebpf](#https://github.com/cilium/ebpf) to load [eBPF](#https://ebpf.io/) program.
+Perisco use [cilium/ebpf](https://github.com/cilium/ebpf) to load [eBPF](https://ebpf.io/) program.
 
 ## Requires
 
@@ -25,7 +25,25 @@ Perisco use [cilium/ebpf](#https://github.com/cilium/ebpf) to load [eBPF](#https
 
 perisco는 ingress-controller에만 암호화를 사용하고 마이크로서비스간 통신은 암호화를 사용하지 않는 사용 사례를 전제로 한다. 즉, http2는 h2c(HTTP2 Cleartext), gRPC는 `insecure.NewCredentials()` 옵션을 사용하는 것을 전제로 한다.
 
+## Architecture
+
+perisco는 DaemonSet을 통해 클러스터에 배포된 후, bpf 프로그램을 로드해서 특정 CIDR 범위의 네트워크 요청/응답을 추적한다.
+
+<img alt="k8s deployment" src="https://user-images.githubusercontent.com/44857109/194702483-1b6026b2-0591-41d8-a6f7-dca1ab140ce9.png">
+
+bpf 프로그램은 `sock_sendmsg`, `sock_recvmsg` 함수에 `fentry/fexit`을 사용하여 패킷의 데이터부분을 응용 프로그램쪽으로 전달하는 역할을 한다. 이때 캡쳐하는 데이터의 크기는 최대 4KB이다. 다르게 말하면 프로토콜의 바디부분을 제외하고 헤더 부분의 크기가 4KB 이상이면 해당 요청/응답은 응용 프로그램쪽에서 파싱할 수 없다.
+
+<img alt="bpf map" src="https://user-images.githubusercontent.com/44857109/194702512-df60ec12-11d2-44b7-88e7-a0bef132f8d8.png">
+
+응용 프로그램은 패킷의 데이터를 특정 프로토콜로 파싱한 뒤, 별개의 요청과 응답 부분을 매칭해서 하나의 데이터로 묶는 작업을 한다. 생성한 데이터는 영구 저장을 위해 파일, 카프카(TODO), 엘라스틱서치(TODO) 등의 저장소로 전달한다. 추가적으로 Hubble-UI를 사용할 수 있도록 Hubble Flow API를 구현할 예정이다.
+
+<img alt="persico internal" src="https://user-images.githubusercontent.com/44857109/194702539-c22e247a-d3b9-4021-948e-4b3d952ce10d.png">
+
+
+
 ## temp result
+
+- file(stdout) output 
 
 ```
 {"ts":{"seconds":1664880849,"nanos":189706873},"pid":3719,"ip":{"client":"127.0.0.1","server":"127.0.0.1","ipVersion":1},"l4":{"Protocol":{"TCP":{"client_port":47994,"server_port":8880}}},"l7":{"latency_ns":57508,"request":{"Record":{"Http":{"protocol":"HTTP/1.1","method":"GET","url":"/greet","headers":[{"key":"User-Agent","value":"Go-http-client/1.1"},{"key":"Accept-Encoding","value":"gzip"}]}}},"response":{"Record":{"Http":{"protocol":"HTTP/1.1","code":200,"headers":[{"key":"Date","value":"Tue, 04 Oct 2022 10:54:09 GMT"},{"key":"Content-Length","value":"20"},{"key":"Content-Type","value":"text/plain; charset=utf-8"}]}}}}}

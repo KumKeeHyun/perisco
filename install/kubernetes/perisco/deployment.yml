@@ -17,3 +17,6 @@ spec:
         securityContext:
           privileged: true
           runAsUser: 0
+        env:
+        - name: PERISCO_CIDRS
+          value: 10.244.0.0/16,::FFFF:10.244.0.0/112

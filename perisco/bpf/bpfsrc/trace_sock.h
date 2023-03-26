@@ -15,9 +15,6 @@
 
 #define MAX_MSG_SIZE 4096
 
-// 'unroll for loop'에서 스택 크기 제한으로 크기를 조절해야 함.
-#define MAX_NR_SEGS 5
-
 enum ip_version { IP_UNKNOWN, IPv4, IPv6 };
 
 struct ip {

@@ -33,7 +33,7 @@ struct {
 
 struct {
 	__uint(type, BPF_MAP_TYPE_HASH);
-	__type(key, struct sock_key);
+	__type(key, u64);
 	__type(value, struct msg_arg);
 	__uint(max_entries, 1024);
 } recvmsg_arg_map SEC(".maps");
@@ -190,7 +190,9 @@ int BPF_PROG(fentry_sock_recvmsg, struct socket *sock, struct msghdr *msg, int f
 	bpf_probe_read(&(recvmsg_arg.iter), sizeof(struct iov_iter), &(msg->msg_iter));
 	recvmsg_arg.protocol = protocol;
 
-	bpf_map_update_elem(&recvmsg_arg_map, &sk_key, &recvmsg_arg, BPF_NOEXIST);
+	u64 id = bpf_get_current_pid_tgid();
+	// bpf_printk("recv entry - id: %d, kvec: %p\n", id, (void *)recvmsg_arg.iter.kvec);
+	bpf_map_update_elem(&recvmsg_arg_map, &id, &recvmsg_arg, BPF_ANY);
 	
 	return 0;
 }
@@ -223,48 +225,41 @@ static __always_inline
 void copy_msg_from_iov_iter
 (struct iov_iter *iter, size_t size, struct sock_key *key, u64 timestamp, enum protocol_type protocol, enum direction direction) {
 	
-	if (iter->count == 0) 
-		return ;
+	// bpf_printk("srv_port: %d, cli_port: %d, dir:%d\n", key->l4.source_port, key->l4.destination_port, direction);
+	// bpf_printk("nr_segs: %lu, count: %lu, size: %lu\n", iter->nr_segs, iter->count, size);
 
-	size_t remained = size;
-	
-	#pragma unroll
-	for(int i = 0; i < MAX_NR_SEGS; i++) {
-		if (i >= iter->nr_segs)
-			break;
-
-		struct kvec iov;
-		bpf_probe_read(&iov, sizeof(iov), &(iter->kvec[i]));
-
-		size_t to_copy = remained;
-		if (to_copy > iov.iov_len)
-			to_copy = iov.iov_len;
-		
-		submit_msg_event(iov.iov_base, to_copy, key, timestamp, protocol, direction);
-
-		remained -= to_copy;
-		if (remained <= 0)
-			break;
+	struct kvec iov;
+	bpf_probe_read(&iov, sizeof(iov), &(iter->kvec[0]));
+	size_t to_copy = iter->count;
+	if (size > 0 && size < to_copy) {
+		to_copy = size;
 	}
+	// bpf_printk("iov iter: %ld, iov len: %lu, to copy: %lu\n", 0, iov.iov_len, to_copy);
+	submit_msg_event(iov.iov_base, to_copy, key, timestamp, protocol, direction);
 }
 
 SEC("fexit/sock_recvmsg")
 int BPF_PROG(fexit_sock_recvmsg, struct socket *sock, struct msghdr *msg, int flags, int ret) {
+	u64 id = bpf_get_current_pid_tgid();
 	
-	if (ret <= 0)
+	if (ret < 0) {
+		// bpf_printk("recv exit - id: %d, ret: %d\n", id, ret);
 		return 0;
+	}
 
 	struct sock *sk = sock->sk;
 	struct sock_key sk_key = {0, };
 	extract_sock_key(sk, &sk_key);
 
-	struct msg_arg *recvmsg_arg = bpf_map_lookup_elem(&recvmsg_arg_map, &sk_key);
+	struct msg_arg *recvmsg_arg = bpf_map_lookup_elem(&recvmsg_arg_map, &id);
 	if (recvmsg_arg == NULL)
 		return 0;
+
 	
+	// bpf_printk("recv exit - id: %d, kvec: %p, ret:%d\n", id, (void *)recvmsg_arg->iter.kvec, ret);
 
 	copy_msg_from_iov_iter(&(recvmsg_arg->iter), ret, &sk_key, bpf_ktime_get_ns(), recvmsg_arg->protocol, INGRESS);
-	bpf_map_delete_elem(&recvmsg_arg_map, &sk_key);
+	bpf_map_delete_elem(&recvmsg_arg_map, &id);
 
 	return 0;
 }

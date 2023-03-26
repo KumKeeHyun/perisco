@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"io"
 	"os/signal"
-	"strings"
 	"sync"
 	"syscall"
 
@@ -21,8 +20,8 @@ import (
 )
 
 const (
-	keyCidrs  = "cidrs"
-	keyProtos = "protos"
+	keyCidr  = "cidr"
+	keyProto = "proto"
 )
 
 func New(vp *viper.Viper) *cobra.Command {
@@ -35,8 +34,8 @@ func New(vp *viper.Viper) *cobra.Command {
 	}
 
 	flags := cmd.Flags()
-	flags.String(keyCidrs, "0.0.0.0/0", "List of cidr to monitor sevices")
-	flags.String(keyProtos, "HTTP/1,HTTP/2", "List of protocols to monitor services")
+	flags.String(keyCidr, "0.0.0.0/0", "CIDR to monitor sevices")
+	flags.String(keyProto, "HTTP/2", "Protocol to monitor services")
 	vp.BindPFlags(flags)
 
 	return cmd
@@ -44,6 +43,11 @@ func New(vp *viper.Viper) *cobra.Command {
 
 func runSockTest(vp *viper.Viper) error {
 	log := logger.DefualtLogger.Named("perisco")
+
+	parse, ok := parseFuncs[vp.GetString(keyProto)]
+	if !ok {
+		log.Fatalf("invalid proto type(%s)", vp.GetString(keyProto))
+	}
 
 	if err := rlimit.RemoveMemlock(); err != nil {
 		log.Fatal(err)
@@ -56,20 +60,14 @@ func runSockTest(vp *viper.Viper) error {
 	)
 	defer cancel()
 
-	protos, err := types.ProtoTypesOf(splitToSlice(vp.GetString(keyProtos)))
-	if err != nil {
-		log.Fatal(err)
-	}
-	log.Infof("enabled protocols %v", protos)
-
 	recvc, sendc, nf, _, clean := bpf.LoadBpfProgram()
 	defer clean()
 
-	cidrs := splitToSlice(vp.GetString(keyCidrs))
-	if err := nf.RegisterCIDRs(cidrs); err != nil {
+	cidr := vp.GetString(keyCidr)
+	if err := nf.RegisterCIDRs([]string{cidr}); err != nil {
 		log.Fatal(err)
 	}
-	log.Infof("network filter will only tract %v", cidrs)
+	log.Infof("network filter will only tract %v", cidr)
 
 	wg := &sync.WaitGroup{}
 	wg.Add(2)
@@ -79,7 +77,7 @@ func runSockTest(vp *viper.Viper) error {
 		for {
 			select {
 			case msg := <-recvc:
-				parseHTTP2(msg)
+				parse(msg)
 			case <-ctx.Done():
 				return
 			}
@@ -90,7 +88,7 @@ func runSockTest(vp *viper.Viper) error {
 		for {
 			select {
 			case msg := <-sendc:
-				parseHTTP2(msg)
+				parse(msg)
 			case <-ctx.Done():
 				return
 			}
@@ -101,8 +99,15 @@ func runSockTest(vp *viper.Viper) error {
 	return nil
 }
 
-func splitToSlice(str string) []string {
-	return strings.Split(strings.ReplaceAll(str, " ", ""), ",")
+type parseFunc func(msg *types.MsgEvent)
+
+var parseFuncs = map[string]parseFunc{
+	"HTTP/1": parseHTTP1,
+	"HTTP/2": parseHTTP2,
+}
+
+func parseHTTP1(msg *types.MsgEvent) {
+
 }
 
 var hpackDecs = make(map[types.SockKey]*hpack.Decoder)
@@ -117,6 +122,8 @@ func getHpackDec(key *types.SockKey) *hpack.Decoder {
 }
 
 func parseHTTP2(msg *types.MsgEvent) {
+	fmt.Printf("parse http/2, flow: %s, len: %d\n%s\n", msg.FlowType.String(), msg.MsgSize, msg.Msg[:msg.MsgSize])
+
 	br := bytes.NewReader(msg.Msg[:msg.MsgSize])
 	skipPrefaceIfExists(br)
 	f := http2.NewFramer(io.Discard, br)

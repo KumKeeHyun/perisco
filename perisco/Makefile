@@ -21,4 +21,4 @@ run: bin
 	sudo ./$(TARGET) run
 
 socktest: bin
-	sudo ./$(TARGET) socktest --cidrs=127.0.0.1/32
+	sudo ./$(TARGET) socktest --cidr=127.0.0.1/32

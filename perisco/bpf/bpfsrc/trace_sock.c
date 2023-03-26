@@ -242,7 +242,7 @@ SEC("fexit/sock_recvmsg")
 int BPF_PROG(fexit_sock_recvmsg, struct socket *sock, struct msghdr *msg, int flags, int ret) {
 	u64 id = bpf_get_current_pid_tgid();
 	
-	if (ret < 0) {
+	if (ret <= 0) {
 		// bpf_printk("recv exit - id: %d, ret: %d\n", id, ret);
 		return 0;
 	}

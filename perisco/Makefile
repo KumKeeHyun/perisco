@@ -11,11 +11,14 @@ $(TARGET): bpf
 bpf:
 	make -C $(BPF_DIR)
 
-bin-only:
+bin:
 	go build -o $(TARGET)
 
 clean:
 	rm -f $(TARGET)
 
-run: bin-only
+run: bin
 	sudo ./$(TARGET) run
+
+socktest: bin
+	sudo ./$(TARGET) socktest --cidrs=127.0.0.1/32

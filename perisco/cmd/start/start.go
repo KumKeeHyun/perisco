@@ -11,7 +11,6 @@ import (
 	"github.com/KumKeeHyun/perisco/pkg/exporters/stdout"
 	"github.com/KumKeeHyun/perisco/pkg/logger"
 	"github.com/KumKeeHyun/perisco/pkg/perisco"
-	"github.com/cilium/ebpf/rlimit"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 )
@@ -40,10 +39,6 @@ func New(vp *viper.Viper) *cobra.Command {
 
 func runPerisco(vp *viper.Viper) error {
 	log := logger.DefualtLogger.Named("perisco")
-
-	if err := rlimit.RemoveMemlock(); err != nil {
-		log.Fatal(err)
-	}
 
 	ctx, cancel := signal.NotifyContext(
 		context.Background(),

@@ -25,3 +25,6 @@ start: bin-only
 
 socktest: bin-only
 	sudo ./$(TARGET) socktest --cidr=127.0.0.1/32
+
+k8stest: bin-only
+	sudo ./$(TARGET) k8stest

@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"github.com/KumKeeHyun/perisco/perisco/cmd/k8stest"
 	"github.com/KumKeeHyun/perisco/perisco/cmd/socktest"
 	"github.com/KumKeeHyun/perisco/perisco/cmd/start"
 	"github.com/spf13/cobra"
@@ -16,6 +17,7 @@ func New() *cobra.Command {
 	rootCmd.AddCommand(
 		start.New(newViper("perisco")),
 		socktest.New(newViper("socktest")),
+		k8stest.New(newViper("k8stest")),
 	)
 	return rootCmd
 }

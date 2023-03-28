@@ -1,4 +1,4 @@
-package run
+package start
 
 import (
 	"context"
@@ -23,8 +23,8 @@ const (
 
 func New(vp *viper.Viper) *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "run",
-		Short: "run perisco",
+		Use:   "start",
+		Short: "start perisco node agent",
 		RunE: func(_ *cobra.Command, _ []string) error {
 			return runPerisco(vp)
 		},

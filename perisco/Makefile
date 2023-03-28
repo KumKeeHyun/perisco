@@ -1,7 +1,7 @@
 TARGET := perisco
 BPF_DIR := bpf
 
-.PHONY: all $(TARGET) bpf bin-only clean run
+.PHONY: all $(TARGET) bpf bin bin-only clean start
 
 all: $(TARGET)
 
@@ -11,14 +11,17 @@ $(TARGET): bpf
 bpf:
 	make -C $(BPF_DIR)
 
-bin:
+bin: bpf
 	go build -o $(TARGET)
 
 clean:
 	rm -f $(TARGET)
 
-run: bin
-	sudo ./$(TARGET) run
+bin-only:
+	go build -o $(TARGET)
 
-socktest: bin
+start: bin-only
+	sudo ./$(TARGET) start
+
+socktest: bin-only
 	sudo ./$(TARGET) socktest --cidr=127.0.0.1/32

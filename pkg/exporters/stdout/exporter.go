@@ -48,6 +48,22 @@ func (e *Exporter) Export(ctx context.Context, msgc chan *pb.ProtoMessage) {
 	}
 }
 
+func (e *Exporter) ExportK8S(ctx context.Context, msgc chan *pb.K8SProtoMessage) {
+	e.ctx, e.cancel = context.WithCancel(ctx)
+	e.donec = make(chan struct{})
+
+	defer close(e.donec)
+
+	for {
+		select {
+		case msg := <-msgc:
+			e.encoder.Encode(msg)
+		case <-e.ctx.Done():
+			return
+		}
+	}
+}
+
 func (e *Exporter) Shutdown() error {
 	if e.cancel != nil {
 		e.cancel()

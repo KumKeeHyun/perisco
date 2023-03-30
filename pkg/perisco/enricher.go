@@ -7,13 +7,14 @@ import (
 	"go.uber.org/zap"
 )
 
-type ResourceStore interface {
-	FindEndpoint(ip string) *pb.Endpoint
-	FindService(ip string) *pb.Service
+type ResourcesStore interface {
+	GetPodInfo(ip string) *pb.Endpoint
+	GetServiceInfo(ip string) *pb.Service
 }
 
 type Enricher struct {
-	msgc chan *pb.K8SProtoMessage
+	store ResourcesStore
+	msgc  chan *pb.K8SProtoMessage
 
 	ctx    context.Context
 	cancel context.CancelFunc
@@ -22,14 +23,10 @@ type Enricher struct {
 	log *zap.SugaredLogger
 }
 
-func NewEnricher(options ...EnricherOption) (*Enricher, error) {
-	opts, err := newEnricherOptions(options...)
-	if err != nil {
-		return nil, err
-	}
-
+func NewEnricher(log *zap.SugaredLogger, store ResourcesStore) (*Enricher, error) {
 	return &Enricher{
-		log: opts.log,
+		store: store,
+		log:   log,
 	}, nil
 }
 
@@ -58,8 +55,11 @@ func (e *Enricher) Run(ctx context.Context, msgc chan *pb.ProtoMessage) chan *pb
 }
 
 func (e *Enricher) enrichProtoMessage(msg *pb.ProtoMessage) {
-	// TODO
 	e.msgc <- &pb.K8SProtoMessage{
 		ProtoMessage_: msg,
+		Client:        e.store.GetPodInfo(msg.Ip.Client),
+		Server:        e.store.GetPodInfo(msg.Ip.Server),
+		ClientService: e.store.GetServiceInfo(msg.Ip.Client),
+		ServerService: e.store.GetServiceInfo(msg.Ip.Server),
 	}
 }

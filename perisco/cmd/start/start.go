@@ -9,15 +9,21 @@ import (
 	"github.com/KumKeeHyun/perisco/perisco/bpf"
 	"github.com/KumKeeHyun/perisco/pkg/ebpf/types"
 	"github.com/KumKeeHyun/perisco/pkg/exporters/stdout"
+	"github.com/KumKeeHyun/perisco/pkg/kubernetes"
 	"github.com/KumKeeHyun/perisco/pkg/logger"
 	"github.com/KumKeeHyun/perisco/pkg/perisco"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
+	k8s "k8s.io/client-go/kubernetes"
+	"k8s.io/client-go/tools/clientcmd"
 )
 
 const (
-	keyCidrs  = "cidrs"
-	keyProtos = "protos"
+	keyCidrs                = "cidrs"
+	keyProtos               = "protos"
+	keyKubernetes           = "kubernetes"
+	keyKubernetesMasterUrl  = "kubernetes_master_url"
+	keyKubernetesConfigPath = "kubernetes_config_path"
 )
 
 func New(vp *viper.Viper) *cobra.Command {
@@ -32,6 +38,9 @@ func New(vp *viper.Viper) *cobra.Command {
 	flags := cmd.Flags()
 	flags.String(keyCidrs, "0.0.0.0/0", "List of cidr to monitor sevices")
 	flags.String(keyProtos, "HTTP/1,HTTP/2", "List of protocols to monitor services")
+	flags.Bool(keyKubernetes, false, "Using k8s resources enricher")
+	flags.String(keyKubernetesMasterUrl, "", "Kubernetes master url")
+	flags.String(keyKubernetesConfigPath, "", "Kubernetes kubeconfig path")
 	vp.BindPFlags(flags)
 
 	return cmd
@@ -47,12 +56,23 @@ func runPerisco(vp *viper.Viper) error {
 	)
 	defer cancel()
 
-	protos, err := types.ProtoTypesOf(splitToSlice(vp.GetString(keyProtos)))
-	if err != nil {
-		log.Fatal(err)
-	}
-	log.Infof("enabled protocols %v", protos)
+	var clientset *k8s.Clientset
+	if vp.GetBool(keyKubernetes) {
+		masterUrl, kubeconfigPath := vp.GetString(keyKubernetesMasterUrl), vp.GetString(keyKubernetesConfigPath)
+		log.Infof("try to create k8s client with masterUrl(%s), kubeconfigPath(%s)", masterUrl, kubeconfigPath)
 
+		config, err := clientcmd.BuildConfigFromFlags(masterUrl, kubeconfigPath)
+		if err != nil {
+			log.Fatalf("failed to build k8s client config: %w", err)
+		}
+		clientset, err = k8s.NewForConfig(config)
+		if err != nil {
+			log.Fatal(err)
+		}
+		log.Info("created k8s client successfully")
+	}
+
+	log.Info("loading bpf program")
 	recvc, sendc, nf, pm, clean := bpf.LoadBpfProgram()
 	defer clean()
 
@@ -60,7 +80,13 @@ func runPerisco(vp *viper.Viper) error {
 	if err := nf.RegisterCIDRs(cidrs); err != nil {
 		log.Fatal(err)
 	}
-	log.Infof("network filter will only tract %v", cidrs)
+	log.Infof("set cidrs to trace sockets %v", cidrs)
+
+	protos, err := types.ProtoTypesOf(splitToSlice(vp.GetString(keyProtos)))
+	if err != nil {
+		log.Fatal(err)
+	}
+	log.Infof("set protocols to parse payload to %v", protos)
 
 	breaker := perisco.NewProtoDetecter(pm, log.Named("breaker"))
 	parser, err := perisco.NewParser(
@@ -82,18 +108,29 @@ func runPerisco(vp *viper.Viper) error {
 	}
 	msgc := matcher.Run(ctx, reqc, respc)
 
-	// exporter, _ := stdout.New(stdout.WithPretty())
-	exporter, _ := stdout.New()
-	go exporter.Export(ctx, msgc)
+	exporter, err := stdout.New()
+	if err != nil {
+		log.Fatal(err)
+	}
 
-	return func() error {
-		for {
-			select {
-			case <-ctx.Done():
-				return ctx.Err()
-			}
+	if vp.GetBool(keyKubernetes) {
+		s := kubernetes.NewStore()
+		watcher := kubernetes.NewWatcher(log.Named("watcher"), clientset.CoreV1(), s)
+		if err := watcher.WatchEvents(ctx); err != nil {
+			log.Fatal(err)
 		}
-	}()
+		enricher, err := perisco.NewEnricher(log.Named("enricher"), s)
+		if err != nil {
+			log.Fatal(err)
+		}
+		k8sMsgs := enricher.Run(ctx, msgc)
+		go exporter.ExportK8S(ctx, k8sMsgs)
+	} else {
+		go exporter.Export(ctx, msgc)
+	}
+
+	<-ctx.Done()
+	return nil
 }
 
 func splitToSlice(str string) []string {

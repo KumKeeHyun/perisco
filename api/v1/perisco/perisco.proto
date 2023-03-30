@@ -80,20 +80,14 @@ message HTTPHeader {
     string value = 2;
 }
 
-message ProtoMessageInK8S {
-    google.protobuf.Timestamp ts = 1;
-    
-    uint32 pid = 2;
-    IP ip = 3;
-    Layer4 l4 = 4;
-    
-    Layer7 l7 = 5;
+message K8SProtoMessage {
+    ProtoMessage proto_message = 1;
 
-    Endpoint client = 6;
-    Endpoint server = 7;
+    Endpoint client = 2;
+    Endpoint server = 3;
 
-    Service client_service = 8;
-    Service server_service = 9;
+    Service client_service = 4;
+    Service server_service = 5;
 }
 
 message Endpoint {
@@ -113,4 +107,5 @@ message Workload {
 message Service {
     string name = 1;
     string namespace = 2;
+    string type = 3;
 }

@@ -13,8 +13,7 @@ type ResourceStore interface {
 }
 
 type Enricher struct {
-
-	msgc chan *pb.ProtoMessageInK8S
+	msgc chan *pb.K8SProtoMessage
 
 	ctx    context.Context
 	cancel context.CancelFunc
@@ -34,8 +33,8 @@ func NewEnricher(options ...EnricherOption) (*Enricher, error) {
 	}, nil
 }
 
-func (e *Enricher) Run(ctx context.Context, msgc chan *pb.ProtoMessage) chan *pb.ProtoMessageInK8S {
-	e.msgc = make(chan *pb.ProtoMessageInK8S, 100)
+func (e *Enricher) Run(ctx context.Context, msgc chan *pb.ProtoMessage) chan *pb.K8SProtoMessage {
+	e.msgc = make(chan *pb.K8SProtoMessage, 100)
 
 	e.ctx, e.cancel = context.WithCancel(ctx)
 	e.donec = make(chan struct{})
@@ -60,11 +59,7 @@ func (e *Enricher) Run(ctx context.Context, msgc chan *pb.ProtoMessage) chan *pb
 
 func (e *Enricher) enrichProtoMessage(msg *pb.ProtoMessage) {
 	// TODO
-	e.msgc <- &pb.ProtoMessageInK8S{
-		Ts: msg.Ts,
-		Pid: msg.Pid,
-		Ip: msg.Ip,
-		L4: msg.L4,
-		L7: msg.L7,
+	e.msgc <- &pb.K8SProtoMessage{
+		ProtoMessage_: msg,
 	}
 }

@@ -107,5 +107,4 @@ message Workload {
 message Service {
     string name = 1;
     string namespace = 2;
-    string type = 3;
 }

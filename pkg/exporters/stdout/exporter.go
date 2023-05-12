@@ -2,14 +2,16 @@ package stdout
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
+	"io"
 
 	pb "github.com/KumKeeHyun/perisco/api/v1/perisco"
+	"google.golang.org/protobuf/encoding/protojson"
 )
 
 type Exporter struct {
-	encoder json.Encoder
+	w       io.Writer
+	encoder *protojson.MarshalOptions
 
 	ctx    context.Context
 	cancel context.CancelFunc
@@ -22,13 +24,14 @@ func New(options ...Option) (*Exporter, error) {
 		return nil, err
 	}
 
-	encoder := json.NewEncoder(opts.Writer)
+	encoder := &protojson.MarshalOptions{}
 	if opts.Pretty {
-		encoder.SetIndent("", "  ")
+		encoder.Indent = "  "
 	}
 
 	return &Exporter{
-		encoder: *encoder,
+		w:       opts.Writer,
+		encoder: encoder,
 	}, nil
 }
 
@@ -41,7 +44,10 @@ func (e *Exporter) Export(ctx context.Context, msgc chan *pb.ProtoMessage) {
 	for {
 		select {
 		case msg := <-msgc:
-			e.encoder.Encode(msg)
+			if b, err := e.encoder.Marshal(msg); err == nil {
+				e.w.Write(b)
+				e.w.Write([]byte("\n"))
+			}
 		case <-e.ctx.Done():
 			return
 		}
@@ -57,7 +63,10 @@ func (e *Exporter) ExportK8S(ctx context.Context, msgc chan *pb.K8SProtoMessage)
 	for {
 		select {
 		case msg := <-msgc:
-			e.encoder.Encode(msg)
+			if b, err := e.encoder.Marshal(msg); err == nil {
+				e.w.Write(b)
+				e.w.Write([]byte("\n"))
+			}
 		case <-e.ctx.Done():
 			return
 		}

@@ -20,4 +20,4 @@ RUN cp /build/perisco/perisco .
 FROM alpine:latest
 COPY --from=builder /dist/perisco .
 
-ENTRYPOINT ["/perisco", "run"]
+ENTRYPOINT ["/perisco", "start"]

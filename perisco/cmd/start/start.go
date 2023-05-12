@@ -8,7 +8,7 @@ import (
 
 	"github.com/KumKeeHyun/perisco/perisco/bpf"
 	"github.com/KumKeeHyun/perisco/pkg/ebpf/types"
-	"github.com/KumKeeHyun/perisco/pkg/exporters/stdout"
+	"github.com/KumKeeHyun/perisco/pkg/exporter/file"
 	"github.com/KumKeeHyun/perisco/pkg/kubernetes"
 	"github.com/KumKeeHyun/perisco/pkg/logger"
 	"github.com/KumKeeHyun/perisco/pkg/perisco"
@@ -108,7 +108,7 @@ func runPerisco(vp *viper.Viper) error {
 	}
 	msgc := matcher.Run(ctx, reqc, respc)
 
-	exporter, err := stdout.New()
+	exporter, err := file.New()
 	if err != nil {
 		log.Fatal(err)
 	}

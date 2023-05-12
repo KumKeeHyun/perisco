@@ -1,4 +1,4 @@
-package stdout
+package file
 
 import (
 	"fmt"

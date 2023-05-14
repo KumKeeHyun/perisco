@@ -1,8 +1,42 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: perisco-system
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: perisco-account
+  namespace: perisco-system
+---
+kind: ClusterRole
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: perisco-account
+  namespace: perisco-system
+rules:
+  - apiGroups: [""]
+    resources: ["pods", "endpoints"]
+    verbs: ["get", "watch", "list"]
+---
+kind: ClusterRoleBinding
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: perisco-account
+subjects:
+  - kind: ServiceAccount
+    name: perisco-account
+    namespace: perisco-system
+roleRef:
+  kind: ClusterRole
+  name: perisco-account
+  apiGroup: "rbac.authorization.k8s.io"
+---
 apiVersion: apps/v1
 kind: DaemonSet
 metadata:
   name: perisco
-  namespace: kube-system
+  namespace: perisco-system
 spec:
   selector:
     matchLabels:
@@ -12,11 +46,13 @@ spec:
       labels:
         name: perisco
     spec:
+      serviceAccountName: perisco-account
       containers:
       - name: perisco
         image: kbzjung359/perisco:0.0.1
         securityContext:
-          privileged: true
+          capabilities:
+            add: ["CAP_SYS_ADMIN"]
         env:
         - name: PERISCO_CIDRS
           value: 10.244.0.0/16 #,::FFFF:10.244.0.0/112

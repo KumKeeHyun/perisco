@@ -1,0 +1,291 @@
+PUT /_index_template/perisco_k8s_logs_template
+{
+  "index_patterns": [
+    "perisco-k8s-logs-*"
+  ],
+  "priority": 99,
+  "template": {
+    "settings": {
+      "number_of_shards": 1
+    },
+    "mappings": {
+      "properties": {
+        "client": {
+          "properties": {
+            "labels": {
+              "type": "keyword"
+            },
+            "namespace": {
+              "type": "keyword"
+            },
+            "pod_name": {
+              "type": "keyword"
+            }
+          }
+        },
+        "client_service": {
+          "properties": {
+            "name": {
+              "type": "keyword"
+            },
+            "namespace": {
+              "type": "keyword"
+            }
+          }
+        },
+        "proto_message": {
+          "properties": {
+            "ip": {
+              "properties": {
+                "client": {
+                  "type": "keyword"
+                },
+                "ipVersion": {
+                  "type": "keyword"
+                },
+                "server": {
+                  "type": "keyword"
+                }
+              }
+            },
+            "l4": {
+              "properties": {
+                "Protocol": {
+                  "properties": {
+                    "TCP": {
+                      "properties": {
+                        "client_port": {
+                          "type": "long"
+                        },
+                        "server_port": {
+                          "type": "long"
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            },
+            "l7": {
+              "properties": {
+                "latency_ns": {
+                  "type": "long"
+                },
+                "request": {
+                  "properties": {
+                    "Record": {
+                      "properties": {
+                        "Http": {
+                          "properties": {
+                            "headers": {
+                              "properties": {
+                                "key": {
+                                  "type": "keyword"
+                                },
+                                "value": {
+                                  "type": "keyword"
+                                }
+                              }
+                            },
+                            "method": {
+                              "type": "keyword"
+                            },
+                            "protocol": {
+                              "type": "keyword"
+                            },
+                            "url": {
+                              "type": "keyword"
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                },
+                "response": {
+                  "properties": {
+                    "Record": {
+                      "properties": {
+                        "Http": {
+                          "properties": {
+                            "code": {
+                              "type": "long"
+                            },
+                            "headers": {
+                              "properties": {
+                                "key": {
+                                  "type": "keyword"
+                                },
+                                "value": {
+                                  "type": "keyword"
+                                }
+                              }
+                            },
+                            "protocol": {
+                              "type": "keyword"
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            },
+            "pid": {
+              "type": "long"
+            },
+            "ts": {
+              "type": "date"
+            }
+          }
+        },
+        "server": {
+          "properties": {
+            "labels": {
+              "type": "keyword"
+            },
+            "namespace": {
+              "type": "keyword"
+            },
+            "pod_name": {
+              "type": "keyword"
+            }
+          }
+        },
+        "server_service": {
+          "properties": {
+            "name": {
+              "type": "keyword"
+            },
+            "namespace": {
+              "type": "keyword"
+            }
+          }
+        }
+      }
+    }
+  },
+  "version": 1
+}
+
+PUT /_index_template/perisco_logs_template
+{
+  "index_patterns": [
+    "perisco-logs-*"
+  ],
+  "priority": 99,
+  "template": {
+    "settings": {
+      "number_of_shards": 1
+    },
+    "mappings": {
+      "properties": {
+        "ip": {
+          "properties": {
+            "client": {
+              "type": "keyword"
+            },
+            "ipVersion": {
+              "type": "keyword"
+            },
+            "server": {
+              "type": "keyword"
+            }
+          }
+        },
+        "l4": {
+          "properties": {
+            "Protocol": {
+              "properties": {
+                "TCP": {
+                  "properties": {
+                    "client_port": {
+                      "type": "long"
+                    },
+                    "server_port": {
+                      "type": "long"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "l7": {
+          "properties": {
+            "latency_ns": {
+              "type": "long"
+            },
+            "request": {
+              "properties": {
+                "Record": {
+                  "properties": {
+                    "Http": {
+                      "properties": {
+                        "headers": {
+                          "properties": {
+                            "key": {
+                              "type": "keyword"
+                            },
+                            "value": {
+                              "type": "keyword"
+                            }
+                          }
+                        },
+                        "method": {
+                          "type": "keyword"
+                        },
+                        "protocol": {
+                          "type": "keyword"
+                        },
+                        "url": {
+                          "type": "keyword"
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            },
+            "response": {
+              "properties": {
+                "Record": {
+                  "properties": {
+                    "Http": {
+                      "properties": {
+                        "code": {
+                          "type": "long"
+                        },
+                        "headers": {
+                          "properties": {
+                            "key": {
+                              "type": "keyword"
+                            },
+                            "value": {
+                              "type": "keyword"
+                            }
+                          }
+                        },
+                        "protocol": {
+                          "type": "keyword"
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "pid": {
+          "type": "long"
+        },
+        "ts": {
+          "type": "date"
+        }
+      }
+    }
+  },
+  "version": 1
+}

@@ -3,14 +3,21 @@ package file
 import (
 	"context"
 	"errors"
+	"fmt"
 	"io"
+	"os"
 
 	pb "github.com/KumKeeHyun/perisco/api/v1/perisco"
 	"google.golang.org/protobuf/encoding/protojson"
 )
 
+type FileConfig struct {
+	Name   string `mapstructure:"EXPORTER_FILE_NAME"`
+	Pretty bool   `mapstructure:"EXPORTER_FILE_PRETTY"`
+}
+
 type Exporter struct {
-	w       io.Writer
+	w       io.WriteCloser
 	encoder *protojson.MarshalOptions
 
 	ctx    context.Context
@@ -18,19 +25,23 @@ type Exporter struct {
 	donec  chan struct{}
 }
 
-func New(options ...Option) (*Exporter, error) {
-	opts, err := newOptions(options...)
-	if err != nil {
-		return nil, err
+func New(cfg FileConfig) (*Exporter, error) {
+	var err error
+	w := os.Stdout
+	if cfg.Name != "" {
+		w, err = os.OpenFile(cfg.Name, os.O_CREATE|os.O_APPEND|os.O_RDWR, 0644)
+		if err != nil {
+			return nil, fmt.Errorf("failed to create file exporter: %w", err)
+		}
 	}
 
 	encoder := &protojson.MarshalOptions{}
-	if opts.Pretty {
+	if cfg.Pretty {
 		encoder.Indent = "  "
 	}
 
 	return &Exporter{
-		w:       opts.Writer,
+		w:       w,
 		encoder: encoder,
 	}, nil
 }
@@ -58,7 +69,10 @@ func (e *Exporter) ExportK8S(ctx context.Context, msgc chan *pb.K8SProtoMessage)
 	e.ctx, e.cancel = context.WithCancel(ctx)
 	e.donec = make(chan struct{})
 
-	defer close(e.donec)
+	defer func() {
+		e.w.Close()
+		close(e.donec)
+	}()
 
 	for {
 		select {
@@ -73,7 +87,7 @@ func (e *Exporter) ExportK8S(ctx context.Context, msgc chan *pb.K8SProtoMessage)
 	}
 }
 
-func (e *Exporter) Shutdown() error {
+func (e *Exporter) Stop() error {
 	if e.cancel != nil {
 		e.cancel()
 	}

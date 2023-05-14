@@ -1,10 +1,19 @@
-package exporters
+package exporter
 
 import (
 	"context"
 
 	pb "github.com/KumKeeHyun/perisco/api/v1/perisco"
+	"github.com/KumKeeHyun/perisco/pkg/exporter/elasticsearch"
+	"github.com/KumKeeHyun/perisco/pkg/exporter/file"
 )
+
+type Config struct {
+	Exporter string `mapstructure:"EXPORTER"`
+
+	file.FileConfig        `mapstructure:",squash"`
+	elasticsearch.ESConfig `mapstructure:",squash"`
+}
 
 type Exporter interface {
 	Export(ctx context.Context, msgc chan *pb.ProtoMessage)
@@ -12,6 +21,7 @@ type Exporter interface {
 	Stop() error
 }
 
-func New() Exporter {
+func New(cfg Config) Exporter {
+
 	return nil
 }

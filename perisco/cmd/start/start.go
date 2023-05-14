@@ -8,6 +8,7 @@ import (
 
 	"github.com/KumKeeHyun/perisco/perisco/bpf"
 	"github.com/KumKeeHyun/perisco/pkg/ebpf/types"
+	"github.com/KumKeeHyun/perisco/pkg/exporter"
 	"github.com/KumKeeHyun/perisco/pkg/exporter/file"
 	"github.com/KumKeeHyun/perisco/pkg/kubernetes"
 	"github.com/KumKeeHyun/perisco/pkg/logger"
@@ -16,14 +17,6 @@ import (
 	"github.com/spf13/viper"
 	k8s "k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/tools/clientcmd"
-)
-
-const (
-	keyCidrs                = "cidrs"
-	keyProtos               = "protos"
-	keyKubernetes           = "kubernetes"
-	keyKubernetesMasterUrl  = "kubernetes_master_url"
-	keyKubernetesConfigPath = "kubernetes_config_path"
 )
 
 func New(vp *viper.Viper) *cobra.Command {
@@ -36,11 +29,7 @@ func New(vp *viper.Viper) *cobra.Command {
 	}
 
 	flags := cmd.Flags()
-	flags.String(keyCidrs, "0.0.0.0/0", "List of cidr to monitor sevices")
-	flags.String(keyProtos, "HTTP/1,HTTP/2", "List of protocols to monitor services")
-	flags.Bool(keyKubernetes, false, "Using k8s resources enricher")
-	flags.String(keyKubernetesMasterUrl, "", "Kubernetes master url")
-	flags.String(keyKubernetesConfigPath, "", "Kubernetes kubeconfig path")
+	setFlags(flags)
 	vp.BindPFlags(flags)
 
 	return cmd
@@ -108,7 +97,11 @@ func runPerisco(vp *viper.Viper) error {
 	}
 	msgc := matcher.Run(ctx, reqc, respc)
 
-	exporter, err := file.New()
+	var exporterCfg exporter.Config
+	if err = vp.Unmarshal(&exporterCfg); err != nil {
+		log.Fatal(err)
+	}
+	exporter, err := file.New(exporterCfg.FileConfig)
 	if err != nil {
 		log.Fatal(err)
 	}

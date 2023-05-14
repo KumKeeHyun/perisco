@@ -61,8 +61,8 @@ func runPerisco(vp *viper.Viper) error {
 	}
 
 	log.Info("loading bpf program")
-	recvc, sendc, nf, pm, clean := bpf.LoadBpfProgram()
-	defer clean()
+	recvc, sendc, nf, pm, cleanUpBPF := bpf.LoadBpfProgram()
+	defer cleanUpBPF()
 
 	cidrs := splitToSlice(vp.GetString(keyCidrs))
 	if err := nf.RegisterCIDRs(cidrs); err != nil {
@@ -86,6 +86,7 @@ func runPerisco(vp *viper.Viper) error {
 		log.Fatal(err)
 	}
 	reqc, respc := parser.Run(ctx, recvc, sendc)
+	defer parser.Stop()
 
 	matcher, err := perisco.NewMatcher(
 		perisco.MatcherWithProtocols(protos),
@@ -95,6 +96,7 @@ func runPerisco(vp *viper.Viper) error {
 		log.Fatal(err)
 	}
 	msgc := matcher.Run(ctx, reqc, respc)
+	defer matcher.Stop()
 
 	var exporterCfg exporter.Config
 	if err = vp.Unmarshal(&exporterCfg); err != nil {
@@ -104,6 +106,7 @@ func runPerisco(vp *viper.Viper) error {
 	if err != nil {
 		log.Fatal(err)
 	}
+	defer exporter.Stop()
 
 	if vp.GetBool(keyKubernetes) {
 		s := kubernetes.NewStore()
@@ -111,11 +114,13 @@ func runPerisco(vp *viper.Viper) error {
 		if err := watcher.WatchEvents(ctx); err != nil {
 			log.Fatal(err)
 		}
+		defer watcher.Stop()
 		enricher, err := perisco.NewEnricher(log.Named("enricher"), s)
 		if err != nil {
 			log.Fatal(err)
 		}
 		k8sMsgs := enricher.Run(ctx, msgc)
+		defer enricher.Stop()
 		go exporter.ExportK8S(ctx, k8sMsgs)
 	} else {
 		go exporter.Export(ctx, msgc)

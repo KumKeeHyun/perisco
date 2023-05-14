@@ -2,6 +2,7 @@ package perisco
 
 import (
 	"context"
+	"errors"
 
 	pb "github.com/KumKeeHyun/perisco/api/v1/perisco"
 	"github.com/KumKeeHyun/perisco/pkg/ebpf/types"
@@ -90,4 +91,18 @@ func (rrm *reqRespMatcher) tryMatchResponse(resp *protocols.Response) {
 	if msg := m.MatchResponse(resp); msg != nil {
 		rrm.msgc <- msg
 	}
+}
+
+func (rrm *reqRespMatcher) Stop() error {
+	if rrm.cancel != nil {
+		rrm.cancel()
+	}
+	<-rrm.donec
+	rrm.log.Info("matcher stopped")
+
+	err := rrm.ctx.Err()
+	if !errors.Is(err, context.Canceled) {
+		return err
+	}
+	return nil
 }

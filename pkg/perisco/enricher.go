@@ -2,6 +2,7 @@ package perisco
 
 import (
 	"context"
+	"errors"
 
 	pb "github.com/KumKeeHyun/perisco/api/v1/perisco"
 	"go.uber.org/zap"
@@ -62,4 +63,18 @@ func (e *Enricher) enrichProtoMessage(msg *pb.ProtoMessage) {
 		ClientService: e.store.GetServiceInfo(msg.Ip.Client),
 		ServerService: e.store.GetServiceInfo(msg.Ip.Server),
 	}
+}
+
+func (e *Enricher) Stop() error {
+	if e.cancel != nil {
+		e.cancel()
+	}
+	<-e.donec
+	e.log.Info("enricher stopped")
+
+	err := e.ctx.Err()
+	if !errors.Is(err, context.Canceled) {
+		return err
+	}
+	return nil
 }

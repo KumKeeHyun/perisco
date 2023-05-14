@@ -124,11 +124,12 @@ func (rrp *reqRespParser) tryParseResponse(msg *types.MsgEvent) {
 
 }
 
-func (rrp *reqRespParser) Close() error {
+func (rrp *reqRespParser) Stop() error {
 	if rrp.cancel != nil {
 		rrp.cancel()
 	}
 	<-rrp.donec
+	rrp.log.Info("parser stopped")
 
 	err := rrp.ctx.Err()
 	if !errors.Is(err, context.Canceled) {

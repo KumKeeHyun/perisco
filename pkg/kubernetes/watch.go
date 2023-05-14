@@ -39,6 +39,7 @@ func (w *watcher) WatchEvents(ctx context.Context) error {
 	w.ctx, w.cancel = context.WithCancel(ctx)
 	w.donec = make(chan struct{})
 
+	// TODO: append retry logic
 	epWatch, err := w.client.Endpoints("").Watch(w.ctx, metav1.ListOptions{})
 	if err != nil {
 		return fmt.Errorf("failed to watch endpoints: %w", err)
@@ -70,12 +71,12 @@ func (w *watcher) WatchEvents(ctx context.Context) error {
 	return nil
 }
 
-func (w *watcher) Shutdown() error {
-	w.log.Info("watcher shutdown")
+func (w *watcher) Stop() error {
 	if w.cancel != nil {
 		w.cancel()
 	}
 	<-w.donec
+	w.log.Info("watcher stopped")
 
 	err := w.ctx.Err()
 	if !errors.Is(err, context.Canceled) {

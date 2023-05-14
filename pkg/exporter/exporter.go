@@ -2,6 +2,7 @@ package exporter
 
 import (
 	"context"
+	"fmt"
 
 	pb "github.com/KumKeeHyun/perisco/api/v1/perisco"
 	"github.com/KumKeeHyun/perisco/pkg/exporter/elasticsearch"
@@ -21,7 +22,13 @@ type Exporter interface {
 	Stop() error
 }
 
-func New(cfg Config) Exporter {
-
-	return nil
+func New(cfg Config) (Exporter, error) {
+	switch cfg.Exporter {
+	case "file":
+		return file.New(cfg.FileConfig)
+	case "elasticsearch":
+		return elasticsearch.New(cfg.ESConfig)
+	default:
+		return nil, fmt.Errorf("invalid exporter type, expected(file, elasticsearch)")
+	}
 }

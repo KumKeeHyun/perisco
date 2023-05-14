@@ -9,7 +9,6 @@ import (
 	"github.com/KumKeeHyun/perisco/perisco/bpf"
 	"github.com/KumKeeHyun/perisco/pkg/ebpf/types"
 	"github.com/KumKeeHyun/perisco/pkg/exporter"
-	"github.com/KumKeeHyun/perisco/pkg/exporter/file"
 	"github.com/KumKeeHyun/perisco/pkg/kubernetes"
 	"github.com/KumKeeHyun/perisco/pkg/logger"
 	"github.com/KumKeeHyun/perisco/pkg/perisco"
@@ -101,7 +100,7 @@ func runPerisco(vp *viper.Viper) error {
 	if err = vp.Unmarshal(&exporterCfg); err != nil {
 		log.Fatal(err)
 	}
-	exporter, err := file.New(exporterCfg.FileConfig)
+	exporter, err := exporter.New(exporterCfg)
 	if err != nil {
 		log.Fatal(err)
 	}

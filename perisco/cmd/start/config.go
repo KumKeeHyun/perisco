@@ -8,7 +8,7 @@ const (
 
 	keyKubernetes           = "kubernetes"
 	keyKubernetesMasterUrl  = "kubernetes_master_url"
-	keyKubernetesConfigPath = "kubernetesconfig_path"
+	keyKubernetesConfigPath = "kubernetes_config_path"
 
 	keyExporter                          = "exporter"
 	keyExporterFileName                  = "exporter_file_name"

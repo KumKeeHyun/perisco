@@ -12,6 +12,7 @@ import (
 	"github.com/KumKeeHyun/perisco/pkg/kubernetes"
 	"github.com/KumKeeHyun/perisco/pkg/logger"
 	"github.com/KumKeeHyun/perisco/pkg/perisco"
+	"github.com/cilium/ebpf/rlimit"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 	k8s "k8s.io/client-go/kubernetes"
@@ -58,6 +59,10 @@ func runPerisco(vp *viper.Viper) error {
 			log.Fatal(err)
 		}
 		log.Info("created k8s client successfully")
+	}
+
+	if err := rlimit.RemoveMemlock(); err != nil {
+		log.Fatal(err)
 	}
 
 	log.Info("loading bpf program")

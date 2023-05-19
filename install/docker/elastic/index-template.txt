@@ -18,12 +18,12 @@ PUT /_index_template/perisco_k8s_logs_template
             "namespace": {
               "type": "keyword"
             },
-            "pod_name": {
+            "podName": {
               "type": "keyword"
             }
           }
         },
-        "client_service": {
+        "clientService": {
           "properties": {
             "name": {
               "type": "keyword"
@@ -33,7 +33,7 @@ PUT /_index_template/perisco_k8s_logs_template
             }
           }
         },
-        "proto_message": {
+        "protoMessage": {
           "properties": {
             "ip": {
               "properties": {
@@ -54,10 +54,10 @@ PUT /_index_template/perisco_k8s_logs_template
                   "properties": {
                     "TCP": {
                       "properties": {
-                        "client_port": {
+                        "clientPort": {
                           "type": "long"
                         },
-                        "server_port": {
+                        "serverPort": {
                           "type": "long"
                         }
                       }
@@ -68,7 +68,7 @@ PUT /_index_template/perisco_k8s_logs_template
             },
             "l7": {
               "properties": {
-                "latency_ns": {
+                "latencyNs": {
                   "type": "long"
                 },
                 "request": {
@@ -148,12 +148,12 @@ PUT /_index_template/perisco_k8s_logs_template
             "namespace": {
               "type": "keyword"
             },
-            "pod_name": {
+            "podName": {
               "type": "keyword"
             }
           }
         },
-        "server_service": {
+        "serverService": {
           "properties": {
             "name": {
               "type": "keyword"
@@ -200,10 +200,10 @@ PUT /_index_template/perisco_logs_template
               "properties": {
                 "TCP": {
                   "properties": {
-                    "client_port": {
+                    "clientPort": {
                       "type": "long"
                     },
-                    "server_port": {
+                    "serverPort": {
                       "type": "long"
                     }
                   }
@@ -214,7 +214,7 @@ PUT /_index_template/perisco_logs_template
         },
         "l7": {
           "properties": {
-            "latency_ns": {
+            "latencyNs": {
               "type": "long"
             },
             "request": {

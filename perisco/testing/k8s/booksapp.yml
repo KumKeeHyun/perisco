@@ -226,32 +226,40 @@ spec:
         - "-initial-delay=5s"
         - "-sleep=300ms"
         - "webapp:7000"
-# ---
-# kind: Deployment
-# apiVersion: apps/v1
-# metadata:
-#   name: traffic
-#   labels:
-#     app: traffic
-#     project: booksapp
-#     app.kubernetes.io/part-of: booksapp
-# spec:
-#   replicas: 1
-#   selector:
-#     matchLabels:
-#       app: traffic
-#       project: booksapp
-#   template:
-#     metadata:
-#       labels:
-#         app: traffic
-#         project: booksapp
-#     spec:
-#       dnsPolicy: ClusterFirst
-#       serviceAccountName: traffic
-#       containers:
-#       - name: traffic
-#         image: luksa/kubia:v1 
-#         command: ["/bin/sh"]
-#         args: ["-c", "while true; do curl http://webapp:7000; sleep 1;done"]
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: traffic-manual
+  labels:
+    app: traffic-manual
+    project: booksapp
+---
+kind: Deployment
+apiVersion: apps/v1
+metadata:
+  name: traffic-manual
+  labels:
+    app: traffic-manual
+    project: booksapp
+    app.kubernetes.io/part-of: booksapp
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: traffic-manual
+      project: booksapp
+  template:
+    metadata:
+      labels:
+        app: traffic-manual
+        project: booksapp
+    spec:
+      dnsPolicy: ClusterFirst
+      serviceAccountName: traffic-manual
+      containers:
+      - name: traffic-manual
+        image: luksa/kubia:v1 
+        command: ["/bin/sh"]
+        args: ["-c", "while true; do curl http://webapp:7000; sleep 1;done"]
 

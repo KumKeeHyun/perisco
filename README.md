@@ -15,29 +15,29 @@ Perisco use [cilium/ebpf](https://github.com/cilium/ebpf) to load [eBPF](https:/
 
 ### There is already awesome project(cilium) as a network monitoring solution in k8s
 
-`cilium-hubble` 솔루션은 k8s cni로 cilium-cni를 사용하는 것을 전제로 한다. 즉 cilium-cni에 종속적이다. perisco는 cni 독립적인 모니터링 솔루션을 제공하는 것을 목표로 한다. 
+`cilium-hubble` 모니터링 솔루션은 k8s cni로 cilium-cni를 사용하는 것을 전제로 합니다. Perisco 프로젝트는 특정한 cni에 종속되지 않는 독립적인 모니터링 솔루션을 제공하는 것을 목표로 합니다. 
 
 ### What is the difference from pixie?
 
-그럼 같은 방식으로 4계층 패킷을 읽어서 파싱하는 pixie와 다른점은 무엇인가? pixie는 암호화된 프로토콜인 http2, gRPC를 지원하기 위해 4계층이 아닌 7계층(uprobe)를 트레이싱하는 우회기법을 사용하고 있다. perisco는 암호화된 패킷은 깔끔하게 포기해서 구조를 최대한 단순하게 유지하려 한다. 
+같은 방식(eBPF 활용)으로 4계층 패킷을 읽어서 파싱하는 pixie 프로젝트가 이미 존재합니다. pixie는 암호화된 프로토콜인 http2, gRPC를 지원하기 위해 4계층이 아닌 7계층(uprobe)를 트레이싱하는 우회기법을 사용하고 있고, 헤더를 최대 30KiB 까지 읽는 단점들이 있습니다. Perisco 프로젝트는 암호화된 패킷은 깔끔하게 포기해서 구조를 간단하게 유지하면서 효율적인 처리를 할 수 있는 방향으로 진행했습니다.
 
-perisco는 ingress-controller에만 암호화를 사용하고 마이크로서비스간 통신은 암호화를 사용하지 않는 사용 사례를 전제로 한다. 즉, http2는 h2c(HTTP2 Cleartext), gRPC는 `insecure.NewCredentials()` 옵션을 사용하는 것을 전제로 한다.
+Perisco는 ingress-controller에만 암호화를 사용하고 클러스터 내부 파드간 통신은 암호화를 사용하지 않는 사용 사례를 전제로 합니다. 암호화 계층이 내장되어있는 HTTP/2(+gRPC)의 경우, http2는 h2c(HTTP2 Cleartext), gRPC는 `insecure.NewCredentials()` 옵션을 사용하는 것을 전제로 합니다.
 
 ## Architecture
 
-perisco는 DaemonSet을 통해 클러스터에 배포된 후, bpf 프로그램을 로드해서 특정 CIDR 범위의 네트워크 요청/응답을 추적한다.
+Perisco-agent는 DaemonSet을 통해 클러스터에 배포된 후, bpf 프로그램을 로드해서 특정 CIDR 범위의 네트워크 요청/응답을 추적합니다.
 
 <img alt="k8s deployment" src="https://user-images.githubusercontent.com/44857109/194702483-1b6026b2-0591-41d8-a6f7-dca1ab140ce9.png">
 
-bpf 프로그램은 `sock_sendmsg`, `sock_recvmsg` 함수에 Hook을 걸어 패킷의 데이터부분을 응용 프로그램쪽으로 전달하는 역할을 한다. 이때 캡쳐하는 데이터의 크기는 최대 4KB이다. 다르게 말하면 프로토콜의 바디부분을 제외하고 헤더 부분의 크기가 4KB 이상이면 해당 요청/응답은 응용 프로그램쪽에서 파싱할 수 없다.
+응용 프로그램은 패킷의 데이터를 7계층 프로토콜로 파싱해서 네트워크 로그를 생성하는 작업을 수행합니다. 생성한 데이터는 저장을 위해 파일, 엘라스틱서치, 카프카(TODO) 등의 저장소로 전달합니다.
 
-`inet_accept`에 Hook을 걸어서 CIDR 기반으로 추적할 소켓의 범위를 제한한다.
+<img alt="persico internal" src="https://user-images.githubusercontent.com/44857109/236674811-4d86433d-adc6-409b-bee5-7f39e07d1dfe.png">
+
+### eBPF
 
 <img alt="bpf map" src="https://user-images.githubusercontent.com/44857109/236674728-37ffdf68-19b2-4d89-9710-8c3530bb3b77.png">
 
-응용 프로그램은 패킷의 데이터를 특정 프로토콜로 파싱한 뒤, 별개의 요청과 응답 부분을 매칭해서 하나의 데이터로 묶는 작업을 한다. 생성한 데이터는 영구 저장을 위해 파일, 카프카(TODO), 엘라스틱서치 등의 저장소로 전달한다. 추가적으로 Hubble-UI를 사용할 수 있도록 Hubble Flow API를 구현할 예정이다.
-
-<img alt="persico internal" src="https://user-images.githubusercontent.com/44857109/236674811-4d86433d-adc6-409b-bee5-7f39e07d1dfe.png">
+bpf 프로그램은 `inet_accept`, `sock_sendmsg`, `sock_recvmsg` Hook Points를 활용해서 파드간 송수신 이벤트를 추적하고 응용 프로그램쪽으로 전달하는 역할을 합니다. 이때 캡쳐하는 데이터의 크기는 최대 4KB이다. 다르게 말하면 프로토콜의 바디부분을 제외하고 헤더 부분의 크기가 4KB 이상이면 해당 요청/응답은 응용 프로그램쪽에서 파싱할 수 없습니다.
 
 ### Parser
 
@@ -50,7 +50,6 @@ bpf 프로그램은 `sock_sendmsg`, `sock_recvmsg` 함수에 Hook을 걸어 패�
 
 하는 구조입니다.
 
-
 ### Matcher
 
 <img alt="matcher" src="https://user-images.githubusercontent.com/44857109/236674831-c0781442-09f2-4f46-9984-5e09d7b201a8.png">
@@ -58,14 +57,12 @@ bpf 프로그램은 `sock_sendmsg`, `sock_recvmsg` 함수에 Hook을 걸어 패�
 각 소켓마다 매쳐 인스턴스를 생성해서 프로토콜의 헤더 구조에 따라 요청과 응답을 하나의 네트워크 로그로 합쳐주는 구조입니다.
 HTTP 1.1의 파이프라인 같이 TCP 연결을 재사용하는 형태의 프로토콜을 고려해서 설계했습니다.
 
-
 ### Exporter
 
 <img alt="exporter" src="https://github.com/KumKeeHyun/perisco/assets/44857109/c8c55bac-3abb-4759-bb90-f5dcf08b83ab">
 
 프로세스 실행 시 전달받은 설정값에 따라서 인스턴스를 생성하고 
 앞에서 생성된 메시지를 외부저장소에 저장하는 구조입니다.
-
 
 ## Example
 

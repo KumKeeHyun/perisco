@@ -64,12 +64,26 @@ func New(cfg ESConfig) (*Exporter, error) {
 		return nil, fmt.Errorf("failed to create elasticsearch exporter: %w", err)
 	}
 
+	resp, err := esCli.API.Indices.PutIndexTemplate("perisco_k8s_logs_template", strings.NewReader(k8sLogsIndexTemplates))
+	if err != nil {
+		return nil, fmt.Errorf("failed to request PutIndexTemplate perisco_k8s_logs_template: %w", err)
+	}
+	if resp.IsError() {
+		return nil, fmt.Errorf("PutIndexTemplate perisco_k8s_logs_template error, status=%s", resp.Status())
+	}
+	resp, err = esCli.API.Indices.PutIndexTemplate("perisco_logs_template", strings.NewReader(logsIndexTemplates))
+	if err != nil {
+		return nil, fmt.Errorf("failed to request PutIndexTemplate perisco_logs_template: %w", err)
+	}
+	if resp.IsError() {
+		return nil, fmt.Errorf("PutIndexTemplate perisco_logs_template error, status=%s", resp.Status())
+	}
+
 	indexer, err := esutil.NewBulkIndexer(esutil.BulkIndexerConfig{
 		Client:        esCli,
 		NumWorkers:    1,
 		FlushInterval: time.Second * 10,
 		OnError: func(ctx context.Context, err error) {
-			// TODO: logging
 			logger.DefualtLogger.Warnf("bulk indexing error: %w", err)
 		},
 	})

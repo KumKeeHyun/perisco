@@ -1,0 +1,35 @@
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: perisco
+  namespace: {{ .Release.Namespace }}
+spec:
+  selector:
+    matchLabels:
+      name: perisco
+  template:
+    metadata:
+      labels:
+        name: perisco
+    spec:
+      serviceAccountName: perisco-account
+      containers:
+      - name: perisco-agent
+        image: {{ .Values.perisco.image.repository }}:{{ .Values.perisco.image.tag }}
+        imagePullPolicy: {{ .Values.perisco.image.pullPolicy }}
+        securityContext:
+          privileged: true
+          capabilities:
+            add: 
+            - CAP_SYS_ADMIN
+        env:
+        - name: PERISCO_CIDRS
+          value: {{ .Values.perisco.config.cidrs }}
+        - name: PERISCO_PROTOS
+          value: {{ .Values.perisco.config.protocols }}
+        - name: PERISCO_KUBERNETES
+          value: 'true'
+        - name: PERISCO_EXPORTER
+          value: {{ .Values.perisco.exporter.name }}
+        - name: PERISCO_EXPORTER_ELASTICSEARCH_ADDRESSES
+          value: {{ .Values.perisco.exporter.elasticsearch.addresses }}

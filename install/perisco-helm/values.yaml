@@ -13,6 +13,13 @@ perisco:
     elasticsearch:
       addresses: http://elasticsearch-master:9200
 
+  resources:
+    requests:
+      memory: "512Mi"
+      cpu: "150m"
+    limits:
+      memory: "2048Mi"
+
 elasticsearch:
   enabled: true
 
@@ -30,9 +37,10 @@ grafana:
   adminPassword: admin
 
   service:
-    type: LoadBalancer
-    port: 13000
+    type: NodePort
+    port: 3000
     targetPort: 3000
+    nodePort: 31000
 
   datasources:
     datasources.yaml:

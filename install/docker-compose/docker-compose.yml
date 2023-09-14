@@ -1,0 +1,33 @@
+version: '3'
+services:
+  elasticsearch:
+    image: elasticsearch:7.17.9
+    environment:
+      - cluster.name=elasticsearch
+      - node.name=es
+      - discovery.type=single-node
+    volumes:
+      - ./elasticsearch/data:/elasticsearch/data
+    ports:
+      - 9200:9200
+  kibana:
+    image: kibana:7.17.9
+    environment:
+      ELASTICSEARCH_HOSTS: http://elasticsearch:9200
+      ELASTICSEARCH_URL: http://elasticsearch:9200
+    ports:
+      - 5601:5601
+  grafana:
+    image: grafana/grafana:9.4.7
+    ports:
+      - 3000:3000
+  perisco:
+    image: kbzjung359/perisco:0.0.1
+    privileged: true
+    environment:
+      - PERISCO_PROTOS=HTTP/1
+      - PERISCO_EXPORTER=elasticsearch
+      - PERISCO_EXPORTER_ELASTICSEARCH_ADDRESSES=http://elasticsearch:9200
+    depends_on:
+        elasticsearch:
+            condition: service_completed_successfully

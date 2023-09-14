@@ -13,10 +13,21 @@ spec:
         name: perisco
     spec:
       serviceAccountName: perisco-account
+      initContainers:
+        - name: wait-for-elasticsaerch
+          image: curlimages/curl:8.2.1
+          imagePullPolicy: IfNotPresent
+          command: ["/bin/sh", "-c"]
+          args:
+            [
+              "while [[ $(curl -sw '%{http_code}' http://elasticsearch-master:9200 -o /dev/null) -ne 200 ]]; do sleep 5; echo 'Waiting for the MongoDB to be ready...'; done; echo 'Connection with Elasticsearch established'",
+            ]
       containers:
       - name: perisco-agent
         image: {{ .Values.perisco.image.repository }}:{{ .Values.perisco.image.tag }}
         imagePullPolicy: {{ .Values.perisco.image.pullPolicy }}
+        resources:
+          {{- toYaml .Values.perisco.resources | nindent 12 }}
         securityContext:
           privileged: true
           capabilities:

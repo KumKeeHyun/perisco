@@ -1,0 +1,13 @@
+# docker run -it --network mysql_default --rm mysql:5.6 mysql -hmysql -uroot -p
+version: '3.1'
+
+services:
+  mysql:
+    image: mysql:5.6
+    container_name: mysql
+    ports:
+      - "3306:3306"
+    restart: always
+    environment:
+      MYSQL_ROOT_PASSWORD: example
+      MYSQL_DATABASE: test

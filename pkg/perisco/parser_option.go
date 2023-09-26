@@ -8,6 +8,7 @@ import (
 	"github.com/KumKeeHyun/perisco/pkg/perisco/protocols"
 	"github.com/KumKeeHyun/perisco/pkg/perisco/protocols/http1"
 	"github.com/KumKeeHyun/perisco/pkg/perisco/protocols/http2"
+	"github.com/KumKeeHyun/perisco/pkg/perisco/protocols/mysql"
 	"go.uber.org/zap"
 )
 
@@ -55,7 +56,7 @@ func protoParserOf(pt types.ProtocolType) protocols.ProtoParser {
 	case types.HTTP2:
 		return http2.NewHTTP2Parser()
 	case types.MySQL:
-		return nil
+		return mysql.NewMySQLParser()
 	default:
 		return nil
 	}

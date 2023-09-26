@@ -53,12 +53,14 @@ message Layer7 {
 message Request {
     oneof record {
         HTTPRequest http = 1;
+        MySQLRequest mysql = 2;
     }
 }
 
 message Response {
     oneof record {
         HTTPResponse http = 1;
+        MySQLResponse mysql = 2;
     }
 }
 
@@ -78,6 +80,16 @@ message HTTPResponse {
 message HTTPHeader {
     string key = 1;
     string value = 2;
+}
+
+message MySQLRequest {
+    uint32 payload_length = 1;
+    uint32 sequence_id = 2;
+}
+
+message MySQLResponse {
+    uint32 payload_length = 1;
+    uint32 sequence_id = 2;
 }
 
 message K8SProtoMessage {

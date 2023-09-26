@@ -8,6 +8,7 @@ import (
 	"github.com/KumKeeHyun/perisco/pkg/perisco/protocols"
 	"github.com/KumKeeHyun/perisco/pkg/perisco/protocols/http1"
 	"github.com/KumKeeHyun/perisco/pkg/perisco/protocols/http2"
+	"github.com/KumKeeHyun/perisco/pkg/perisco/protocols/mysql"
 	"go.uber.org/zap"
 )
 
@@ -57,6 +58,8 @@ func protoMatcherOf(pt types.ProtocolType) protocols.ProtoMatcher {
 		return http1.NewHTTP1Matcher()
 	case types.HTTP2:
 		return http2.NewHTTP2Matcher()
+	case types.MySQL:
+		return mysql.NewMySQLMatcher()
 	default:
 		return nil
 	}

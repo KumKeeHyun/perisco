@@ -152,6 +152,10 @@ func skipPrefaceIfExists(r *bytes.Reader) {
 	}
 }
 
+func (p *HTTP2Parser) EnableInferRequest() bool {
+	return true
+}
+
 // ParseResponse implements ProtoParser
 func (p *HTTP2Parser) ParseResponse(sockKey *types.SockKey, msg []byte) ([]protocols.ProtoResponse, error) {
 	br := bytes.NewReader(msg)
@@ -177,4 +181,8 @@ func (p *HTTP2Parser) ParseResponse(sockKey *types.SockKey, msg []byte) ([]proto
 		return nil, protocols.ErrNotExistsHeader
 	}
 	return rrs, nil
+}
+
+func (p *HTTP2Parser) EnableInferResponse() bool {
+	return true
 }

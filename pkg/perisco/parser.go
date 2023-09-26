@@ -29,7 +29,7 @@ func NewParser(options ...ParserOption) (*reqRespParser, error) {
 	if err != nil {
 		return nil, err
 	}
-	
+
 	if len(opts.parsers) == 0 {
 		return nil, fmt.Errorf("failed to contruct parser: empty ProtoParsers")
 	}
@@ -77,9 +77,16 @@ func (rrp *reqRespParser) Run(ctx context.Context, recvc, sendc chan *types.MsgE
 
 func (rrp *reqRespParser) tryParseRequest(msg *types.MsgEvent) {
 	p := rrp.findParser(msg)
+	if p == nil {
+		return
+	}
+
 	rrs, err := p.ParseRequest(&msg.SockKey, msg.Bytes())
 	if err != nil {
 		rrp.breaker.Fail(msg.SockKey)
+		return
+	}
+	if rrs == nil {
 		return
 	}
 
@@ -110,6 +117,9 @@ func (rrp *reqRespParser) tryParseResponse(msg *types.MsgEvent) {
 	rrs, err := p.ParseResponse(&msg.SockKey, msg.Bytes())
 	if err != nil {
 		rrp.breaker.Fail(msg.SockKey)
+		return
+	}
+	if rrs == nil {
 		return
 	}
 

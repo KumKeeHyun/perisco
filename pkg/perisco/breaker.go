@@ -104,7 +104,7 @@ func (pd *protoDetecter) Fail(sockKey types.SockKey) {
 			failed.skipped = false
 		}
 
-		pd.log.Infof("start to skip endpoint%s", &ek)
+		pd.log.Infof("start to skip endpoint %s", &ek)
 	}
 	pd.failed[ek] = failed
 }

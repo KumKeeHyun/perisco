@@ -126,6 +126,10 @@ func validMethod(req *http.Request) bool {
 	}
 }
 
+func (p *HTTP1Parser) EnableInferRequest() bool {
+	return true
+}
+
 // ParseResponse implements ProtoParser
 func (p *HTTP1Parser) ParseResponse(_ *types.SockKey, msg []byte) ([]protocols.ProtoResponse, error) {
 	r := p.respReader
@@ -139,4 +143,8 @@ func (p *HTTP1Parser) ParseResponse(_ *types.SockKey, msg []byte) ([]protocols.P
 	resp.Body.Close()
 
 	return []protocols.ProtoResponse{&HTTP1Response{Record: resp}}, nil
+}
+
+func (p *HTTP1Parser) EnableInferResponse() bool {
+	return true
 }

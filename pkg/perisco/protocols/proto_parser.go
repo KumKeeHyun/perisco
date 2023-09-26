@@ -26,7 +26,9 @@ type ProtoResponse interface {
 type ProtoParser interface {
 	ProtoType() types.ProtocolType
 	ParseRequest(sockKey *types.SockKey, msg []byte) ([]ProtoRequest, error)
+	EnableInferRequest() bool
 	ParseResponse(sockKey *types.SockKey, msg []byte) ([]ProtoResponse, error)
+	EnableInferResponse() bool
 }
 
 type UnknownParser struct {
@@ -47,6 +49,9 @@ func (*UnknownParser) ProtoType() types.ProtocolType { return types.PROTO_UNKNOW
 // ParseRequest implements ProtoParser
 func (up *UnknownParser) ParseRequest(sockKey *types.SockKey, msg []byte) ([]ProtoRequest, error) {
 	for _, p := range up.parsers {
+		if !p.EnableInferRequest() {
+			continue
+		}
 		if rr, err := p.ParseRequest(sockKey, msg); err == nil {
 			return rr, nil
 		}
@@ -54,12 +59,23 @@ func (up *UnknownParser) ParseRequest(sockKey *types.SockKey, msg []byte) ([]Pro
 	return nil, ErrUnknownProtocolMsg
 }
 
+func (up *UnknownParser) EnableInferRequest() bool {
+	return true
+}
+
 // ParseResponse implements ProtoParser
 func (up *UnknownParser) ParseResponse(sockKey *types.SockKey, msg []byte) ([]ProtoResponse, error) {
 	for _, p := range up.parsers {
+		if !p.EnableInferResponse() {
+			continue
+		}
 		if rr, err := p.ParseResponse(sockKey, msg); err == nil {
 			return rr, nil
 		}
 	}
 	return nil, ErrUnknownProtocolMsg
+}
+
+func (up *UnknownParser) EnableInferResponse() bool {
+	return true
 }

@@ -64,8 +64,8 @@ enum protocol_type {
 
 	HTTP1,
 	HTTP2,
+	MySQL,
 
-	RESERVED1,
 	RESERVED2,
 	RESERVED3,
 	RESERVED4,

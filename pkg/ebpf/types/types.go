@@ -127,11 +127,11 @@ func (ip *Ip) Protobuf() *pb.IP {
 		Server: ip.GetSrcIp(),
 	}
 	switch ip.IpVersion {
-	case IPv4: 
+	case IPv4:
 		res.IpVersion = pb.IPVersion_IPv4
-	case IPv6: 
+	case IPv6:
 		res.IpVersion = pb.IPVersion_IPv6
-	default: 
+	default:
 		res.IpVersion = pb.IPVersion_IP_UNKNOWN
 	}
 	return res
@@ -215,8 +215,8 @@ const (
 
 	HTTP1
 	HTTP2
+	MySQL
 
-	PROTO_RESERVED1
 	PROTO_RESERVED2
 	PROTO_RESERVED3
 	PROTO_RESERVED4
@@ -227,6 +227,7 @@ var ProtocolTypeName = map[ProtocolType]string{
 	PROTO_UNKNOWN: "UNKNOWN",
 	HTTP1:         "HTTP/1",
 	HTTP2:         "HTTP/2",
+	MySQL:         "MySQL",
 }
 
 func (p ProtocolType) String() string {
@@ -256,6 +257,7 @@ func ProtoTypesOf(ps []string) ([]ProtocolType, error) {
 	}
 	return res, nil
 }
+
 type IpNetwork struct {
 	IpAddr [16]byte
 	IpMask [16]byte

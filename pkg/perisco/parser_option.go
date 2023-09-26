@@ -54,6 +54,8 @@ func protoParserOf(pt types.ProtocolType) protocols.ProtoParser {
 		return http1.NewHTTP1Parser()
 	case types.HTTP2:
 		return http2.NewHTTP2Parser()
+	case types.MySQL:
+		return nil
 	default:
 		return nil
 	}

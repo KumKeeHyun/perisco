@@ -54,4 +54,9 @@ func main() {
 		}
 		log.Println(name, price)
 	}
+
+	_, err = db.ExecContext(context.Background(), "DELETE FROM product Where product_name = 'testname'")
+	if err != nil {
+		log.Fatal(err)
+	}
 }

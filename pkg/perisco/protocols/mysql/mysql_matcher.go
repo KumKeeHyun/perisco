@@ -4,6 +4,7 @@ import (
 	"container/list"
 
 	"github.com/KumKeeHyun/perisco/api/v1/perisco"
+	pb "github.com/KumKeeHyun/perisco/api/v1/perisco"
 	"github.com/KumKeeHyun/perisco/pkg/perisco/protocols"
 )
 
@@ -33,14 +34,34 @@ func (m *MySQLMatcher) MatchRequest(req *protocols.Request) *perisco.ProtoMessag
 }
 
 func (m *MySQLMatcher) findResp(req *protocols.Request) *protocols.Response {
+	cmd := req.Record.(*MySQLRequest).Command
+	if notExpectResponse(cmd) {
+		return &protocols.Response{
+			Timestamp: req.Timestamp,
+			SockKey:   req.SockKey,
+			Record:    &MySQLResponse{},
+		}
+	}
+
 	for e := m.respQueue.Front(); e != nil; e = e.Next() {
 		resp := e.Value.(*protocols.Response)
 
-		if resp.SockKey == req.SockKey {
+		if resp.SockKey == req.SockKey && resp.Timestamp > req.Timestamp {
 			return m.respQueue.Remove(e).(*protocols.Response)
 		}
 	}
 	return nil
+}
+
+func notExpectResponse(cmd pb.MySQLCommand) bool {
+	switch cmd {
+	case pb.MySQLCommand_COM_QUIT,
+		pb.MySQLCommand_COM_STMT_CLOSE,
+		pb.MySQLCommand_COM_STMT_SEND_LONG_DATA:
+		return true
+	default:
+		return false
+	}
 }
 
 // MatchResponse implements protocols.ProtoMatcher.
@@ -59,7 +80,7 @@ func (m *MySQLMatcher) findReq(resp *protocols.Response) *protocols.Request {
 	for e := m.reqQueue.Front(); e != nil; e = e.Next() {
 		req := e.Value.(*protocols.Request)
 
-		if req.SockKey == resp.SockKey {
+		if req.SockKey == resp.SockKey && resp.Timestamp > req.Timestamp {
 			return m.reqQueue.Remove(e).(*protocols.Request)
 		}
 	}

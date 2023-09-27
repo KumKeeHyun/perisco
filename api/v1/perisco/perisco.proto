@@ -84,12 +84,46 @@ message HTTPHeader {
 
 message MySQLRequest {
     uint32 payload_length = 1;
-    uint32 sequence_id = 2;
+    MySQLCommand command = 2;
+}
+
+enum MySQLCommand {
+    COM_UNKNOWN = 0;
+
+    COM_QUERY = 1;
+
+    COM_QUIT = 2;
+    COM_INIT_DB = 3;
+    COM_FIELD_LIST = 4;
+    COM_REFRESH = 5;
+    COM_STATISTICS = 6;
+    COM_PROCESS_INFO = 7;
+    COM_PROCESS_KILL = 8;
+    COM_DEBUG = 9;
+    COM_PING = 10;
+    COM_CHANGE_USER = 11;
+    COM_RESET_CONNECTION = 12;
+    COM_SET_OPTION = 13;
+
+    COM_STMT_PREPARE = 14;
+    COM_STMT_EXECUTE = 15;
+    COM_STMT_FETCH = 16;
+    COM_STMT_CLOSE = 17;
+    COM_STMT_RESET = 18;
+    COM_STMT_SEND_LONG_DATA = 19;    
 }
 
 message MySQLResponse {
-    uint32 payload_length = 1;
-    uint32 sequence_id = 2;
+    MySQLResponseType type = 1;
+    uint64 affected_rows = 2;
+    uint32 error_code = 3;
+}
+
+enum MySQLResponseType {
+    UNKNOWN = 0;
+    OK = 1;
+    ERR = 2;
+    EOF = 3;
 }
 
 message K8SProtoMessage {

@@ -49,7 +49,7 @@ spec:
       serviceAccountName: perisco-account
       containers:
       - name: perisco
-        image: kbzjung359/perisco:0.0.1
+        image: kbzjung359/perisco:0.0.2
         securityContext:
           privileged: true
           capabilities:
@@ -58,11 +58,12 @@ spec:
             - SYS_PTRACE
         env:
         - name: PERISCO_CIDRS
-          value: 10.244.0.0/16
+          value: 10.244.0.0/16,::ffff:10.244.0.0/112
         - name: PERISCO_PROTOS
-          value: HTTP/1
+          # value: HTTP/1
+          value: HTTP/1,MySQL
         - name: PERISCO_KUBERNETES
           value: 'true'
-        - name: PERISCO_EXPORTER_FILE_NAME
-          value: /tmp/perisco-output.txt
+        # - name: PERISCO_EXPORTER_FILE_NAME
+        #   value: /tmp/perisco-output.txt
 

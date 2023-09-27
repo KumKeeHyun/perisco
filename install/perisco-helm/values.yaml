@@ -1,12 +1,12 @@
 perisco:
   image:
     repository: kbzjung359/perisco
-    tag: 0.0.1
+    tag: 0.0.2
     pullPolicy: Always
 
   config:
-    cidrs: 10.244.0.0/16
-    protocols: HTTP/1
+    cidrs: 10.244.0.0/16,::ffff:10.244.0.0/112
+    protocols: HTTP/1,MySQL
   
   exporter:
     name: elasticsearch
@@ -30,6 +30,14 @@ elasticsearch:
     resources:
       requests:
         storage: 1Gi
+
+  resources:
+    requests:
+      cpu: "300m"
+      memory: "1Gi"
+    limits:
+      cpu: "500m"
+      memory: "2Gi"
 
 grafana:
   enabled: true

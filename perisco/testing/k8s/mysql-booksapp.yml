@@ -2,6 +2,94 @@
 apiVersion: v1
 kind: Service
 metadata:
+  name: mysql
+  labels:
+    app: mysql
+    project: booksapp
+spec:
+  ports:
+  - port: 3306
+  selector:
+    app: mysql
+  clusterIP: None
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: mysql
+  labels:
+    app: mysql
+    project: booksapp
+spec:
+  selector:
+    matchLabels:
+      app: mysql
+      project: booksapp
+  strategy:
+    type: Recreate
+  template:
+    metadata:
+      annotations:
+        linkerd.io/inject: enabled
+      labels:
+        app: mysql
+        project: booksapp
+    spec:
+      containers:
+      - name: mysql
+        image: mysql:5.6
+        env:
+        - name: MYSQL_ROOT_PASSWORD
+          value: password
+        - name: MYSQL_DATABASE
+          value: booksapp_production
+        - name: MYSQL_USER
+          value: booksapp
+        - name: MYSQL_PASSWORD
+          value: booksapp
+        - name: MYSQL_INITDB_SKIP_TZINFO
+          value: "1"
+        ports:
+        - containerPort: 3306
+          name: mysql
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: mysql-init
+  labels:
+    app: mysql-init
+    project: booksapp
+spec:
+  template:
+    metadata:
+      name: mysql-init
+      annotations:
+        linkerd.io/inject: enabled
+      labels:
+        app: mysql-init
+        project: booksapp
+    spec:
+      containers:
+      - name: mysql-init
+        image: buoyantio/booksapp:v0.0.3
+        env:
+        - name: DATABASE_URL
+          value: mysql2://booksapp:booksapp@mysql:3306/booksapp_production
+        command:
+        - "/bin/sh"
+        args:
+        - "-c"
+        - |
+          set -e
+          bundle exec rake db:ready
+          bundle exec rake db:migrate
+          bundle exec rake db:seed
+      restartPolicy: OnFailure
+---
+apiVersion: v1
+kind: Service
+metadata:
   name: webapp
   labels:
     app: webapp
@@ -15,14 +103,6 @@ spec:
     port: 7000
     nodePort: 30000
 ---
-apiVersion: v1
-kind: ServiceAccount
-metadata:
-  name: webapp
-  labels:
-    app: webapp
-    project: booksapp
----
 kind: Deployment
 apiVersion: apps/v1
 metadata:
@@ -30,27 +110,27 @@ metadata:
   labels:
     app: webapp
     project: booksapp
-    app.kubernetes.io/part-of: booksapp
 spec:
-  replicas: 5
+  replicas: 3
   selector:
     matchLabels:
       app: webapp
       project: booksapp
   template:
     metadata:
+      annotations:
+        linkerd.io/inject: enabled
       labels:
         app: webapp
         project: booksapp
-        app.kubernetes.io/part-of: booksapp
     spec:
-      serviceAccountName: webapp
+      dnsPolicy: ClusterFirst
       containers:
       - name: service
-        image: buoyantio/booksapp:v0.0.5
+        image: buoyantio/booksapp:v0.0.3
         env:
         - name: DATABASE_URL
-          value: sqlite3:db/db.sqlite3
+          value: mysql2://booksapp:booksapp@mysql:3306/booksapp_production
         - name: AUTHORS_SITE
           value: http://authors:7001
         - name: BOOKS_SITE
@@ -71,21 +151,12 @@ metadata:
   labels:
     app: authors
     project: booksapp
-    app.kubernetes.io/part-of: booksapp
 spec:
   selector:
     app: authors
   ports:
   - name: service
     port: 7001
----
-apiVersion: v1
-kind: ServiceAccount
-metadata:
-  name: authors
-  labels:
-    app: authors
-    project: booksapp
 ---
 kind: Deployment
 apiVersion: apps/v1
@@ -94,31 +165,29 @@ metadata:
   labels:
     app: authors
     project: booksapp
-    app.kubernetes.io/part-of: booksapp
 spec:
-  replicas: 2
   selector:
     matchLabels:
       app: authors
       project: booksapp
+  replicas: 3
   template:
     metadata:
+      annotations:
+        linkerd.io/inject: enabled
       labels:
         app: authors
         project: booksapp
-        app.kubernetes.io/part-of: booksapp
     spec:
-      serviceAccountName: authors
+      dnsPolicy: ClusterFirst
       containers:
       - name: service
-        image: buoyantio/booksapp:v0.0.5
+        image: buoyantio/booksapp:v0.0.3
         env:
         - name: DATABASE_URL
-          value: sqlite3:db/db.sqlite3
+          value: mysql2://booksapp:booksapp@mysql:3306/booksapp_production
         - name: BOOKS_SITE
           value: http://books:7002
-        - name: FAILURE_RATE
-          value: "0.5"
         args: ["prod:authors"]
         readinessProbe:
           httpGet:
@@ -135,21 +204,12 @@ metadata:
   labels:
     app: books
     project: booksapp
-    app.kubernetes.io/part-of: booksapp
 spec:
   selector:
     app: books
   ports:
   - name: service
     port: 7002
----
-apiVersion: v1
-kind: ServiceAccount
-metadata:
-  name: books
-  labels:
-    app: books
-    project: booksapp
 ---
 kind: Deployment
 apiVersion: apps/v1
@@ -158,26 +218,27 @@ metadata:
   labels:
     app: books
     project: booksapp
-    app.kubernetes.io/part-of: booksapp
 spec:
-  replicas: 2
   selector:
     matchLabels:
       app: books
       project: booksapp
+  replicas: 3
   template:
     metadata:
+      annotations:
+        linkerd.io/inject: enabled
       labels:
         app: books
         project: booksapp
     spec:
-      serviceAccountName: books
+      dnsPolicy: ClusterFirst
       containers:
       - name: service
-        image: buoyantio/booksapp:v0.0.5
+        image: buoyantio/booksapp:v0.0.3
         env:
         - name: DATABASE_URL
-          value: sqlite3:db/db.sqlite3
+          value: mysql2://booksapp:booksapp@mysql:3306/booksapp_production
         - name: AUTHORS_SITE
           value: http://authors:7001
         args: ["prod:books"]
@@ -189,14 +250,6 @@ spec:
         - name: service
           containerPort: 7002
 ---
-apiVersion: v1
-kind: ServiceAccount
-metadata:
-  name: traffic
-  labels:
-    app: traffic
-    project: booksapp
----
 kind: Deployment
 apiVersion: apps/v1
 metadata:
@@ -204,24 +257,24 @@ metadata:
   labels:
     app: traffic
     project: booksapp
-    app.kubernetes.io/part-of: booksapp
 spec:
-  replicas: 1
   selector:
     matchLabels:
       app: traffic
       project: booksapp
+  replicas: 1
   template:
     metadata:
+      annotations:
+        linkerd.io/inject: enabled
       labels:
         app: traffic
         project: booksapp
     spec:
       dnsPolicy: ClusterFirst
-      serviceAccountName: traffic
       containers:
       - name: traffic
         image: buoyantio/booksapp-traffic:v0.0.3
         args:
-        - "-sleep=100ms"
         - "webapp:7000"
+        - "-sleep=3s"

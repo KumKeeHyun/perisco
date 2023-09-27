@@ -8,4 +8,4 @@ cd "${perisco_dir}"
 make bpf
 
 cd "${root_dir}"
-docker build -f "${perisco_dockerfile}" -t kbzjung359/perisco:0.0.1 .
+docker build -f "${perisco_dockerfile}" -t kbzjung359/perisco:0.0.2 .

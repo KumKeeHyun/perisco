@@ -50,30 +50,42 @@ const logsIndexTemplates = `
 			  },
 			  "request": {
 				"properties": {
-				  "Record": {
+				  "http": {
 					"properties": {
-					  "Http": {
+					  "headers": {
 						"properties": {
-						  "headers": {
-							"properties": {
-							  "key": {
-								"type": "keyword"
-							  },
-							  "value": {
-								"type": "keyword"
-							  }
-							}
-						  },
-						  "method": {
+						  "key": {
 							"type": "keyword"
 						  },
-						  "protocol": {
-							"type": "keyword"
-						  },
-						  "url": {
+						  "value": {
 							"type": "keyword"
 						  }
 						}
+					  },
+					  "method": {
+						"type": "keyword"
+					  },
+					  "protocol": {
+						"type": "keyword"
+					  },
+					  "url": {
+						"type": "text",
+						"fields": {
+						  "keyword": {
+							"type": "keyword",
+							"ignore_above": 256
+						  }
+						}
+					  }
+					}
+				  },
+				  "mysql": {
+					"properties": {
+					  "command": {
+						"type": "keyword"
+					  },
+					  "payloadLength": {
+						"type": "long"
 					  }
 					}
 				  }
@@ -81,27 +93,30 @@ const logsIndexTemplates = `
 			  },
 			  "response": {
 				"properties": {
-				  "Record": {
+				  "http": {
 					"properties": {
-					  "Http": {
+					  "code": {
+						"type": "long"
+					  },
+					  "headers": {
 						"properties": {
-						  "code": {
-							"type": "long"
+						  "key": {
+							"type": "keyword"
 						  },
-						  "headers": {
-							"properties": {
-							  "key": {
-								"type": "keyword"
-							  },
-							  "value": {
-								"type": "keyword"
-							  }
-							}
-						  },
-						  "protocol": {
+						  "value": {
 							"type": "keyword"
 						  }
 						}
+					  },
+					  "protocol": {
+						"type": "keyword"
+					  }
+					}
+				  },
+				  "mysql": {
+					"properties": {
+					  "type": {
+						"type": "keyword"
 					  }
 					}
 				  }
@@ -197,30 +212,42 @@ const k8sLogsIndexTemplates = `
 				  },
 				  "request": {
 					"properties": {
-					  "Record": {
+					  "http": {
 						"properties": {
-						  "Http": {
+						  "headers": {
 							"properties": {
-							  "headers": {
-								"properties": {
-								  "key": {
-									"type": "keyword"
-								  },
-								  "value": {
-									"type": "keyword"
-								  }
-								}
-							  },
-							  "method": {
+							  "key": {
 								"type": "keyword"
 							  },
-							  "protocol": {
-								"type": "keyword"
-							  },
-							  "url": {
+							  "value": {
 								"type": "keyword"
 							  }
 							}
+						  },
+						  "method": {
+							"type": "keyword"
+						  },
+						  "protocol": {
+							"type": "keyword"
+						  },
+						  "url": {
+							"type": "text",
+							"fields": {
+							  "keyword": {
+								"type": "keyword",
+								"ignore_above": 256
+							  }
+							}
+						  }
+						}
+					  },
+					  "mysql": {
+						"properties": {
+						  "command": {
+							"type": "keyword"
+						  },
+						  "payloadLength": {
+							"type": "long"
 						  }
 						}
 					  }
@@ -228,27 +255,30 @@ const k8sLogsIndexTemplates = `
 				  },
 				  "response": {
 					"properties": {
-					  "Record": {
+					  "http": {
 						"properties": {
-						  "Http": {
+						  "code": {
+							"type": "long"
+						  },
+						  "headers": {
 							"properties": {
-							  "code": {
-								"type": "long"
+							  "key": {
+								"type": "keyword"
 							  },
-							  "headers": {
-								"properties": {
-								  "key": {
-									"type": "keyword"
-								  },
-								  "value": {
-									"type": "keyword"
-								  }
-								}
-							  },
-							  "protocol": {
+							  "value": {
 								"type": "keyword"
 							  }
 							}
+						  },
+						  "protocol": {
+							"type": "keyword"
+						  }
+						}
+					  },
+					  "mysql": {
+						"properties": {
+						  "type": {
+							"type": "keyword"
 						  }
 						}
 					  }

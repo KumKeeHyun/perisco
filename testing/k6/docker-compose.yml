@@ -1,0 +1,19 @@
+# https://grafana.com/grafana/dashboards/2587-k6-load-testing-results/
+version: "3"
+
+services:
+  influxdb:
+    image: bitnami/influxdb:1.8.5
+    container_name: influxdb
+    ports:
+      - "8086:8086"
+      - "8085:8088"
+    environment:
+      - INFLUXDB_ADMIN_USER_PASSWORD=admin 
+      - INFLUXDB_ADMIN_USER_TOKEN=admin
+      - INFLUXDB_HTTP_AUTH_ENABLED=false
+      - INFLUXDB_DB=test
+  granafa:
+    image: bitnami/grafana:latest
+    ports:
+      - "8000:3000"

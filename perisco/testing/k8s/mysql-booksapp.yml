@@ -188,6 +188,8 @@ spec:
           value: mysql2://booksapp:booksapp@mysql:3306/booksapp_production
         - name: BOOKS_SITE
           value: http://books:7002
+        - name: FAILURE_RATE
+          value: "0.3"
         args: ["prod:authors"]
         readinessProbe:
           httpGet:
@@ -241,6 +243,8 @@ spec:
           value: mysql2://booksapp:booksapp@mysql:3306/booksapp_production
         - name: AUTHORS_SITE
           value: http://authors:7001
+        - name: FAILURE_RATE
+          value: "0.1"
         args: ["prod:books"]
         readinessProbe:
           httpGet:
@@ -276,5 +280,5 @@ spec:
       - name: traffic
         image: buoyantio/booksapp-traffic:v0.0.3
         args:
+        - "-sleep=100ms"
         - "webapp:7000"
-        - "-sleep=3s"

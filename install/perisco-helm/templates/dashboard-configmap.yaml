@@ -1,0 +1,2624 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: perisco-dashboard-files
+  namespace: {{ .Release.Namespace }}
+data:
+  perisco-dashboard.json: |
+    {
+        "annotations": {
+            "list": [
+            {
+                "builtIn": 1,
+                "datasource": {
+                "type": "grafana",
+                "uid": "-- Grafana --"
+                },
+                "enable": true,
+                "hide": true,
+                "iconColor": "rgba(0, 211, 255, 1)",
+                "name": "Annotations & Alerts",
+                "target": {
+                "limit": 100,
+                "matchAny": false,
+                "tags": [],
+                "type": "dashboard"
+                },
+                "type": "dashboard"
+            }
+            ]
+        },
+        "editable": true,
+        "fiscalYearStartMonth": 0,
+        "graphTooltip": 0,
+        "links": [],
+        "liveNow": false,
+        "panels": [
+            {
+            "gridPos": {
+                "h": 1,
+                "w": 24,
+                "x": 0,
+                "y": 0
+            },
+            "id": 27,
+            "title": "Total",
+            "type": "row"
+            },
+            {
+            "datasource": {
+                "type": "elasticsearch",
+                "uid": "perisco-elasticsearch"
+            },
+            "gridPos": {
+                "h": 11,
+                "w": 11,
+                "x": 0,
+                "y": 1
+            },
+            "id": 28,
+            "targets": [
+                {
+                "alias": "",
+                "bucketAggs": [
+                    {
+                    "field": "clientService.name",
+                    "id": "5",
+                    "settings": {
+                        "min_doc_count": "1",
+                        "order": "desc",
+                        "orderBy": "_term",
+                        "size": "10"
+                    },
+                    "type": "terms"
+                    },
+                    {
+                    "field": "serverService.name",
+                    "id": "6",
+                    "settings": {
+                        "min_doc_count": "1",
+                        "order": "desc",
+                        "orderBy": "_term",
+                        "size": "10"
+                    },
+                    "type": "terms"
+                    }
+                ],
+                "datasource": {
+                    "type": "elasticsearch",
+                    "uid": "perisco-elasticsearch"
+                },
+                "metrics": [
+                    {
+                    "id": "1",
+                    "type": "count"
+                    }
+                ],
+                "query": "_exists_: \"clientService.name\" AND _exists_: \"serverService.name\" AND serverService.namespace: $namespace AND serverService.name: $service",
+                "refId": "A",
+                "timeField": "protoMessage.ts"
+                }
+            ],
+            "title": "Services Map",
+            "transformations": [
+                {
+                "id": "calculateField",
+                "options": {
+                    "alias": "source",
+                    "mode": "reduceRow",
+                    "reduce": {
+                    "include": [
+                        "clientService.name"
+                    ],
+                    "reducer": "lastNotNull"
+                    }
+                }
+                },
+                {
+                "id": "calculateField",
+                "options": {
+                    "alias": "target",
+                    "mode": "reduceRow",
+                    "reduce": {
+                    "include": [
+                        "serverService.name",
+                        "server.podName"
+                    ],
+                    "reducer": "lastNotNull"
+                    }
+                }
+                },
+                {
+                "id": "calculateField",
+                "options": {
+                    "alias": "id",
+                    "binary": {
+                    "left": "clientService.name",
+                    "reducer": "sum",
+                    "right": "serverService.name"
+                    },
+                    "mode": "binary",
+                    "reduce": {
+                    "reducer": "sum"
+                    }
+                }
+                }
+            ],
+            "type": "nodeGraph"
+            },
+            {
+            "datasource": {
+                "type": "elasticsearch",
+                "uid": "perisco-elasticsearch"
+            },
+            "gridPos": {
+                "h": 11,
+                "w": 13,
+                "x": 11,
+                "y": 1
+            },
+            "id": 12,
+            "targets": [
+                {
+                "alias": "",
+                "bucketAggs": [
+                    {
+                    "field": "client.podName",
+                    "id": "5",
+                    "settings": {
+                        "min_doc_count": "1",
+                        "order": "desc",
+                        "orderBy": "_term",
+                        "size": "10"
+                    },
+                    "type": "terms"
+                    },
+                    {
+                    "field": "server.podName",
+                    "id": "6",
+                    "settings": {
+                        "min_doc_count": "1",
+                        "order": "desc",
+                        "orderBy": "_term",
+                        "size": "10"
+                    },
+                    "type": "terms"
+                    }
+                ],
+                "datasource": {
+                    "type": "elasticsearch",
+                    "uid": "perisco-elasticsearch"
+                },
+                "metrics": [
+                    {
+                    "id": "1",
+                    "type": "count"
+                    }
+                ],
+                "query": "_exists_: \"client.podName\" AND _exists_: \"server.podName\" AND server.namespace: $namespace AND serverService.name: $service",
+                "refId": "A",
+                "timeField": "protoMessage.ts"
+                }
+            ],
+            "title": "Pods Map",
+            "transformations": [
+                {
+                "id": "calculateField",
+                "options": {
+                    "alias": "source",
+                    "mode": "reduceRow",
+                    "reduce": {
+                    "include": [
+                        "client.podName"
+                    ],
+                    "reducer": "lastNotNull"
+                    }
+                }
+                },
+                {
+                "id": "calculateField",
+                "options": {
+                    "alias": "target",
+                    "mode": "reduceRow",
+                    "reduce": {
+                    "include": [
+                        "serverService.name",
+                        "server.podName"
+                    ],
+                    "reducer": "lastNotNull"
+                    }
+                }
+                },
+                {
+                "id": "calculateField",
+                "options": {
+                    "alias": "id",
+                    "binary": {
+                    "left": "client.podName",
+                    "reducer": "sum",
+                    "right": "server.podName"
+                    },
+                    "mode": "binary",
+                    "reduce": {
+                    "reducer": "sum"
+                    }
+                }
+                }
+            ],
+            "type": "nodeGraph"
+            },
+            {
+            "datasource": {
+                "type": "elasticsearch",
+                "uid": "perisco-elasticsearch"
+            },
+            "fieldConfig": {
+                "defaults": {
+                "color": {
+                    "mode": "palette-classic"
+                },
+                "custom": {
+                    "hideFrom": {
+                    "legend": false,
+                    "tooltip": false,
+                    "viz": false
+                    }
+                },
+                "mappings": []
+                },
+                "overrides": []
+            },
+            "gridPos": {
+                "h": 7,
+                "w": 11,
+                "x": 0,
+                "y": 12
+            },
+            "id": 29,
+            "options": {
+                "legend": {
+                "displayMode": "list",
+                "placement": "bottom",
+                "showLegend": true
+                },
+                "pieType": "donut",
+                "reduceOptions": {
+                "calcs": [
+                    "lastNotNull"
+                ],
+                "fields": "",
+                "values": true
+                },
+                "tooltip": {
+                "mode": "single",
+                "sort": "none"
+                }
+            },
+            "targets": [
+                {
+                "alias": "",
+                "bucketAggs": [
+                    {
+                    "field": "serverService.name",
+                    "id": "2",
+                    "settings": {
+                        "min_doc_count": "1",
+                        "order": "desc",
+                        "orderBy": "_term",
+                        "size": "10"
+                    },
+                    "type": "terms"
+                    }
+                ],
+                "datasource": {
+                    "type": "elasticsearch",
+                    "uid": "perisco-elasticsearch"
+                },
+                "metrics": [
+                    {
+                    "id": "1",
+                    "type": "count"
+                    }
+                ],
+                "query": "serverService.namespace: $namespace AND serverService.name: $service",
+                "refId": "A",
+                "timeField": "protoMessage.ts"
+                }
+            ],
+            "title": "Request Count Per Service",
+            "type": "piechart"
+            },
+            {
+            "datasource": {
+                "type": "elasticsearch",
+                "uid": "perisco-elasticsearch"
+            },
+            "fieldConfig": {
+                "defaults": {
+                "color": {
+                    "mode": "palette-classic"
+                },
+                "custom": {
+                    "hideFrom": {
+                    "legend": false,
+                    "tooltip": false,
+                    "viz": false
+                    }
+                },
+                "mappings": []
+                },
+                "overrides": []
+            },
+            "gridPos": {
+                "h": 7,
+                "w": 13,
+                "x": 11,
+                "y": 12
+            },
+            "id": 23,
+            "options": {
+                "legend": {
+                "displayMode": "list",
+                "placement": "bottom",
+                "showLegend": true
+                },
+                "pieType": "donut",
+                "reduceOptions": {
+                "calcs": [
+                    "lastNotNull"
+                ],
+                "fields": "",
+                "values": true
+                },
+                "tooltip": {
+                "mode": "single",
+                "sort": "none"
+                }
+            },
+            "targets": [
+                {
+                "alias": "",
+                "bucketAggs": [
+                    {
+                    "field": "server.podName",
+                    "id": "2",
+                    "settings": {
+                        "min_doc_count": "1",
+                        "order": "desc",
+                        "orderBy": "_term",
+                        "size": "10"
+                    },
+                    "type": "terms"
+                    }
+                ],
+                "datasource": {
+                    "type": "elasticsearch",
+                    "uid": "perisco-elasticsearch"
+                },
+                "metrics": [
+                    {
+                    "id": "1",
+                    "type": "count"
+                    }
+                ],
+                "query": "serverService.namespace: $namespace AND serverService.name: $service",
+                "refId": "A",
+                "timeField": "protoMessage.ts"
+                }
+            ],
+            "title": "Request Count Per Pod",
+            "type": "piechart"
+            },
+            {
+            "gridPos": {
+                "h": 1,
+                "w": 24,
+                "x": 0,
+                "y": 19
+            },
+            "id": 25,
+            "title": "HTTP",
+            "type": "row"
+            },
+            {
+            "datasource": {
+                "type": "elasticsearch",
+                "uid": "perisco-elasticsearch"
+            },
+            "fieldConfig": {
+                "defaults": {
+                "color": {
+                    "mode": "palette-classic"
+                },
+                "custom": {
+                    "axisCenteredZero": false,
+                    "axisColorMode": "text",
+                    "axisLabel": "",
+                    "axisPlacement": "auto",
+                    "barAlignment": 0,
+                    "drawStyle": "line",
+                    "fillOpacity": 10,
+                    "gradientMode": "none",
+                    "hideFrom": {
+                    "legend": false,
+                    "tooltip": false,
+                    "viz": false
+                    },
+                    "insertNulls": false,
+                    "lineInterpolation": "linear",
+                    "lineStyle": {
+                    "fill": "solid"
+                    },
+                    "lineWidth": 1,
+                    "pointSize": 5,
+                    "scaleDistribution": {
+                    "type": "linear"
+                    },
+                    "showPoints": "never",
+                    "spanNulls": true,
+                    "stacking": {
+                    "group": "A",
+                    "mode": "none"
+                    },
+                    "thresholdsStyle": {
+                    "mode": "off"
+                    }
+                },
+                "mappings": [],
+                "thresholds": {
+                    "mode": "absolute",
+                    "steps": [
+                    {
+                        "color": "green",
+                        "value": null
+                    },
+                    {
+                        "color": "red",
+                        "value": 80
+                    }
+                    ]
+                },
+                "unit": "percentunit"
+                },
+                "overrides": []
+            },
+            "gridPos": {
+                "h": 7,
+                "w": 12,
+                "x": 0,
+                "y": 20
+            },
+            "id": 18,
+            "options": {
+                "legend": {
+                "calcs": [],
+                "displayMode": "list",
+                "placement": "right",
+                "showLegend": true
+                },
+                "tooltip": {
+                "mode": "single",
+                "sort": "none"
+                }
+            },
+            "targets": [
+                {
+                "alias": "",
+                "bucketAggs": [
+                    {
+                    "field": "protoMessage.l7.request.http.method",
+                    "id": "3",
+                    "settings": {
+                        "min_doc_count": "1",
+                        "order": "desc",
+                        "orderBy": "_term",
+                        "size": "10"
+                    },
+                    "type": "terms"
+                    },
+                    {
+                    "field": "protoMessage.ts",
+                    "id": "2",
+                    "settings": {
+                        "interval": "10s",
+                        "min_doc_count": "0"
+                    },
+                    "type": "date_histogram"
+                    }
+                ],
+                "datasource": {
+                    "type": "elasticsearch",
+                    "uid": "perisco-elasticsearch"
+                },
+                "hide": true,
+                "metrics": [
+                    {
+                    "id": "1",
+                    "type": "count"
+                    }
+                ],
+                "query": "_exists_: \"protoMessage.l7.request.http.protocol\" AND _exists_: \"client.podName\" AND server.namespace: $namespace AND serverService.name: $service",
+                "refId": "A",
+                "timeField": "protoMessage.ts"
+                },
+                {
+                "alias": "",
+                "bucketAggs": [
+                    {
+                    "field": "protoMessage.ts",
+                    "id": "2",
+                    "settings": {
+                        "interval": "10s"
+                    },
+                    "type": "date_histogram"
+                    }
+                ],
+                "datasource": {
+                    "type": "elasticsearch",
+                    "uid": "perisco-elasticsearch"
+                },
+                "hide": true,
+                "metrics": [
+                    {
+                    "id": "1",
+                    "type": "count"
+                    }
+                ],
+                "query": "_exists_: \"protoMessage.l7.request.http.protocol\" AND _exists_: \"client.podName\" AND server.namespace: $namespace AND serverService.name: $service",
+                "refId": "B",
+                "timeField": "protoMessage.ts"
+                },
+                {
+                "datasource": {
+                    "type": "__expr__",
+                    "uid": "__expr__"
+                },
+                "expression": "$A / $B",
+                "hide": false,
+                "refId": "method",
+                "type": "math"
+                }
+            ],
+            "title": "HTTP Requests Method",
+            "type": "timeseries"
+            },
+            {
+            "datasource": {
+                "type": "elasticsearch",
+                "uid": "perisco-elasticsearch"
+            },
+            "fieldConfig": {
+                "defaults": {
+                "color": {
+                    "mode": "palette-classic"
+                },
+                "custom": {
+                    "axisCenteredZero": false,
+                    "axisColorMode": "text",
+                    "axisLabel": "",
+                    "axisPlacement": "auto",
+                    "barAlignment": 0,
+                    "drawStyle": "line",
+                    "fillOpacity": 10,
+                    "gradientMode": "hue",
+                    "hideFrom": {
+                    "legend": false,
+                    "tooltip": false,
+                    "viz": false
+                    },
+                    "insertNulls": false,
+                    "lineInterpolation": "linear",
+                    "lineStyle": {
+                    "fill": "solid"
+                    },
+                    "lineWidth": 1,
+                    "pointSize": 5,
+                    "scaleDistribution": {
+                    "type": "linear"
+                    },
+                    "showPoints": "never",
+                    "spanNulls": true,
+                    "stacking": {
+                    "group": "A",
+                    "mode": "none"
+                    },
+                    "thresholdsStyle": {
+                    "mode": "off"
+                    }
+                },
+                "mappings": [],
+                "thresholds": {
+                    "mode": "absolute",
+                    "steps": [
+                    {
+                        "color": "green",
+                        "value": null
+                    },
+                    {
+                        "color": "red",
+                        "value": 80
+                    }
+                    ]
+                },
+                "unit": "percentunit"
+                },
+                "overrides": [
+                {
+                    "__systemRef": "hideSeriesFrom",
+                    "matcher": {
+                    "id": "byNames",
+                    "options": {
+                        "mode": "exclude",
+                        "names": [
+                        "response 500"
+                        ],
+                        "prefix": "All except:",
+                        "readOnly": true
+                    }
+                    },
+                    "properties": [
+                    {
+                        "id": "custom.hideFrom",
+                        "value": {
+                        "legend": false,
+                        "tooltip": false,
+                        "viz": true
+                        }
+                    }
+                    ]
+                }
+                ]
+            },
+            "gridPos": {
+                "h": 7,
+                "w": 12,
+                "x": 12,
+                "y": 20
+            },
+            "id": 35,
+            "options": {
+                "legend": {
+                "calcs": [],
+                "displayMode": "list",
+                "placement": "right",
+                "showLegend": true
+                },
+                "tooltip": {
+                "mode": "single",
+                "sort": "none"
+                }
+            },
+            "targets": [
+                {
+                "alias": "",
+                "bucketAggs": [
+                    {
+                    "field": "protoMessage.l7.response.http.code",
+                    "id": "3",
+                    "settings": {
+                        "min_doc_count": "1",
+                        "order": "desc",
+                        "orderBy": "_term",
+                        "size": "10"
+                    },
+                    "type": "terms"
+                    },
+                    {
+                    "field": "protoMessage.ts",
+                    "id": "2",
+                    "settings": {
+                        "interval": "10s"
+                    },
+                    "type": "date_histogram"
+                    }
+                ],
+                "datasource": {
+                    "type": "elasticsearch",
+                    "uid": "perisco-elasticsearch"
+                },
+                "hide": true,
+                "metrics": [
+                    {
+                    "hide": false,
+                    "id": "1",
+                    "type": "count"
+                    }
+                ],
+                "query": "_exists_: \"protoMessage.l7.response.http.code\" AND _exists_: \"client.podName\" AND server.namespace: $namespace AND serverService.name: $service",
+                "refId": "A",
+                "timeField": "protoMessage.ts"
+                },
+                {
+                "alias": "",
+                "bucketAggs": [
+                    {
+                    "field": "protoMessage.ts",
+                    "id": "2",
+                    "settings": {
+                        "interval": "10s"
+                    },
+                    "type": "date_histogram"
+                    }
+                ],
+                "datasource": {
+                    "type": "elasticsearch",
+                    "uid": "perisco-elasticsearch"
+                },
+                "hide": true,
+                "metrics": [
+                    {
+                    "id": "1",
+                    "type": "count"
+                    }
+                ],
+                "query": "_exists_: \"protoMessage.l7.response.http.code\" AND _exists_: \"client.podName\" AND server.namespace: $namespace AND serverService.name: $service",
+                "refId": "B",
+                "timeField": "protoMessage.ts"
+                },
+                {
+                "datasource": {
+                    "type": "__expr__",
+                    "uid": "__expr__"
+                },
+                "expression": "$A / $B",
+                "hide": false,
+                "reducer": "mean",
+                "refId": "response",
+                "type": "math"
+                }
+            ],
+            "title": "HTTP Responses Status",
+            "type": "timeseries"
+            },
+            {
+            "datasource": {
+                "type": "elasticsearch",
+                "uid": "perisco-elasticsearch"
+            },
+            "fieldConfig": {
+                "defaults": {
+                "color": {
+                    "mode": "palette-classic"
+                },
+                "custom": {
+                    "axisCenteredZero": false,
+                    "axisColorMode": "text",
+                    "axisLabel": "",
+                    "axisPlacement": "auto",
+                    "barAlignment": 0,
+                    "drawStyle": "line",
+                    "fillOpacity": 10,
+                    "gradientMode": "none",
+                    "hideFrom": {
+                    "legend": false,
+                    "tooltip": false,
+                    "viz": false
+                    },
+                    "insertNulls": false,
+                    "lineInterpolation": "linear",
+                    "lineStyle": {
+                    "fill": "solid"
+                    },
+                    "lineWidth": 1,
+                    "pointSize": 5,
+                    "scaleDistribution": {
+                    "type": "linear"
+                    },
+                    "showPoints": "never",
+                    "spanNulls": true,
+                    "stacking": {
+                    "group": "A",
+                    "mode": "none"
+                    },
+                    "thresholdsStyle": {
+                    "mode": "off"
+                    }
+                },
+                "mappings": [],
+                "thresholds": {
+                    "mode": "absolute",
+                    "steps": [
+                    {
+                        "color": "green",
+                        "value": null
+                    },
+                    {
+                        "color": "red",
+                        "value": 80
+                    }
+                    ]
+                },
+                "unit": "none"
+                },
+                "overrides": []
+            },
+            "gridPos": {
+                "h": 7,
+                "w": 12,
+                "x": 0,
+                "y": 27
+            },
+            "id": 34,
+            "options": {
+                "legend": {
+                "calcs": [],
+                "displayMode": "list",
+                "placement": "right",
+                "showLegend": true
+                },
+                "tooltip": {
+                "mode": "single",
+                "sort": "none"
+                }
+            },
+            "targets": [
+                {
+                "alias": "",
+                "bucketAggs": [
+                    {
+                    "field": "server.podName",
+                    "id": "3",
+                    "settings": {
+                        "min_doc_count": "1",
+                        "order": "desc",
+                        "orderBy": "_term",
+                        "size": "10"
+                    },
+                    "type": "terms"
+                    },
+                    {
+                    "field": "protoMessage.ts",
+                    "id": "2",
+                    "settings": {
+                        "interval": "10s",
+                        "min_doc_count": "0"
+                    },
+                    "type": "date_histogram"
+                    }
+                ],
+                "datasource": {
+                    "type": "elasticsearch",
+                    "uid": "perisco-elasticsearch"
+                },
+                "hide": false,
+                "metrics": [
+                    {
+                    "id": "1",
+                    "type": "count"
+                    }
+                ],
+                "query": "_exists_: \"protoMessage.l7.request.http.protocol\" AND _exists_: \"client.podName\" AND server.namespace: $namespace AND serverService.name: $service",
+                "refId": "A",
+                "timeField": "protoMessage.ts"
+                }
+            ],
+            "title": "HTTP Request Count Per Pod",
+            "type": "timeseries"
+            },
+            {
+            "datasource": {
+                "type": "elasticsearch",
+                "uid": "perisco-elasticsearch"
+            },
+            "fieldConfig": {
+                "defaults": {
+                "color": {
+                    "mode": "palette-classic"
+                },
+                "custom": {
+                    "axisCenteredZero": false,
+                    "axisColorMode": "text",
+                    "axisLabel": "",
+                    "axisPlacement": "auto",
+                    "barAlignment": 0,
+                    "drawStyle": "line",
+                    "fillOpacity": 10,
+                    "gradientMode": "hue",
+                    "hideFrom": {
+                    "legend": false,
+                    "tooltip": false,
+                    "viz": false
+                    },
+                    "insertNulls": false,
+                    "lineInterpolation": "linear",
+                    "lineStyle": {
+                    "fill": "solid"
+                    },
+                    "lineWidth": 1,
+                    "pointSize": 5,
+                    "scaleDistribution": {
+                    "type": "linear"
+                    },
+                    "showPoints": "never",
+                    "spanNulls": true,
+                    "stacking": {
+                    "group": "A",
+                    "mode": "none"
+                    },
+                    "thresholdsStyle": {
+                    "mode": "off"
+                    }
+                },
+                "mappings": [],
+                "thresholds": {
+                    "mode": "absolute",
+                    "steps": [
+                    {
+                        "color": "green",
+                        "value": null
+                    },
+                    {
+                        "color": "red",
+                        "value": 80
+                    }
+                    ]
+                },
+                "unit": "percentunit"
+                },
+                "overrides": []
+            },
+            "gridPos": {
+                "h": 7,
+                "w": 12,
+                "x": 12,
+                "y": 27
+            },
+            "id": 16,
+            "options": {
+                "legend": {
+                "calcs": [],
+                "displayMode": "list",
+                "placement": "right",
+                "showLegend": true
+                },
+                "tooltip": {
+                "mode": "single",
+                "sort": "none"
+                }
+            },
+            "targets": [
+                {
+                "alias": "",
+                "bucketAggs": [
+                    {
+                    "field": "server.podName",
+                    "id": "3",
+                    "settings": {
+                        "min_doc_count": "1",
+                        "order": "desc",
+                        "orderBy": "_term",
+                        "size": "10"
+                    },
+                    "type": "terms"
+                    },
+                    {
+                    "field": "protoMessage.ts",
+                    "id": "2",
+                    "settings": {
+                        "interval": "10s"
+                    },
+                    "type": "date_histogram"
+                    }
+                ],
+                "datasource": {
+                    "type": "elasticsearch",
+                    "uid": "perisco-elasticsearch"
+                },
+                "hide": true,
+                "metrics": [
+                    {
+                    "id": "1",
+                    "type": "count"
+                    }
+                ],
+                "query": "_exists_: \"protoMessage.l7.response.http.code\" AND _exists_: \"client.podName\" AND protoMessage.l7.response.http.code: [400 TO *] AND server.namespace: $namespace AND serverService.name: $service",
+                "refId": "A",
+                "timeField": "protoMessage.ts"
+                },
+                {
+                "alias": "",
+                "bucketAggs": [
+                    {
+                    "field": "server.podName",
+                    "id": "3",
+                    "settings": {
+                        "min_doc_count": "1",
+                        "order": "desc",
+                        "orderBy": "_term",
+                        "size": "10"
+                    },
+                    "type": "terms"
+                    },
+                    {
+                    "field": "protoMessage.ts",
+                    "id": "2",
+                    "settings": {
+                        "interval": "10s"
+                    },
+                    "type": "date_histogram"
+                    }
+                ],
+                "datasource": {
+                    "type": "elasticsearch",
+                    "uid": "perisco-elasticsearch"
+                },
+                "hide": true,
+                "metrics": [
+                    {
+                    "id": "1",
+                    "type": "count"
+                    }
+                ],
+                "query": "_exists_: \"protoMessage.l7.response.http.code\" AND _exists_: \"client.podName\" AND server.namespace: $namespace AND serverService.name: $service",
+                "refId": "B",
+                "timeField": "protoMessage.ts"
+                },
+                {
+                "datasource": {
+                    "name": "Expression",
+                    "type": "__expr__",
+                    "uid": "__expr__"
+                },
+                "expression": "$A / $B",
+                "hide": false,
+                "refId": "pod",
+                "type": "math"
+                }
+            ],
+            "title": "HTTP Request Failed Per Pod",
+            "type": "timeseries"
+            },
+            {
+            "datasource": {
+                "type": "elasticsearch",
+                "uid": "perisco-elasticsearch"
+            },
+            "fieldConfig": {
+                "defaults": {
+                "color": {
+                    "mode": "palette-classic"
+                },
+                "custom": {
+                    "axisCenteredZero": false,
+                    "axisColorMode": "text",
+                    "axisLabel": "",
+                    "axisPlacement": "auto",
+                    "barAlignment": 0,
+                    "drawStyle": "line",
+                    "fillOpacity": 0,
+                    "gradientMode": "none",
+                    "hideFrom": {
+                    "legend": false,
+                    "tooltip": false,
+                    "viz": false
+                    },
+                    "insertNulls": false,
+                    "lineInterpolation": "smooth",
+                    "lineWidth": 1,
+                    "pointSize": 5,
+                    "scaleDistribution": {
+                    "type": "linear"
+                    },
+                    "showPoints": "never",
+                    "spanNulls": true,
+                    "stacking": {
+                    "group": "A",
+                    "mode": "none"
+                    },
+                    "thresholdsStyle": {
+                    "mode": "off"
+                    }
+                },
+                "mappings": [],
+                "thresholds": {
+                    "mode": "absolute",
+                    "steps": [
+                    {
+                        "color": "green",
+                        "value": null
+                    },
+                    {
+                        "color": "red",
+                        "value": 80
+                    }
+                    ]
+                },
+                "unit": "ms"
+                },
+                "overrides": []
+            },
+            "gridPos": {
+                "h": 7,
+                "w": 12,
+                "x": 0,
+                "y": 34
+            },
+            "id": 26,
+            "options": {
+                "legend": {
+                "calcs": [],
+                "displayMode": "list",
+                "placement": "right",
+                "showLegend": true
+                },
+                "tooltip": {
+                "mode": "single",
+                "sort": "none"
+                }
+            },
+            "targets": [
+                {
+                "alias": "",
+                "bucketAggs": [
+                    {
+                    "field": "server.podName",
+                    "id": "3",
+                    "settings": {
+                        "min_doc_count": "1",
+                        "order": "desc",
+                        "orderBy": "_term",
+                        "size": "10"
+                    },
+                    "type": "terms"
+                    },
+                    {
+                    "field": "protoMessage.ts",
+                    "id": "2",
+                    "settings": {
+                        "interval": "10s"
+                    },
+                    "type": "date_histogram"
+                    }
+                ],
+                "datasource": {
+                    "type": "elasticsearch",
+                    "uid": "perisco-elasticsearch"
+                },
+                "metrics": [
+                    {
+                    "field": "protoMessage.l7.latencyNs",
+                    "hide": false,
+                    "id": "1",
+                    "settings": {
+                        "percents": [
+                        "95"
+                        ],
+                        "script": "_value / 1000000"
+                    },
+                    "type": "percentiles"
+                    }
+                ],
+                "query": "_exists_: \"protoMessage.l7.request.http.protocol\" AND _exists_: \"client.podName\" AND server.namespace: $namespace AND serverService.name: $service",
+                "refId": "A",
+                "timeField": "protoMessage.ts"
+                }
+            ],
+            "title": "HTTP Latency p95 Per Pod",
+            "type": "timeseries"
+            },
+            {
+            "datasource": {
+                "type": "elasticsearch",
+                "uid": "perisco-elasticsearch"
+            },
+            "fieldConfig": {
+                "defaults": {
+                "color": {
+                    "mode": "thresholds"
+                },
+                "custom": {
+                    "align": "auto",
+                    "cellOptions": {
+                    "type": "auto"
+                    },
+                    "inspect": false
+                },
+                "mappings": [],
+                "thresholds": {
+                    "mode": "absolute",
+                    "steps": [
+                    {
+                        "color": "green",
+                        "value": null
+                    },
+                    {
+                        "color": "red",
+                        "value": 80
+                    }
+                    ]
+                }
+                },
+                "overrides": [
+                {
+                    "matcher": {
+                    "id": "byName",
+                    "options": "l4.TCP.clientPort"
+                    },
+                    "properties": [
+                    {
+                        "id": "custom.width",
+                        "value": 103
+                    }
+                    ]
+                },
+                {
+                    "matcher": {
+                    "id": "byName",
+                    "options": "l4.TCP.serverPort"
+                    },
+                    "properties": [
+                    {
+                        "id": "custom.width",
+                        "value": 83
+                    }
+                    ]
+                },
+                {
+                    "matcher": {
+                    "id": "byName",
+                    "options": "l7.request.http.method"
+                    },
+                    "properties": [
+                    {
+                        "id": "custom.width",
+                        "value": 69
+                    }
+                    ]
+                },
+                {
+                    "matcher": {
+                    "id": "byName",
+                    "options": "ip.server"
+                    },
+                    "properties": [
+                    {
+                        "id": "custom.width",
+                        "value": 95
+                    }
+                    ]
+                },
+                {
+                    "matcher": {
+                    "id": "byName",
+                    "options": "ip.client"
+                    },
+                    "properties": [
+                    {
+                        "id": "custom.width",
+                        "value": 97
+                    }
+                    ]
+                },
+                {
+                    "matcher": {
+                    "id": "byName",
+                    "options": "l7.request.http.protocol"
+                    },
+                    "properties": [
+                    {
+                        "id": "custom.width",
+                        "value": 87
+                    }
+                    ]
+                },
+                {
+                    "matcher": {
+                    "id": "byName",
+                    "options": "l7.latencyNs"
+                    },
+                    "properties": [
+                    {
+                        "id": "custom.width",
+                        "value": 115
+                    }
+                    ]
+                },
+                {
+                    "matcher": {
+                    "id": "byName",
+                    "options": "l7.response.http.code"
+                    },
+                    "properties": [
+                    {
+                        "id": "custom.width",
+                        "value": 69
+                    }
+                    ]
+                },
+                {
+                    "matcher": {
+                    "id": "byName",
+                    "options": "protoMessage.l7.request.http.method"
+                    },
+                    "properties": [
+                    {
+                        "id": "custom.width",
+                        "value": 99
+                    }
+                    ]
+                },
+                {
+                    "matcher": {
+                    "id": "byName",
+                    "options": "protoMessage.l7.request.http.protocol"
+                    },
+                    "properties": [
+                    {
+                        "id": "custom.width",
+                        "value": 104
+                    }
+                    ]
+                },
+                {
+                    "matcher": {
+                    "id": "byName",
+                    "options": "protoMessage.l7.response.http.code"
+                    },
+                    "properties": [
+                    {
+                        "id": "custom.width",
+                        "value": 77
+                    }
+                    ]
+                },
+                {
+                    "matcher": {
+                    "id": "byName",
+                    "options": "protoMessage.l7.latencyNs"
+                    },
+                    "properties": [
+                    {
+                        "id": "custom.width",
+                        "value": 122
+                    }
+                    ]
+                },
+                {
+                    "matcher": {
+                    "id": "byName",
+                    "options": "protoMessage.ip.client"
+                    },
+                    "properties": [
+                    {
+                        "id": "custom.width",
+                        "value": 123
+                    }
+                    ]
+                },
+                {
+                    "matcher": {
+                    "id": "byName",
+                    "options": "protoMessage.l4.TCP.clientPort"
+                    },
+                    "properties": [
+                    {
+                        "id": "custom.width",
+                        "value": 84
+                    }
+                    ]
+                },
+                {
+                    "matcher": {
+                    "id": "byName",
+                    "options": "protoMessage.ip.server"
+                    },
+                    "properties": [
+                    {
+                        "id": "custom.width",
+                        "value": 120
+                    }
+                    ]
+                },
+                {
+                    "matcher": {
+                    "id": "byName",
+                    "options": "protoMessage.l4.TCP.serverPort"
+                    },
+                    "properties": [
+                    {
+                        "id": "custom.width",
+                        "value": 80
+                    }
+                    ]
+                },
+                {
+                    "matcher": {
+                    "id": "byName",
+                    "options": "client.podName"
+                    },
+                    "properties": [
+                    {
+                        "id": "custom.width",
+                        "value": 242
+                    }
+                    ]
+                },
+                {
+                    "matcher": {
+                    "id": "byName",
+                    "options": "url"
+                    },
+                    "properties": [
+                    {
+                        "id": "custom.width",
+                        "value": 116
+                    }
+                    ]
+                },
+                {
+                    "matcher": {
+                    "id": "byName",
+                    "options": "protocol"
+                    },
+                    "properties": [
+                    {
+                        "id": "custom.width",
+                        "value": 84
+                    }
+                    ]
+                },
+                {
+                    "matcher": {
+                    "id": "byName",
+                    "options": "method"
+                    },
+                    "properties": [
+                    {
+                        "id": "custom.width",
+                        "value": 67
+                    }
+                    ]
+                },
+                {
+                    "matcher": {
+                    "id": "byName",
+                    "options": "code"
+                    },
+                    "properties": [
+                    {
+                        "id": "custom.width",
+                        "value": 57
+                    }
+                    ]
+                },
+                {
+                    "matcher": {
+                    "id": "byName",
+                    "options": "latnecyNs"
+                    },
+                    "properties": [
+                    {
+                        "id": "custom.width",
+                        "value": 94
+                    }
+                    ]
+                },
+                {
+                    "matcher": {
+                    "id": "byName",
+                    "options": "clientIP"
+                    },
+                    "properties": [
+                    {
+                        "id": "custom.width",
+                        "value": 117
+                    }
+                    ]
+                }
+                ]
+            },
+            "gridPos": {
+                "h": 7,
+                "w": 12,
+                "x": 12,
+                "y": 34
+            },
+            "id": 8,
+            "options": {
+                "cellHeight": "sm",
+                "footer": {
+                "countRows": false,
+                "fields": "",
+                "reducer": [
+                    "sum"
+                ],
+                "show": false
+                },
+                "showHeader": true,
+                "sortBy": [
+                {
+                    "desc": false,
+                    "displayName": "protocol"
+                }
+                ]
+            },
+            "pluginVersion": "10.1.0",
+            "targets": [
+                {
+                "alias": "",
+                "bucketAggs": [],
+                "datasource": {
+                    "type": "elasticsearch",
+                    "uid": "perisco-elasticsearch"
+                },
+                "metrics": [
+                    {
+                    "id": "1",
+                    "settings": {
+                        "size": "500"
+                    },
+                    "type": "raw_data"
+                    }
+                ],
+                "query": "_exists_: \"protoMessage.l7.request.http.protocol\" AND _exists_: \"client.podName\" AND server.namespace: $namespace AND serverService.name: $service",
+                "refId": "A",
+                "timeField": "protoMessage.ts"
+                }
+            ],
+            "title": "HTTP Logs",
+            "transformations": [
+                {
+                "id": "organize",
+                "options": {
+                    "excludeByName": {
+                    "_id": true,
+                    "_index": true,
+                    "_type": true,
+                    "client.labels": true,
+                    "client.namespace": true,
+                    "clientService.name": true,
+                    "clientService.namespace": true,
+                    "highlight": true,
+                    "ip.ipVersion": true,
+                    "l7.latencyNs": false,
+                    "l7.request.http.headers": true,
+                    "l7.response.http.headers": true,
+                    "l7.response.http.protocol": true,
+                    "pid": true,
+                    "protoMessage.ip.ipVersion": true,
+                    "protoMessage.l7.request.http.headers": true,
+                    "protoMessage.l7.response.http.headers": true,
+                    "protoMessage.l7.response.http.protocol": true,
+                    "protoMessage.pid": true,
+                    "protoMessage.ts": true,
+                    "server.labels": true,
+                    "server.namespace": true,
+                    "serverService.name": true,
+                    "serverService.namespace": true,
+                    "sort": true,
+                    "ts": true
+                    },
+                    "indexByName": {
+                    "_id": 0,
+                    "_index": 1,
+                    "_type": 2,
+                    "client.labels": 17,
+                    "client.namespace": 18,
+                    "client.podName": 12,
+                    "clientService.name": 19,
+                    "clientService.namespace": 20,
+                    "highlight": 3,
+                    "protoMessage.ip.client": 10,
+                    "protoMessage.ip.ipVersion": 21,
+                    "protoMessage.ip.server": 13,
+                    "protoMessage.l4.TCP.clientPort": 11,
+                    "protoMessage.l4.TCP.serverPort": 14,
+                    "protoMessage.l7.latencyNs": 9,
+                    "protoMessage.l7.request.http.headers": 22,
+                    "protoMessage.l7.request.http.method": 6,
+                    "protoMessage.l7.request.http.protocol": 5,
+                    "protoMessage.l7.request.http.url": 7,
+                    "protoMessage.l7.response.http.code": 8,
+                    "protoMessage.l7.response.http.headers": 23,
+                    "protoMessage.l7.response.http.protocol": 24,
+                    "protoMessage.pid": 25,
+                    "protoMessage.ts": 16,
+                    "server.labels": 26,
+                    "server.namespace": 27,
+                    "server.podName": 15,
+                    "serverService.name": 28,
+                    "serverService.namespace": 29,
+                    "sort": 4
+                    },
+                    "renameByName": {
+                    "client.podName": "clientPodName",
+                    "protoMessage.ip.client": "clientIP",
+                    "protoMessage.ip.server": "serverIP",
+                    "protoMessage.l4.TCP.clientPort": "clientProt",
+                    "protoMessage.l4.TCP.serverPort": "serverPort",
+                    "protoMessage.l7.latencyNs": "latnecyNs",
+                    "protoMessage.l7.request.http.method": "method",
+                    "protoMessage.l7.request.http.protocol": "protocol",
+                    "protoMessage.l7.request.http.url": "url",
+                    "protoMessage.l7.response.http.code": "code",
+                    "server.podName": "serverPodName"
+                    }
+                }
+                }
+            ],
+            "type": "table"
+            },
+            {
+            "collapsed": false,
+            "gridPos": {
+                "h": 1,
+                "w": 24,
+                "x": 0,
+                "y": 41
+            },
+            "id": 24,
+            "panels": [],
+            "title": "MySQL",
+            "type": "row"
+            },
+            {
+            "datasource": {
+                "type": "elasticsearch",
+                "uid": "perisco-elasticsearch"
+            },
+            "fieldConfig": {
+                "defaults": {
+                "color": {
+                    "mode": "palette-classic"
+                },
+                "custom": {
+                    "axisCenteredZero": false,
+                    "axisColorMode": "text",
+                    "axisLabel": "",
+                    "axisPlacement": "auto",
+                    "barAlignment": 0,
+                    "drawStyle": "line",
+                    "fillOpacity": 10,
+                    "gradientMode": "hue",
+                    "hideFrom": {
+                    "legend": false,
+                    "tooltip": false,
+                    "viz": false
+                    },
+                    "insertNulls": false,
+                    "lineInterpolation": "linear",
+                    "lineStyle": {
+                    "fill": "solid"
+                    },
+                    "lineWidth": 1,
+                    "pointSize": 5,
+                    "scaleDistribution": {
+                    "type": "linear"
+                    },
+                    "showPoints": "never",
+                    "spanNulls": true,
+                    "stacking": {
+                    "group": "A",
+                    "mode": "none"
+                    },
+                    "thresholdsStyle": {
+                    "mode": "off"
+                    }
+                },
+                "mappings": [],
+                "thresholds": {
+                    "mode": "absolute",
+                    "steps": [
+                    {
+                        "color": "green",
+                        "value": null
+                    },
+                    {
+                        "color": "red",
+                        "value": 80
+                    }
+                    ]
+                },
+                "unit": "percentunit"
+                },
+                "overrides": []
+            },
+            "gridPos": {
+                "h": 7,
+                "w": 12,
+                "x": 0,
+                "y": 42
+            },
+            "id": 31,
+            "options": {
+                "legend": {
+                "calcs": [],
+                "displayMode": "list",
+                "placement": "right",
+                "showLegend": true
+                },
+                "tooltip": {
+                "mode": "single",
+                "sort": "none"
+                }
+            },
+            "targets": [
+                {
+                "alias": "",
+                "bucketAggs": [
+                    {
+                    "field": "protoMessage.l7.request.mysql.command",
+                    "id": "3",
+                    "settings": {
+                        "min_doc_count": "1",
+                        "order": "desc",
+                        "orderBy": "_term",
+                        "size": "10"
+                    },
+                    "type": "terms"
+                    },
+                    {
+                    "field": "protoMessage.ts",
+                    "id": "2",
+                    "settings": {
+                        "interval": "10s"
+                    },
+                    "type": "date_histogram"
+                    }
+                ],
+                "datasource": {
+                    "type": "elasticsearch",
+                    "uid": "perisco-elasticsearch"
+                },
+                "hide": true,
+                "metrics": [
+                    {
+                    "hide": false,
+                    "id": "1",
+                    "type": "count"
+                    }
+                ],
+                "query": "_exists_: \"protoMessage.l7.request.mysql.command\" AND _exists_: \"client.podName\" AND server.namespace: $namespace AND serverService.name: $service",
+                "refId": "A",
+                "timeField": "protoMessage.ts"
+                },
+                {
+                "alias": "",
+                "bucketAggs": [
+                    {
+                    "field": "protoMessage.ts",
+                    "id": "2",
+                    "settings": {
+                        "interval": "10s"
+                    },
+                    "type": "date_histogram"
+                    }
+                ],
+                "datasource": {
+                    "type": "elasticsearch",
+                    "uid": "perisco-elasticsearch"
+                },
+                "hide": true,
+                "metrics": [
+                    {
+                    "id": "1",
+                    "type": "count"
+                    }
+                ],
+                "query": "_exists_: \"protoMessage.l7.request.mysql.command\" AND _exists_: \"client.podName\" AND server.namespace: $namespace AND serverService.name: $service",
+                "refId": "B",
+                "timeField": "protoMessage.ts"
+                },
+                {
+                "datasource": {
+                    "type": "__expr__",
+                    "uid": "__expr__"
+                },
+                "expression": "$A / $B",
+                "hide": false,
+                "reducer": "mean",
+                "refId": "cmd",
+                "type": "math"
+                }
+            ],
+            "title": "MySQL Requests",
+            "type": "timeseries"
+            },
+            {
+            "datasource": {
+                "type": "elasticsearch",
+                "uid": "perisco-elasticsearch"
+            },
+            "fieldConfig": {
+                "defaults": {
+                "color": {
+                    "mode": "palette-classic"
+                },
+                "custom": {
+                    "axisCenteredZero": false,
+                    "axisColorMode": "text",
+                    "axisLabel": "",
+                    "axisPlacement": "auto",
+                    "barAlignment": 0,
+                    "drawStyle": "line",
+                    "fillOpacity": 10,
+                    "gradientMode": "hue",
+                    "hideFrom": {
+                    "legend": false,
+                    "tooltip": false,
+                    "viz": false
+                    },
+                    "insertNulls": false,
+                    "lineInterpolation": "linear",
+                    "lineStyle": {
+                    "fill": "solid"
+                    },
+                    "lineWidth": 1,
+                    "pointSize": 5,
+                    "scaleDistribution": {
+                    "type": "linear"
+                    },
+                    "showPoints": "never",
+                    "spanNulls": true,
+                    "stacking": {
+                    "group": "A",
+                    "mode": "none"
+                    },
+                    "thresholdsStyle": {
+                    "mode": "off"
+                    }
+                },
+                "mappings": [],
+                "thresholds": {
+                    "mode": "absolute",
+                    "steps": [
+                    {
+                        "color": "green",
+                        "value": null
+                    },
+                    {
+                        "color": "red",
+                        "value": 80
+                    }
+                    ]
+                },
+                "unit": "percentunit"
+                },
+                "overrides": []
+            },
+            "gridPos": {
+                "h": 7,
+                "w": 12,
+                "x": 12,
+                "y": 42
+            },
+            "id": 32,
+            "options": {
+                "legend": {
+                "calcs": [],
+                "displayMode": "list",
+                "placement": "right",
+                "showLegend": true
+                },
+                "tooltip": {
+                "mode": "single",
+                "sort": "none"
+                }
+            },
+            "targets": [
+                {
+                "alias": "",
+                "bucketAggs": [
+                    {
+                    "field": "protoMessage.l7.response.mysql.type",
+                    "id": "3",
+                    "settings": {
+                        "min_doc_count": "1",
+                        "order": "desc",
+                        "orderBy": "_term",
+                        "size": "10"
+                    },
+                    "type": "terms"
+                    },
+                    {
+                    "field": "protoMessage.ts",
+                    "id": "2",
+                    "settings": {
+                        "interval": "10s"
+                    },
+                    "type": "date_histogram"
+                    }
+                ],
+                "datasource": {
+                    "type": "elasticsearch",
+                    "uid": "perisco-elasticsearch"
+                },
+                "hide": true,
+                "metrics": [
+                    {
+                    "hide": false,
+                    "id": "1",
+                    "type": "count"
+                    }
+                ],
+                "query": "_exists_: \"protoMessage.l7.request.mysql.command\" AND _exists_: \"client.podName\" AND server.namespace: $namespace AND serverService.name: $service",
+                "refId": "A",
+                "timeField": "protoMessage.ts"
+                },
+                {
+                "alias": "",
+                "bucketAggs": [
+                    {
+                    "field": "protoMessage.ts",
+                    "id": "2",
+                    "settings": {
+                        "interval": "10s"
+                    },
+                    "type": "date_histogram"
+                    }
+                ],
+                "datasource": {
+                    "type": "elasticsearch",
+                    "uid": "perisco-elasticsearch"
+                },
+                "hide": true,
+                "metrics": [
+                    {
+                    "id": "1",
+                    "type": "count"
+                    }
+                ],
+                "query": "_exists_: \"protoMessage.l7.request.mysql.command\" AND _exists_: \"client.podName\" AND server.namespace: $namespace AND serverService.name: $service",
+                "refId": "B",
+                "timeField": "protoMessage.ts"
+                },
+                {
+                "datasource": {
+                    "type": "__expr__",
+                    "uid": "__expr__"
+                },
+                "expression": "$A / $B",
+                "hide": false,
+                "reducer": "mean",
+                "refId": "response",
+                "type": "math"
+                }
+            ],
+            "title": "MySQL Responses",
+            "type": "timeseries"
+            },
+            {
+            "datasource": {
+                "type": "elasticsearch",
+                "uid": "perisco-elasticsearch"
+            },
+            "fieldConfig": {
+                "defaults": {
+                "color": {
+                    "mode": "palette-classic"
+                },
+                "custom": {
+                    "axisCenteredZero": false,
+                    "axisColorMode": "text",
+                    "axisLabel": "",
+                    "axisPlacement": "auto",
+                    "barAlignment": 0,
+                    "drawStyle": "line",
+                    "fillOpacity": 0,
+                    "gradientMode": "none",
+                    "hideFrom": {
+                    "legend": false,
+                    "tooltip": false,
+                    "viz": false
+                    },
+                    "insertNulls": false,
+                    "lineInterpolation": "smooth",
+                    "lineWidth": 1,
+                    "pointSize": 5,
+                    "scaleDistribution": {
+                    "type": "linear"
+                    },
+                    "showPoints": "never",
+                    "spanNulls": true,
+                    "stacking": {
+                    "group": "A",
+                    "mode": "none"
+                    },
+                    "thresholdsStyle": {
+                    "mode": "off"
+                    }
+                },
+                "mappings": [],
+                "thresholds": {
+                    "mode": "absolute",
+                    "steps": [
+                    {
+                        "color": "green",
+                        "value": null
+                    },
+                    {
+                        "color": "red",
+                        "value": 80
+                    }
+                    ]
+                },
+                "unit": "ms"
+                },
+                "overrides": []
+            },
+            "gridPos": {
+                "h": 6,
+                "w": 12,
+                "x": 0,
+                "y": 49
+            },
+            "id": 33,
+            "options": {
+                "legend": {
+                "calcs": [],
+                "displayMode": "list",
+                "placement": "right",
+                "showLegend": true
+                },
+                "tooltip": {
+                "mode": "single",
+                "sort": "none"
+                }
+            },
+            "targets": [
+                {
+                "alias": "",
+                "bucketAggs": [
+                    {
+                    "field": "serverService.name",
+                    "id": "3",
+                    "settings": {
+                        "min_doc_count": "1",
+                        "order": "desc",
+                        "orderBy": "_term",
+                        "size": "10"
+                    },
+                    "type": "terms"
+                    },
+                    {
+                    "field": "protoMessage.ts",
+                    "id": "2",
+                    "settings": {
+                        "interval": "10s"
+                    },
+                    "type": "date_histogram"
+                    }
+                ],
+                "datasource": {
+                    "type": "elasticsearch",
+                    "uid": "perisco-elasticsearch"
+                },
+                "metrics": [
+                    {
+                    "field": "protoMessage.l7.latencyNs",
+                    "hide": false,
+                    "id": "1",
+                    "settings": {
+                        "percents": [
+                        "95"
+                        ],
+                        "script": "_value / 1000000"
+                    },
+                    "type": "percentiles"
+                    }
+                ],
+                "query": "_exists_: \"protoMessage.l7.request.mysql.command\" AND _exists_: \"client.podName\" AND server.namespace: $namespace AND serverService.name: $service",
+                "refId": "A",
+                "timeField": "protoMessage.ts"
+                }
+            ],
+            "title": "MySQL Services Latency p95",
+            "type": "timeseries"
+            },
+            {
+            "datasource": {
+                "type": "elasticsearch",
+                "uid": "perisco-elasticsearch"
+            },
+            "fieldConfig": {
+                "defaults": {
+                "color": {
+                    "mode": "thresholds"
+                },
+                "custom": {
+                    "align": "auto",
+                    "cellOptions": {
+                    "type": "auto"
+                    },
+                    "inspect": false
+                },
+                "mappings": [],
+                "thresholds": {
+                    "mode": "absolute",
+                    "steps": [
+                    {
+                        "color": "green",
+                        "value": null
+                    },
+                    {
+                        "color": "red",
+                        "value": 80
+                    }
+                    ]
+                }
+                },
+                "overrides": [
+                {
+                    "matcher": {
+                    "id": "byName",
+                    "options": "l4.TCP.clientPort"
+                    },
+                    "properties": [
+                    {
+                        "id": "custom.width",
+                        "value": 103
+                    }
+                    ]
+                },
+                {
+                    "matcher": {
+                    "id": "byName",
+                    "options": "l4.TCP.serverPort"
+                    },
+                    "properties": [
+                    {
+                        "id": "custom.width",
+                        "value": 83
+                    }
+                    ]
+                },
+                {
+                    "matcher": {
+                    "id": "byName",
+                    "options": "l7.request.http.method"
+                    },
+                    "properties": [
+                    {
+                        "id": "custom.width",
+                        "value": 69
+                    }
+                    ]
+                },
+                {
+                    "matcher": {
+                    "id": "byName",
+                    "options": "ip.server"
+                    },
+                    "properties": [
+                    {
+                        "id": "custom.width",
+                        "value": 95
+                    }
+                    ]
+                },
+                {
+                    "matcher": {
+                    "id": "byName",
+                    "options": "ip.client"
+                    },
+                    "properties": [
+                    {
+                        "id": "custom.width",
+                        "value": 97
+                    }
+                    ]
+                },
+                {
+                    "matcher": {
+                    "id": "byName",
+                    "options": "l7.request.http.protocol"
+                    },
+                    "properties": [
+                    {
+                        "id": "custom.width",
+                        "value": 87
+                    }
+                    ]
+                },
+                {
+                    "matcher": {
+                    "id": "byName",
+                    "options": "l7.latencyNs"
+                    },
+                    "properties": [
+                    {
+                        "id": "custom.width",
+                        "value": 115
+                    }
+                    ]
+                },
+                {
+                    "matcher": {
+                    "id": "byName",
+                    "options": "l7.response.http.code"
+                    },
+                    "properties": [
+                    {
+                        "id": "custom.width",
+                        "value": 69
+                    }
+                    ]
+                },
+                {
+                    "matcher": {
+                    "id": "byName",
+                    "options": "protoMessage.l7.request.http.method"
+                    },
+                    "properties": [
+                    {
+                        "id": "custom.width",
+                        "value": 99
+                    }
+                    ]
+                },
+                {
+                    "matcher": {
+                    "id": "byName",
+                    "options": "protoMessage.l7.request.http.protocol"
+                    },
+                    "properties": [
+                    {
+                        "id": "custom.width",
+                        "value": 104
+                    }
+                    ]
+                },
+                {
+                    "matcher": {
+                    "id": "byName",
+                    "options": "protoMessage.l7.response.http.code"
+                    },
+                    "properties": [
+                    {
+                        "id": "custom.width",
+                        "value": 77
+                    }
+                    ]
+                },
+                {
+                    "matcher": {
+                    "id": "byName",
+                    "options": "protoMessage.l7.latencyNs"
+                    },
+                    "properties": [
+                    {
+                        "id": "custom.width",
+                        "value": 122
+                    }
+                    ]
+                },
+                {
+                    "matcher": {
+                    "id": "byName",
+                    "options": "protoMessage.ip.client"
+                    },
+                    "properties": [
+                    {
+                        "id": "custom.width",
+                        "value": 123
+                    }
+                    ]
+                },
+                {
+                    "matcher": {
+                    "id": "byName",
+                    "options": "protoMessage.l4.TCP.clientPort"
+                    },
+                    "properties": [
+                    {
+                        "id": "custom.width",
+                        "value": 84
+                    }
+                    ]
+                },
+                {
+                    "matcher": {
+                    "id": "byName",
+                    "options": "protoMessage.ip.server"
+                    },
+                    "properties": [
+                    {
+                        "id": "custom.width",
+                        "value": 120
+                    }
+                    ]
+                },
+                {
+                    "matcher": {
+                    "id": "byName",
+                    "options": "protoMessage.l4.TCP.serverPort"
+                    },
+                    "properties": [
+                    {
+                        "id": "custom.width",
+                        "value": 80
+                    }
+                    ]
+                },
+                {
+                    "matcher": {
+                    "id": "byName",
+                    "options": "client.podName"
+                    },
+                    "properties": [
+                    {
+                        "id": "custom.width",
+                        "value": 242
+                    }
+                    ]
+                },
+                {
+                    "matcher": {
+                    "id": "byName",
+                    "options": "url"
+                    },
+                    "properties": [
+                    {
+                        "id": "custom.width",
+                        "value": 116
+                    }
+                    ]
+                },
+                {
+                    "matcher": {
+                    "id": "byName",
+                    "options": "protocol"
+                    },
+                    "properties": [
+                    {
+                        "id": "custom.width",
+                        "value": 84
+                    }
+                    ]
+                },
+                {
+                    "matcher": {
+                    "id": "byName",
+                    "options": "method"
+                    },
+                    "properties": [
+                    {
+                        "id": "custom.width",
+                        "value": 67
+                    }
+                    ]
+                },
+                {
+                    "matcher": {
+                    "id": "byName",
+                    "options": "code"
+                    },
+                    "properties": [
+                    {
+                        "id": "custom.width",
+                        "value": 57
+                    }
+                    ]
+                },
+                {
+                    "matcher": {
+                    "id": "byName",
+                    "options": "latnecyNs"
+                    },
+                    "properties": [
+                    {
+                        "id": "custom.width",
+                        "value": 94
+                    }
+                    ]
+                },
+                {
+                    "matcher": {
+                    "id": "byName",
+                    "options": "clientIP"
+                    },
+                    "properties": [
+                    {
+                        "id": "custom.width",
+                        "value": 117
+                    }
+                    ]
+                }
+                ]
+            },
+            "gridPos": {
+                "h": 6,
+                "w": 12,
+                "x": 12,
+                "y": 49
+            },
+            "id": 30,
+            "options": {
+                "cellHeight": "sm",
+                "footer": {
+                "countRows": false,
+                "fields": "",
+                "reducer": [
+                    "sum"
+                ],
+                "show": false
+                },
+                "showHeader": true,
+                "sortBy": [
+                {
+                    "desc": false,
+                    "displayName": "protocol"
+                }
+                ]
+            },
+            "pluginVersion": "10.1.0",
+            "targets": [
+                {
+                "alias": "",
+                "bucketAggs": [],
+                "datasource": {
+                    "type": "elasticsearch",
+                    "uid": "perisco-elasticsearch"
+                },
+                "metrics": [
+                    {
+                    "id": "1",
+                    "settings": {
+                        "size": "500"
+                    },
+                    "type": "raw_data"
+                    }
+                ],
+                "query": "_exists_: \"protoMessage.l7.request.mysql.command\" AND _exists_: \"client.podName\" AND server.namespace: $namespace AND serverService.name: $service",
+                "refId": "A",
+                "timeField": "protoMessage.ts"
+                }
+            ],
+            "title": "MySQL Logs",
+            "transformations": [
+                {
+                "id": "organize",
+                "options": {
+                    "excludeByName": {
+                    "_id": true,
+                    "_index": true,
+                    "_type": true,
+                    "client.labels": true,
+                    "client.namespace": true,
+                    "clientService.name": true,
+                    "clientService.namespace": true,
+                    "highlight": true,
+                    "ip.ipVersion": true,
+                    "l7.latencyNs": false,
+                    "l7.request.http.headers": true,
+                    "l7.response.http.headers": true,
+                    "l7.response.http.protocol": true,
+                    "pid": true,
+                    "protoMessage.ip.ipVersion": true,
+                    "protoMessage.l7.request.http.headers": true,
+                    "protoMessage.l7.request.mysql.command": false,
+                    "protoMessage.l7.response.http.headers": true,
+                    "protoMessage.l7.response.http.protocol": true,
+                    "protoMessage.pid": true,
+                    "protoMessage.ts": true,
+                    "server.labels": true,
+                    "server.namespace": true,
+                    "serverService.name": true,
+                    "serverService.namespace": true,
+                    "sort": true,
+                    "ts": true
+                    },
+                    "indexByName": {
+                    "_id": 3,
+                    "_index": 4,
+                    "_type": 5,
+                    "client.labels": 16,
+                    "client.namespace": 17,
+                    "client.podName": 11,
+                    "clientService.name": 18,
+                    "clientService.namespace": 19,
+                    "highlight": 6,
+                    "protoMessage.ip.client": 9,
+                    "protoMessage.ip.ipVersion": 20,
+                    "protoMessage.ip.server": 12,
+                    "protoMessage.l4.TCP.clientPort": 10,
+                    "protoMessage.l4.TCP.serverPort": 13,
+                    "protoMessage.l7.latencyNs": 8,
+                    "protoMessage.l7.request.mysql.command": 0,
+                    "protoMessage.l7.request.mysql.payloadLength": 1,
+                    "protoMessage.l7.response.mysql.type": 2,
+                    "protoMessage.pid": 21,
+                    "protoMessage.ts": 15,
+                    "server.labels": 22,
+                    "server.namespace": 23,
+                    "server.podName": 14,
+                    "serverService.name": 24,
+                    "serverService.namespace": 25,
+                    "sort": 7
+                    },
+                    "renameByName": {
+                    "client.podName": "clientPodName",
+                    "protoMessage.ip.client": "clientIP",
+                    "protoMessage.ip.server": "serverIP",
+                    "protoMessage.l4.TCP.clientPort": "clientProt",
+                    "protoMessage.l4.TCP.serverPort": "serverPort",
+                    "protoMessage.l7.latencyNs": "latnecyNs",
+                    "protoMessage.l7.request.http.method": "method",
+                    "protoMessage.l7.request.http.protocol": "protocol",
+                    "protoMessage.l7.request.http.url": "url",
+                    "protoMessage.l7.request.mysql.command": "command",
+                    "protoMessage.l7.request.mysql.payloadLength": "cmdPayloadLen",
+                    "protoMessage.l7.response.http.code": "code",
+                    "protoMessage.l7.response.mysql.type": "response",
+                    "server.podName": "serverPodName"
+                    }
+                }
+                }
+            ],
+            "type": "table"
+            }
+        ],
+        "refresh": "10s",
+        "revision": 1,
+        "schemaVersion": 38,
+        "style": "dark",
+        "tags": [],
+        "templating": {
+            "list": [
+            {
+                "current": {
+                "selected": true,
+                "text": [
+                    "default"
+                ],
+                "value": [
+                    "default"
+                ]
+                },
+                "datasource": {
+                "type": "elasticsearch",
+                "uid": "perisco-elasticsearch"
+                },
+                "definition": "{\"find\": \"terms\", \"field\": \"server.namespace\"}",
+                "hide": 0,
+                "includeAll": true,
+                "multi": true,
+                "name": "namespace",
+                "options": [],
+                "query": "{\"find\": \"terms\", \"field\": \"server.namespace\"}",
+                "refresh": 2,
+                "regex": "",
+                "skipUrlSync": false,
+                "sort": 0,
+                "type": "query"
+            },
+            {
+                "current": {
+                "selected": true,
+                "text": [
+                    "All"
+                ],
+                "value": [
+                    "$__all"
+                ]
+                },
+                "datasource": {
+                "type": "elasticsearch",
+                "uid": "perisco-elasticsearch"
+                },
+                "definition": "{\"find\": \"terms\", \"field\": \"serverService.name\", \"query\": \"serverService.namespace:$namespace\"}",
+                "hide": 0,
+                "includeAll": true,
+                "multi": true,
+                "name": "service",
+                "options": [],
+                "query": "{\"find\": \"terms\", \"field\": \"serverService.name\", \"query\": \"serverService.namespace:$namespace\"}",
+                "refresh": 2,
+                "regex": "",
+                "skipUrlSync": false,
+                "sort": 0,
+                "type": "query"
+            }
+            ]
+        },
+        "time": {
+            "from": "now-5m",
+            "to": "now"
+        },
+        "timepicker": {},
+        "timezone": "",
+        "title": "Perisco K8S Dashboard v2",
+        "uid": "FlCWOT84kk",
+        "version": 1,
+        "weekStart": ""
+    }

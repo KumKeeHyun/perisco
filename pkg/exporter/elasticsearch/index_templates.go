@@ -157,7 +157,10 @@ const k8sLogsIndexTemplates = `
 			  "namespace": {
 				"type": "keyword"
 			  },
-			  "podName": {
+			  "name": {
+				"type": "keyword"
+			  },
+			  "NodeName": {
 				"type": "keyword"
 			  }
 			}
@@ -168,6 +171,9 @@ const k8sLogsIndexTemplates = `
 				"type": "keyword"
 			  },
 			  "namespace": {
+				"type": "keyword"
+			  },
+			  "labels": {
 				"type": "keyword"
 			  }
 			}
@@ -302,7 +308,10 @@ const k8sLogsIndexTemplates = `
 			  "namespace": {
 				"type": "keyword"
 			  },
-			  "podName": {
+			  "name": {
+				"type": "keyword"
+			  },
+			  "NodeName": {
 				"type": "keyword"
 			  }
 			}
@@ -313,6 +322,9 @@ const k8sLogsIndexTemplates = `
 				"type": "keyword"
 			  },
 			  "namespace": {
+				"type": "keyword"
+			  },
+			  "labels": {
 				"type": "keyword"
 			  }
 			}

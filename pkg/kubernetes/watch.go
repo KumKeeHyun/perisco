@@ -12,8 +12,8 @@ import (
 )
 
 type EventHandler interface {
-	handleWatchEndpoints(event watch.Event)
-	handleWatchPods(event watch.Event)
+	handleEndpoints(event watch.Event)
+	handlePods(event watch.Event)
 }
 
 type watcher struct {
@@ -39,7 +39,6 @@ func (w *watcher) WatchEvents(ctx context.Context) error {
 	w.ctx, w.cancel = context.WithCancel(ctx)
 	w.donec = make(chan struct{})
 
-	// TODO: append retry logic
 	epWatch, err := w.client.Endpoints("").Watch(w.ctx, metav1.ListOptions{})
 	if err != nil {
 		return fmt.Errorf("failed to watch endpoints: %w", err)
@@ -57,10 +56,10 @@ func (w *watcher) WatchEvents(ctx context.Context) error {
 		for {
 			select {
 			case event := <-epWatch.ResultChan():
-				w.handler.handleWatchEndpoints(event)
+				w.handler.handleEndpoints(event)
 
 			case event := <-poWatch.ResultChan():
-				w.handler.handleWatchPods(event)
+				w.handler.handlePods(event)
 
 			case <-w.ctx.Done():
 				return

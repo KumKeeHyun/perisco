@@ -31,6 +31,7 @@ data:
         "editable": true,
         "fiscalYearStartMonth": 0,
         "graphTooltip": 0,
+        "id": 2,
         "links": [],
         "liveNow": false,
         "panels": [
@@ -94,7 +95,7 @@ data:
                     "type": "count"
                     }
                 ],
-                "query": "_exists_: \"clientService.name\" AND _exists_: \"serverService.name\" AND serverService.namespace: $namespace AND serverService.name: $service",
+                "query": "_exists_: \"clientService.name\" AND _exists_: \"serverService.name\" AND NOT (clientService.name: \"kubernetes\")  AND serverService.namespace: $namespace AND serverService.name: $service",
                 "refId": "A",
                 "timeField": "protoMessage.ts"
                 }
@@ -163,7 +164,7 @@ data:
                 "alias": "",
                 "bucketAggs": [
                     {
-                    "field": "client.podName",
+                    "field": "client.name",
                     "id": "5",
                     "settings": {
                         "min_doc_count": "1",
@@ -174,7 +175,7 @@ data:
                     "type": "terms"
                     },
                     {
-                    "field": "server.podName",
+                    "field": "server.name",
                     "id": "6",
                     "settings": {
                         "min_doc_count": "1",
@@ -195,7 +196,7 @@ data:
                     "type": "count"
                     }
                 ],
-                "query": "_exists_: \"client.podName\" AND _exists_: \"server.podName\" AND server.namespace: $namespace AND serverService.name: $service",
+                "query": "_exists_: \"client.name\" AND _exists_: \"server.name\" AND NOT (clientService.name: \"kubernetes\") AND server.namespace: $namespace AND serverService.name: $service",
                 "refId": "A",
                 "timeField": "protoMessage.ts"
                 }
@@ -209,7 +210,7 @@ data:
                     "mode": "reduceRow",
                     "reduce": {
                     "include": [
-                        "client.podName"
+                        "client.name"
                     ],
                     "reducer": "lastNotNull"
                     }
@@ -222,8 +223,7 @@ data:
                     "mode": "reduceRow",
                     "reduce": {
                     "include": [
-                        "serverService.name",
-                        "server.podName"
+                        "server.name"
                     ],
                     "reducer": "lastNotNull"
                     }
@@ -234,9 +234,9 @@ data:
                 "options": {
                     "alias": "id",
                     "binary": {
-                    "left": "client.podName",
+                    "left": "client.name",
                     "reducer": "sum",
-                    "right": "server.podName"
+                    "right": "server.name"
                     },
                     "mode": "binary",
                     "reduce": {
@@ -320,7 +320,7 @@ data:
                     "type": "count"
                     }
                 ],
-                "query": "serverService.namespace: $namespace AND serverService.name: $service",
+                "query": "NOT (clientService.name: \"kubernetes\") AND serverService.namespace: $namespace AND serverService.name: $service",
                 "refId": "A",
                 "timeField": "protoMessage.ts"
                 }
@@ -380,7 +380,7 @@ data:
                 "alias": "",
                 "bucketAggs": [
                     {
-                    "field": "server.podName",
+                    "field": "server.name",
                     "id": "2",
                     "settings": {
                         "min_doc_count": "1",
@@ -401,7 +401,7 @@ data:
                     "type": "count"
                     }
                 ],
-                "query": "serverService.namespace: $namespace AND serverService.name: $service",
+                "query": "NOT (clientService.name: \"kubernetes\") AND serverService.namespace: $namespace AND serverService.name: $service",
                 "refId": "A",
                 "timeField": "protoMessage.ts"
                 }
@@ -537,7 +537,7 @@ data:
                     "type": "count"
                     }
                 ],
-                "query": "_exists_: \"protoMessage.l7.request.http.protocol\" AND _exists_: \"client.podName\" AND server.namespace: $namespace AND serverService.name: $service",
+                "query": "_exists_: \"protoMessage.l7.request.http.protocol\" AND NOT (clientService.name: \"kubernetes\") AND server.namespace: $namespace AND serverService.name: $service",
                 "refId": "A",
                 "timeField": "protoMessage.ts"
                 },
@@ -564,7 +564,7 @@ data:
                     "type": "count"
                     }
                 ],
-                "query": "_exists_: \"protoMessage.l7.request.http.protocol\" AND _exists_: \"client.podName\" AND server.namespace: $namespace AND serverService.name: $service",
+                "query": "_exists_: \"protoMessage.l7.request.http.protocol\" AND _exists_: \"client.name\" AND server.namespace: $namespace AND serverService.name: $service",
                 "refId": "B",
                 "timeField": "protoMessage.ts"
                 },
@@ -642,32 +642,7 @@ data:
                 },
                 "unit": "percentunit"
                 },
-                "overrides": [
-                {
-                    "__systemRef": "hideSeriesFrom",
-                    "matcher": {
-                    "id": "byNames",
-                    "options": {
-                        "mode": "exclude",
-                        "names": [
-                        "response 500"
-                        ],
-                        "prefix": "All except:",
-                        "readOnly": true
-                    }
-                    },
-                    "properties": [
-                    {
-                        "id": "custom.hideFrom",
-                        "value": {
-                        "legend": false,
-                        "tooltip": false,
-                        "viz": true
-                        }
-                    }
-                    ]
-                }
-                ]
+                "overrides": []
             },
             "gridPos": {
                 "h": 7,
@@ -724,7 +699,7 @@ data:
                     "type": "count"
                     }
                 ],
-                "query": "_exists_: \"protoMessage.l7.response.http.code\" AND _exists_: \"client.podName\" AND server.namespace: $namespace AND serverService.name: $service",
+                "query": "_exists_: \"protoMessage.l7.response.http.code\" AND NOT (clientService.name: \"kubernetes\") AND server.namespace: $namespace AND serverService.name: $service",
                 "refId": "A",
                 "timeField": "protoMessage.ts"
                 },
@@ -751,7 +726,7 @@ data:
                     "type": "count"
                     }
                 ],
-                "query": "_exists_: \"protoMessage.l7.response.http.code\" AND _exists_: \"client.podName\" AND server.namespace: $namespace AND serverService.name: $service",
+                "query": "_exists_: \"protoMessage.l7.response.http.code\" AND _exists_: \"client.name\" AND server.namespace: $namespace AND serverService.name: $service",
                 "refId": "B",
                 "timeField": "protoMessage.ts"
                 },
@@ -856,7 +831,7 @@ data:
                 "alias": "",
                 "bucketAggs": [
                     {
-                    "field": "server.podName",
+                    "field": "server.name",
                     "id": "3",
                     "settings": {
                         "min_doc_count": "1",
@@ -887,7 +862,7 @@ data:
                     "type": "count"
                     }
                 ],
-                "query": "_exists_: \"protoMessage.l7.request.http.protocol\" AND _exists_: \"client.podName\" AND server.namespace: $namespace AND serverService.name: $service",
+                "query": "_exists_: \"protoMessage.l7.request.http.protocol\" AND NOT (clientService.name: \"kubernetes\") AND server.namespace: $namespace AND serverService.name: $service",
                 "refId": "A",
                 "timeField": "protoMessage.ts"
                 }
@@ -981,7 +956,7 @@ data:
                 "alias": "",
                 "bucketAggs": [
                     {
-                    "field": "server.podName",
+                    "field": "server.name",
                     "id": "3",
                     "settings": {
                         "min_doc_count": "1",
@@ -1011,7 +986,7 @@ data:
                     "type": "count"
                     }
                 ],
-                "query": "_exists_: \"protoMessage.l7.response.http.code\" AND _exists_: \"client.podName\" AND protoMessage.l7.response.http.code: [400 TO *] AND server.namespace: $namespace AND serverService.name: $service",
+                "query": "_exists_: \"protoMessage.l7.response.http.code\" AND NOT (clientService.name: \"kubernetes\") AND protoMessage.l7.response.http.code: [400 TO *] AND server.namespace: $namespace AND serverService.name: $service",
                 "refId": "A",
                 "timeField": "protoMessage.ts"
                 },
@@ -1019,7 +994,7 @@ data:
                 "alias": "",
                 "bucketAggs": [
                     {
-                    "field": "server.podName",
+                    "field": "server.name",
                     "id": "3",
                     "settings": {
                         "min_doc_count": "1",
@@ -1049,7 +1024,7 @@ data:
                     "type": "count"
                     }
                 ],
-                "query": "_exists_: \"protoMessage.l7.response.http.code\" AND _exists_: \"client.podName\" AND server.namespace: $namespace AND serverService.name: $service",
+                "query": "_exists_: \"protoMessage.l7.response.http.code\" AND _exists_: \"client.name\" AND server.namespace: $namespace AND serverService.name: $service",
                 "refId": "B",
                 "timeField": "protoMessage.ts"
                 },
@@ -1151,7 +1126,7 @@ data:
                 "alias": "",
                 "bucketAggs": [
                     {
-                    "field": "server.podName",
+                    "field": "server.name",
                     "id": "3",
                     "settings": {
                         "min_doc_count": "1",
@@ -1188,7 +1163,7 @@ data:
                     "type": "percentiles"
                     }
                 ],
-                "query": "_exists_: \"protoMessage.l7.request.http.protocol\" AND _exists_: \"client.podName\" AND server.namespace: $namespace AND serverService.name: $service",
+                "query": "_exists_: \"protoMessage.l7.request.http.protocol\" AND NOT (clientService.name: \"kubernetes\") AND server.namespace: $namespace AND serverService.name: $service",
                 "refId": "A",
                 "timeField": "protoMessage.ts"
                 }
@@ -1550,7 +1525,7 @@ data:
                     "type": "raw_data"
                     }
                 ],
-                "query": "_exists_: \"protoMessage.l7.request.http.protocol\" AND _exists_: \"client.podName\" AND server.namespace: $namespace AND serverService.name: $service",
+                "query": "_exists_: \"protoMessage.l7.request.http.protocol\" AND NOT (clientService.name: \"kubernetes\") AND server.namespace: $namespace AND serverService.name: $service",
                 "refId": "A",
                 "timeField": "protoMessage.ts"
                 }
@@ -1565,7 +1540,9 @@ data:
                     "_index": true,
                     "_type": true,
                     "client.labels": true,
+                    "client.name": false,
                     "client.namespace": true,
+                    "clientService.labels": true,
                     "clientService.name": true,
                     "clientService.namespace": true,
                     "highlight": true,
@@ -1582,7 +1559,9 @@ data:
                     "protoMessage.pid": true,
                     "protoMessage.ts": true,
                     "server.labels": true,
+                    "server.name": false,
                     "server.namespace": true,
+                    "serverService.labels": true,
                     "serverService.name": true,
                     "serverService.namespace": true,
                     "sort": true,
@@ -1593,16 +1572,17 @@ data:
                     "_index": 1,
                     "_type": 2,
                     "client.labels": 17,
+                    "client.name": 10,
                     "client.namespace": 18,
-                    "client.podName": 12,
+                    "clientService.labels": 30,
                     "clientService.name": 19,
                     "clientService.namespace": 20,
                     "highlight": 3,
-                    "protoMessage.ip.client": 10,
+                    "protoMessage.ip.client": 11,
                     "protoMessage.ip.ipVersion": 21,
-                    "protoMessage.ip.server": 13,
-                    "protoMessage.l4.TCP.clientPort": 11,
-                    "protoMessage.l4.TCP.serverPort": 14,
+                    "protoMessage.ip.server": 14,
+                    "protoMessage.l4.TCP.clientPort": 12,
+                    "protoMessage.l4.TCP.serverPort": 15,
                     "protoMessage.l7.latencyNs": 9,
                     "protoMessage.l7.request.http.headers": 22,
                     "protoMessage.l7.request.http.method": 6,
@@ -1614,23 +1594,26 @@ data:
                     "protoMessage.pid": 25,
                     "protoMessage.ts": 16,
                     "server.labels": 26,
+                    "server.name": 13,
                     "server.namespace": 27,
-                    "server.podName": 15,
+                    "serverService.labels": 31,
                     "serverService.name": 28,
                     "serverService.namespace": 29,
                     "sort": 4
                     },
                     "renameByName": {
+                    "client.name": "clientPod",
                     "client.podName": "clientPodName",
                     "protoMessage.ip.client": "clientIP",
                     "protoMessage.ip.server": "serverIP",
-                    "protoMessage.l4.TCP.clientPort": "clientProt",
+                    "protoMessage.l4.TCP.clientPort": "clientPort",
                     "protoMessage.l4.TCP.serverPort": "serverPort",
                     "protoMessage.l7.latencyNs": "latnecyNs",
                     "protoMessage.l7.request.http.method": "method",
                     "protoMessage.l7.request.http.protocol": "protocol",
                     "protoMessage.l7.request.http.url": "url",
                     "protoMessage.l7.response.http.code": "code",
+                    "server.name": "serverPod",
                     "server.podName": "serverPodName"
                     }
                 }
@@ -1768,7 +1751,7 @@ data:
                     "type": "count"
                     }
                 ],
-                "query": "_exists_: \"protoMessage.l7.request.mysql.command\" AND _exists_: \"client.podName\" AND server.namespace: $namespace AND serverService.name: $service",
+                "query": "_exists_: \"protoMessage.l7.request.mysql.command\" AND NOT (clientService.name: \"kubernetes\") AND server.namespace: $namespace AND serverService.name: $service",
                 "refId": "A",
                 "timeField": "protoMessage.ts"
                 },
@@ -1795,7 +1778,7 @@ data:
                     "type": "count"
                     }
                 ],
-                "query": "_exists_: \"protoMessage.l7.request.mysql.command\" AND _exists_: \"client.podName\" AND server.namespace: $namespace AND serverService.name: $service",
+                "query": "_exists_: \"protoMessage.l7.request.mysql.command\" AND _exists_: \"client.name\" AND server.namespace: $namespace AND serverService.name: $service",
                 "refId": "B",
                 "timeField": "protoMessage.ts"
                 },
@@ -1931,7 +1914,7 @@ data:
                     "type": "count"
                     }
                 ],
-                "query": "_exists_: \"protoMessage.l7.request.mysql.command\" AND _exists_: \"client.podName\" AND server.namespace: $namespace AND serverService.name: $service",
+                "query": "_exists_: \"protoMessage.l7.request.mysql.command\" AND NOT (clientService.name: \"kubernetes\") AND server.namespace: $namespace AND serverService.name: $service",
                 "refId": "A",
                 "timeField": "protoMessage.ts"
                 },
@@ -1958,7 +1941,7 @@ data:
                     "type": "count"
                     }
                 ],
-                "query": "_exists_: \"protoMessage.l7.request.mysql.command\" AND _exists_: \"client.podName\" AND server.namespace: $namespace AND serverService.name: $service",
+                "query": "_exists_: \"protoMessage.l7.request.mysql.command\" AND _exists_: \"client.name\" AND server.namespace: $namespace AND serverService.name: $service",
                 "refId": "B",
                 "timeField": "protoMessage.ts"
                 },
@@ -2097,7 +2080,7 @@ data:
                     "type": "percentiles"
                     }
                 ],
-                "query": "_exists_: \"protoMessage.l7.request.mysql.command\" AND _exists_: \"client.podName\" AND server.namespace: $namespace AND serverService.name: $service",
+                "query": "_exists_: \"protoMessage.l7.request.mysql.command\" AND NOT (clientService.name: \"kubernetes\") AND server.namespace: $namespace AND serverService.name: $service",
                 "refId": "A",
                 "timeField": "protoMessage.ts"
                 }
@@ -2459,7 +2442,7 @@ data:
                     "type": "raw_data"
                     }
                 ],
-                "query": "_exists_: \"protoMessage.l7.request.mysql.command\" AND _exists_: \"client.podName\" AND server.namespace: $namespace AND serverService.name: $service",
+                "query": "_exists_: \"protoMessage.l7.request.mysql.command\" AND NOT (clientService.name: \"kubernetes\") AND server.namespace: $namespace AND serverService.name: $service",
                 "refId": "A",
                 "timeField": "protoMessage.ts"
                 }
@@ -2475,6 +2458,7 @@ data:
                     "_type": true,
                     "client.labels": true,
                     "client.namespace": true,
+                    "clientService.labels": true,
                     "clientService.name": true,
                     "clientService.namespace": true,
                     "highlight": true,
@@ -2493,6 +2477,7 @@ data:
                     "protoMessage.ts": true,
                     "server.labels": true,
                     "server.namespace": true,
+                    "serverService.labels": true,
                     "serverService.name": true,
                     "serverService.namespace": true,
                     "sort": true,
@@ -2503,16 +2488,17 @@ data:
                     "_index": 4,
                     "_type": 5,
                     "client.labels": 16,
+                    "client.name": 9,
                     "client.namespace": 17,
-                    "client.podName": 11,
+                    "clientService.labels": 26,
                     "clientService.name": 18,
                     "clientService.namespace": 19,
                     "highlight": 6,
-                    "protoMessage.ip.client": 9,
+                    "protoMessage.ip.client": 10,
                     "protoMessage.ip.ipVersion": 20,
-                    "protoMessage.ip.server": 12,
-                    "protoMessage.l4.TCP.clientPort": 10,
-                    "protoMessage.l4.TCP.serverPort": 13,
+                    "protoMessage.ip.server": 13,
+                    "protoMessage.l4.TCP.clientPort": 11,
+                    "protoMessage.l4.TCP.serverPort": 14,
                     "protoMessage.l7.latencyNs": 8,
                     "protoMessage.l7.request.mysql.command": 0,
                     "protoMessage.l7.request.mysql.payloadLength": 1,
@@ -2520,17 +2506,19 @@ data:
                     "protoMessage.pid": 21,
                     "protoMessage.ts": 15,
                     "server.labels": 22,
+                    "server.name": 12,
                     "server.namespace": 23,
-                    "server.podName": 14,
+                    "serverService.labels": 27,
                     "serverService.name": 24,
                     "serverService.namespace": 25,
                     "sort": 7
                     },
                     "renameByName": {
+                    "client.name": "clientPod",
                     "client.podName": "clientPodName",
                     "protoMessage.ip.client": "clientIP",
                     "protoMessage.ip.server": "serverIP",
-                    "protoMessage.l4.TCP.clientPort": "clientProt",
+                    "protoMessage.l4.TCP.clientPort": "clientPort",
                     "protoMessage.l4.TCP.serverPort": "serverPort",
                     "protoMessage.l7.latencyNs": "latnecyNs",
                     "protoMessage.l7.request.http.method": "method",
@@ -2540,6 +2528,7 @@ data:
                     "protoMessage.l7.request.mysql.payloadLength": "cmdPayloadLen",
                     "protoMessage.l7.response.http.code": "code",
                     "protoMessage.l7.response.mysql.type": "response",
+                    "server.name": "serverPod",
                     "server.podName": "serverPodName"
                     }
                 }
@@ -2618,7 +2607,7 @@ data:
         "timepicker": {},
         "timezone": "",
         "title": "Perisco K8S Dashboard v2",
-        "uid": "FlCWOT84kk",
-        "version": 1,
+        "uid": "FlCWOT84kkk",
+        "version": 2,
         "weekStart": ""
     }

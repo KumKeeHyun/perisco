@@ -7,12 +7,14 @@ import (
 	"syscall"
 
 	"github.com/KumKeeHyun/perisco/perisco/bpf"
+	"github.com/KumKeeHyun/perisco/perisco/server"
 	"github.com/KumKeeHyun/perisco/pkg/ebpf/types"
 	"github.com/KumKeeHyun/perisco/pkg/exporter"
 	"github.com/KumKeeHyun/perisco/pkg/kubernetes"
 	"github.com/KumKeeHyun/perisco/pkg/logger"
 	"github.com/KumKeeHyun/perisco/pkg/perisco"
 	"github.com/cilium/ebpf/rlimit"
+	"github.com/samber/lo"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 	k8s "k8s.io/client-go/kubernetes"
@@ -38,6 +40,10 @@ func New(vp *viper.Viper) *cobra.Command {
 func runPerisco(vp *viper.Viper) error {
 	log := logger.DefualtLogger.Named("perisco")
 
+	if err := rlimit.RemoveMemlock(); err != nil {
+		log.Fatal("failed to remove mem lock", "err", err)
+	}
+
 	ctx, cancel := signal.NotifyContext(
 		context.Background(),
 		syscall.SIGTERM,
@@ -48,38 +54,35 @@ func runPerisco(vp *viper.Viper) error {
 	var clientset *k8s.Clientset
 	if vp.GetBool(keyKubernetes) {
 		masterUrl, kubeconfigPath := vp.GetString(keyKubernetesMasterUrl), vp.GetString(keyKubernetesConfigPath)
-		log.Infof("try to create k8s client with masterUrl(%s), kubeconfigPath(%s)", masterUrl, kubeconfigPath)
+		log.Infow("build k8s config", "masterUrl", masterUrl, "kubeconfigPath", kubeconfigPath)
 
 		config, err := clientcmd.BuildConfigFromFlags(masterUrl, kubeconfigPath)
 		if err != nil {
-			log.Fatalf("failed to build k8s client config: %w", err)
+			log.Fatalw("failed to build k8s config", "err", err)
 		}
 		clientset, err = k8s.NewForConfig(config)
 		if err != nil {
-			log.Fatal(err)
+			log.Fatalw("failed to create k8s clientset", "err", err)
 		}
-		log.Info("created k8s client successfully")
+		log.Info("success to create k8s clientset")
 	}
 
-	if err := rlimit.RemoveMemlock(); err != nil {
-		log.Fatal(err)
-	}
-
-	log.Info("loading bpf program")
 	recvc, sendc, nf, pm, cleanUpBPF := bpf.LoadBpfProgram()
 	defer cleanUpBPF()
+	log.Info("success to load bpf program")
 
 	cidrs := splitToSlice(vp.GetString(keyCidrs))
 	if err := nf.RegisterCIDRs(cidrs); err != nil {
 		log.Fatal(err)
 	}
-	log.Infof("set cidrs to trace sockets %v", cidrs)
+	log.Infow("trace cidr", "cidrs", cidrs)
 
-	protos, err := types.ProtoTypesOf(splitToSlice(vp.GetString(keyProtos)))
+	protosCfg := vp.GetString(keyProtos)
+	protos, err := types.ProtoTypesOf(splitToSlice(protosCfg))
 	if err != nil {
 		log.Fatal(err)
 	}
-	log.Infof("set protocols to parse payload to %v", protos)
+	log.Infow("trace protocol", "protocols", lo.Map[types.ProtocolType, string](protos, func(item types.ProtocolType, index int) string { return item.String() }))
 
 	breaker := perisco.NewProtoDetecter(pm, log.Named("breaker"))
 	parser, err := perisco.NewParser(
@@ -88,7 +91,7 @@ func runPerisco(vp *viper.Viper) error {
 		perisco.ParserWithLogger(log.Named("parser")),
 	)
 	if err != nil {
-		log.Fatal(err)
+		log.Fatalw("failed to create parser", "err", err)
 	}
 	reqc, respc := parser.Run(ctx, recvc, sendc)
 	defer parser.Stop()
@@ -98,18 +101,18 @@ func runPerisco(vp *viper.Viper) error {
 		perisco.MatcherWithLogger(log.Named("matcher")),
 	)
 	if err != nil {
-		log.Fatal(err)
+		log.Fatalw("failed to create matcher", "err", err)
 	}
 	msgc := matcher.Run(ctx, reqc, respc)
 	defer matcher.Stop()
 
 	var exporterCfg exporter.Config
 	if err = vp.Unmarshal(&exporterCfg); err != nil {
-		log.Fatal(err)
+		log.Fatalw("failed to unmarshal exporter config", "err", err)
 	}
 	exporter, err := exporter.New(exporterCfg)
 	if err != nil {
-		log.Fatal(err)
+		log.Fatalw("failed to create exporter", "err", err)
 	}
 	defer exporter.Stop()
 
@@ -117,19 +120,26 @@ func runPerisco(vp *viper.Viper) error {
 		s := kubernetes.NewStore()
 		watcher := kubernetes.NewWatcher(log.Named("watcher"), clientset.CoreV1(), s)
 		if err := watcher.WatchEvents(ctx); err != nil {
-			log.Fatal(err)
+			log.Fatalw("failed to create k8s watcher", "err", err)
 		}
 		defer watcher.Stop()
+
 		enricher, err := perisco.NewEnricher(log.Named("enricher"), s)
 		if err != nil {
-			log.Fatal(err)
+			log.Fatalw("failed to create enricher", "err", err)
 		}
+
 		k8sMsgs := enricher.Run(ctx, msgc)
 		defer enricher.Stop()
+
 		go exporter.ExportK8S(ctx, k8sMsgs)
 	} else {
 		go exporter.Export(ctx, msgc)
 	}
+
+	go func() {
+		log.Fatalw("failed to run server", "err", server.RunServer(log.Named("server"), vp.GetBool(keyServerDebugHandler), vp.GetInt(keyServerPort)))
+	}()
 
 	<-ctx.Done()
 	return nil

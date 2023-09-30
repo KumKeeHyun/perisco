@@ -4,56 +4,61 @@ import (
 	"bytes"
 	"encoding/binary"
 	"errors"
-	"log"
 	"runtime"
 	"sync"
 
 	"github.com/KumKeeHyun/perisco/pkg/ebpf/maps"
 	"github.com/KumKeeHyun/perisco/pkg/ebpf/types"
 	"github.com/KumKeeHyun/perisco/pkg/host"
+	"github.com/KumKeeHyun/perisco/pkg/logger"
 	"github.com/cilium/ebpf/link"
 	"github.com/cilium/ebpf/ringbuf"
 )
 
 var msgEventPool = sync.Pool{
-	New: func() interface{} { return &types.MsgEvent{} },
+	New: func() interface{} {
+		msgEventPoolNew.Inc()
+		return &types.MsgEvent{}
+	},
 }
 
 func LoadBpfProgram() (chan *types.MsgEvent, chan *types.MsgEvent, *maps.NetworkFilter, *maps.ProtocolMap, func()) {
+	log := logger.DefualtLogger.Named("bpfLoader")
+
 	objs := bpfObjects{}
 	if err := loadBpfObjects(&objs, nil); err != nil {
-		log.Fatalf("loading objects: %v", err)
+		log.Fatalw("failed to load bpf object", "err", err)
 	}
 
 	fentryInetAccept, err := link.AttachTracing(link.TracingOptions{
 		Program: objs.bpfPrograms.FexitInetAccept,
 	})
 	if err != nil {
-		log.Fatal(err)
+		log.Fatalw("failed to attach tracing fexit/inet_accept", "err", err)
 	}
 	fentrySockRecvmsg, err := link.AttachTracing(link.TracingOptions{
 		Program: objs.bpfPrograms.FentrySockRecvmsg,
 	})
 	if err != nil {
-		log.Fatal(err)
+		log.Fatalw("failed to attach tracing fencty/sock_recvmsg", "err", err)
 	}
 	fexitSockRecvmsg, err := link.AttachTracing(link.TracingOptions{
 		Program: objs.bpfPrograms.FexitSockRecvmsg,
 	})
 	if err != nil {
-		log.Fatal(err)
+		log.Fatalw("failed to attach tracing fexit/sock_recvmsg", "err", err)
 	}
 
 	fentrySockSendmsg, err := link.AttachTracing(link.TracingOptions{
 		Program: objs.bpfPrograms.FentrySockSendmsg,
 	})
 	if err != nil {
-		log.Fatal(err)
+		log.Fatalw("failed to attach tracing fentry/sock_sendmsg", "err", err)
 	}
 
 	recvRb, err := ringbuf.NewReader(objs.bpfMaps.RecvmsgEvents)
 	if err != nil {
-		log.Fatalf("opening dataEvent ringbuf reader: %s", err)
+		log.Fatalw("failed to open recvmsg ringbuf", "err", err)
 	}
 	recvCh := make(chan *types.MsgEvent)
 	go func() {
@@ -61,20 +66,22 @@ func LoadBpfProgram() (chan *types.MsgEvent, chan *types.MsgEvent, *maps.Network
 			record, err := recvRb.Read()
 			if err != nil {
 				if errors.Is(err, ringbuf.ErrClosed) {
-					log.Println("received signal, exiting..")
+					log.Info("recvmsg reader stopped")
 					return
 				}
-				log.Printf("reading from reader: %s", err)
+				log.Errorw("failed to read recvmsg ringbuf", "err", err)
 				continue
 			}
+			recvmsgEvents.Inc()
 
 			msgEvent := msgEventPool.Get().(*types.MsgEvent)
 			if err := binary.Read(bytes.NewBuffer(record.RawSample), binary.LittleEndian, msgEvent); err != nil {
-				log.Printf("parsing closeEvent ringbuf event: %s", err)
+				log.Errorw("failed to read recvmsg event", "err", err)
 				continue
 			}
 			msgEvent.Timestamp += host.BootTime()
 			runtime.SetFinalizer(msgEvent, func(obj interface{}) {
+				msgEventPoolPut.Inc()
 				msgEventPool.Put(obj)
 			})
 
@@ -84,7 +91,7 @@ func LoadBpfProgram() (chan *types.MsgEvent, chan *types.MsgEvent, *maps.Network
 
 	sendRb, err := ringbuf.NewReader(objs.bpfMaps.SendmsgEvents)
 	if err != nil {
-		log.Fatalf("opening dataEvent ringbuf reader: %s", err)
+		log.Fatalw("failed to open sendmsg ringbuf", "err", err)
 	}
 	sendCh := make(chan *types.MsgEvent)
 	go func() {
@@ -92,20 +99,22 @@ func LoadBpfProgram() (chan *types.MsgEvent, chan *types.MsgEvent, *maps.Network
 			record, err := sendRb.Read()
 			if err != nil {
 				if errors.Is(err, ringbuf.ErrClosed) {
-					log.Println("received signal, exiting..")
+					log.Info("sendmsg reader stopped")
 					return
 				}
-				log.Printf("reading from reader: %s", err)
+				log.Errorw("failed to read sendmsg ringbuf", "err", err)
 				continue
 			}
+			sendmsgEvents.Inc()
 
 			msgEvent := msgEventPool.Get().(*types.MsgEvent)
 			if err := binary.Read(bytes.NewBuffer(record.RawSample), binary.LittleEndian, msgEvent); err != nil {
-				log.Printf("parsing closeEvent ringbuf event: %s", err)
+				log.Errorw("failed to read sendmsg event", "err", err)
 				continue
 			}
 			msgEvent.Timestamp += host.BootTime()
 			runtime.SetFinalizer(msgEvent, func(obj interface{}) {
+				msgEventPoolPut.Inc()
 				msgEventPool.Put(obj)
 			})
 

@@ -6,6 +6,9 @@ const (
 	keyCidrs  = "cidrs"
 	keyProtos = "protos"
 
+	keyServerPort         = "server_port"
+	keyServerDebugHandler = "server_debug_handler"
+
 	keyKubernetes           = "kubernetes"
 	keyKubernetesMasterUrl  = "kubernetes_master_url"
 	keyKubernetesConfigPath = "kubernetes_config_path"
@@ -26,6 +29,9 @@ func setFlags(flags *pflag.FlagSet) {
 	// perisco protocols
 	flags.String(keyCidrs, "0.0.0.0/0", "List of cidrs to monitor sevices")
 	flags.String(keyProtos, "HTTP/1,HTTP/2", "List of protocols to parse[HTTP/1 | HTTP/2]")
+
+	flags.Int(keyServerPort, 8000, "server port")
+	flags.Bool(keyServerDebugHandler, false, "Enable debug handler")
 
 	// kubernetes enricher
 	flags.Bool(keyKubernetes, false, "Enable k8s resources enricher")

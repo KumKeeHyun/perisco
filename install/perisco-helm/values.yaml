@@ -7,6 +7,10 @@ perisco:
   config:
     cidrs: 10.244.0.0/16,::ffff:10.244.0.0/112
     protocols: HTTP/1,MySQL
+
+  server:
+    hostPort: 30111
+    debug: true
   
   exporter:
     name: elasticsearch
@@ -43,9 +47,9 @@ elasticsearch:
     requests:
       cpu: "300m"
       memory: "1Gi"
-    limits:
-      cpu: "500m"
-      memory: "2Gi"
+    # limits:
+    #   cpu: "500m"
+    #   memory: "2Gi"
 
 grafana:
   enabled: true

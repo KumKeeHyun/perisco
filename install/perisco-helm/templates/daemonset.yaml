@@ -33,14 +33,22 @@ spec:
           capabilities:
             add: 
             - CAP_SYS_ADMIN
+        ports:
+          - name: service
+            containerPort: 8000
+            hostPort: {{ .Values.perisco.server.hostPort }}
         env:
         - name: PERISCO_CIDRS
-          value: {{ .Values.perisco.config.cidrs }}
+          value: {{ .Values.perisco.config.cidrs  | default "0.0.0.0/0" | quote }}
         - name: PERISCO_PROTOS
-          value: {{ .Values.perisco.config.protocols }}
+          value: {{ .Values.perisco.config.protocols | default "HTTP/1.1,MySQL" | quote }}
         - name: PERISCO_KUBERNETES
-          value: 'true'
+          value: "true"
+        - name: PERISCO_SERVER_PORT
+          value: "8000"
+        - name: PERISCO_SERVER_DEBUG_HANDLER
+          value: {{ .Values.perisco.server.debug | default "false" | quote }}
         - name: PERISCO_EXPORTER
-          value: {{ .Values.perisco.exporter.name }}
+          value: {{ .Values.perisco.exporter.name | default "elasticsearch" | quote }}
         - name: PERISCO_EXPORTER_ELASTICSEARCH_ADDRESSES
           value: {{ .Values.perisco.exporter.elasticsearch.addresses }}

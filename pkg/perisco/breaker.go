@@ -57,13 +57,13 @@ func (pd *protoDetecter) Success(sockKey types.SockKey, protocol types.ProtocolT
 	}
 
 	if err := pd.pm.Detect(ek, protocol); err != nil {
-		pd.log.Warnf("failed to update protocol map: detected %s in endpoint %s", protocol, &ek)
+		pd.log.Warnw("failed to update protocol map", "protocol", protocol.String(), "endpoint", ek.String())
 		return
 	}
 	pd.detected[ek] = protocol
 	delete(pd.failed, ek)
 
-	pd.log.Infof("detected %s in endpoint %s", protocol, &ek)
+	pd.log.Infow("detect endpoint", "protocol", protocol.String(), "endpoint", ek.String())
 }
 
 func (pd *protoDetecter) alreadyDetected(ek types.EndpointKey) bool {
@@ -100,11 +100,11 @@ func (pd *protoDetecter) Fail(sockKey types.SockKey) {
 	if failed.cnt >= failureThreshold {
 		failed.skipped = true
 		if err := pd.pm.Skip(ek); err != nil {
-			pd.log.Warnf("failed to update protocol map: started to skip endpoint %s", &ek)
+			pd.log.Warnw("failed to update protocol map", "protocol", "SKIP", "endpoint", ek.String())
 			failed.skipped = false
 		}
 
-		pd.log.Infof("start to skip endpoint %s", &ek)
+		pd.log.Infow("skip endpoint", "endpoint", ek.String())
 	}
 	pd.failed[ek] = failed
 }

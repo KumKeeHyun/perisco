@@ -69,7 +69,7 @@ func (rrm *reqRespMatcher) tryMatchRequest(req *protocols.Request) {
 			return
 		}
 		rrm.matchers[ep] = m
-		rrm.log.Infof("new proto matcher of %s for %s", req.Record.ProtoType(), ep.String())
+		rrm.log.Infow("register proto matcher ", "protocol", req.Record.ProtoType().String(), "endpoint", ep.String())
 	}
 
 	if msg := m.MatchRequest(req); msg != nil {
@@ -85,7 +85,7 @@ func (rrm *reqRespMatcher) tryMatchResponse(resp *protocols.Response) {
 			return
 		}
 		rrm.matchers[ep] = m
-		rrm.log.Infof("new proto matcher of %s for %s", resp.Record.ProtoType(), ep.String())
+		rrm.log.Infow("register proto matcher ", "protocol", resp.Record.ProtoType().String(), "endpoint", ep.String())
 	}
 
 	if msg := m.MatchResponse(resp); msg != nil {

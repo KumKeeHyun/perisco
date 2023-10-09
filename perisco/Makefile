@@ -18,7 +18,7 @@ clean:
 	rm -f $(TARGET)
 
 bin-only:
-	go build -o $(TARGET)
+	go build -ldflags="-s -w" -trimpath -o $(TARGET)
 
 start: bin-only
 	sudo ./$(TARGET) start

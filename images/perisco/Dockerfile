@@ -1,6 +1,4 @@
-FROM golang:1.18.5-alpine AS builder
-
-RUN apk add --update make
+FROM kbzjung359/perisco-builder:0.0.1 AS builder
 
 ENV GO111MODULE=on \
     CGO_ENABLED=0 \
@@ -8,9 +6,12 @@ ENV GO111MODULE=on \
     GOARCH=amd64
 
 WORKDIR /build
-COPY . .
+COPY ./go.* .
+RUN go mod download
 
-# RUN go mod download
+COPY . .
+WORKDIR /build/perisco/bpf
+RUN make generate
 WORKDIR /build/perisco
 RUN make bin-only
 

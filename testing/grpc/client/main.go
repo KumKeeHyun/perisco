@@ -11,7 +11,7 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 
-	pb "github.com/KumKeeHyun/perisco/perisco/testing/grpc/hello"
+	pb "github.com/KumKeeHyun/perisco/testing/grpc/hello"
 )
 
 func main() {
